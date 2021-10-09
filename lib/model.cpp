@@ -34,7 +34,8 @@ Model::~Model() {}
 
 void Model::processScene(aiNode* node, aiMesh** const meshes, aiMaterial** materials) {
 	for (uint32_t i = 0; i < node->mNumMeshes; i++) {
-		Mesh mesh = processMesh(meshes[node->mMeshes[i]], materials);
+
+		Mesh* mesh = processMesh(meshes[node->mMeshes[i]], materials);
 
 		model_meshes.push_back(mesh);
 	}
@@ -44,7 +45,7 @@ void Model::processScene(aiNode* node, aiMesh** const meshes, aiMaterial** mater
 	}
 }
 
-Mesh Model::processMesh(aiMesh* mesh, aiMaterial** materials) {
+Mesh* Model::processMesh(aiMesh* mesh, aiMaterial** materials) {
 	//multithread this functionality
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
@@ -57,8 +58,9 @@ Mesh Model::processMesh(aiMesh* mesh, aiMaterial** materials) {
 	vertices = future_vertices.get();
 	indices = future_indices.get();
 	texturePaths = future_texturePaths.get();
-	Mesh new_mesh(vertices, indices, texturePaths);
 
+	Mesh* new_mesh = new Mesh(vertices, indices, texturePaths);
+	
 	return new_mesh;
 }
 
@@ -92,10 +94,10 @@ std::vector<Vertex> Model::processVertices(uint32_t numOfVertices, aiVector3D* a
 std::vector<uint32_t> Model::processIndices(uint32_t numOfFaces, aiFace* faces) {
 	std::vector<uint32_t> meshIndices;
 	for (uint32_t i = 0; i < numOfFaces; i++) {
-		if (faces->mNumIndices == 3) {
-			meshIndices.push_back(faces->mIndices[0]);
-			meshIndices.push_back(faces->mIndices[1]);
-			meshIndices.push_back(faces->mIndices[2]);
+		if (faces[i].mNumIndices == 3) {
+			meshIndices.push_back(faces[i].mIndices[0]);
+			meshIndices.push_back(faces[i].mIndices[1]);
+			meshIndices.push_back(faces[i].mIndices[2]);
 		}
 	}
 

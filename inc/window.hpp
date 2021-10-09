@@ -15,8 +15,8 @@ class Window {
 	friend class Antuco;
 	friend class GraphicsImpl;
 private:
-	uint32_t width;
-	uint32_t height;
+	uint32_t screen_width;
+	uint32_t screen_height;
 	const char* screen_title;
 private:
 	WindowImpl* pWindow;

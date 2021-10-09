@@ -5,7 +5,12 @@ using namespace tuco;
 
 GameObject::GameObject() {
 	object_model = Model();
-	transform = glm::mat4(0);
+	transform = {
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1,
+	};
 }
 
 GameObject::~GameObject() {}

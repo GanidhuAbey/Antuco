@@ -4,7 +4,7 @@
 #include <chrono>
 
 const int WIDTH = 800;
-const int HEIGHT = 800;
+const int HEIGHT = 600;
 
 const float PLAYER_SPEED = 0.05f;
 
@@ -14,7 +14,7 @@ int main() {
 	//when beginning a new game, one must first create the window, but user should only ever interact with the library wrapper "Antuco_lib"
 	tuco::Antuco& antuco = tuco::Antuco::get_engine();
 	//create window
-	tuco::Window window = antuco.init_window(WIDTH, HEIGHT, "SOME COOL TITLE");
+	tuco::Window* window = antuco.init_window(WIDTH, HEIGHT, "SOME COOL TITLE");
 
 	//create engine here so the title exists?
 	antuco.init_graphics();
@@ -29,10 +29,10 @@ int main() {
 	glm::vec3 camera_face = glm::vec3(0.0, 0.0, -1.0);
 	glm::vec3 camera_orientation = glm::vec3(0.0, -1.0, 0.0);
 
-	tuco::Camera main_camera = antuco.create_camera(camera_pos, camera_face, camera_orientation, glm::radians(45.0f), 0.1f, 100.0f);
+	tuco::Camera* main_camera = antuco.create_camera(camera_pos, camera_face, camera_orientation, glm::radians(45.0f), 0.1f, 150.0f);
 
 	//create some light for the scene
-	tuco::Light light = antuco.create_light(glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
+	tuco::Light* light = antuco.create_light(glm::vec3(1.0f, 3.0f, 3.0f), glm::vec3(1.0, 1.0, 1.0));
 
 	//create a simple game object
 	tuco::GameObject* some_object = antuco.create_object();
@@ -49,27 +49,30 @@ int main() {
 
 	while (game_loop) {
 		//take some input
-		if (window.get_key_state(tuco::WindowInput::X)) {
+		if (window->get_key_state(tuco::WindowInput::X)) {
 			printf("the x button has been pressed \n");
 		}
 		//handle movement
-		if (tuco::WindowInput::W) {
+		if (window->get_key_state(tuco::WindowInput::W)) {
 			camera_pos += PLAYER_SPEED * camera_face;
 		}	
-		else if (tuco::WindowInput::A) {
+		else if (window->get_key_state(tuco::WindowInput::A)) {
 			camera_pos -= glm::normalize(glm::cross(camera_orientation, camera_face)) * PLAYER_SPEED;
 		}	
-		else if (tuco::WindowInput::S) {	
+		else if (window->get_key_state(tuco::WindowInput::D)) {	
 			camera_pos += glm::normalize(glm::cross(camera_orientation, camera_face)) * PLAYER_SPEED;
 		}
-		else if (tuco::WindowInput::D) {
+		else if (window->get_key_state(tuco::WindowInput::S)) {
 			camera_pos -= PLAYER_SPEED * camera_face;
 		}
 
+		//printf("camera_pos: <%f, %f, %f> \n", camera_pos.x, camera_pos.y, camera_pos.z);
+
 		//render the objects onto the screen
+		main_camera->update(camera_pos, camera_face);
 		antuco.render();
 
 		//check if user has closed the window
-		game_loop = !window.check_window_status(tuco::WindowStatus::CLOSE_REQUEST);
+		game_loop = !window->check_window_status(tuco::WindowStatus::CLOSE_REQUEST);
 	}
 }

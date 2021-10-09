@@ -4,11 +4,17 @@
 using namespace tuco;
 
 Camera::Camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up, float yfov, float aspect_ratio, float near, float far) {
+	orientation = up;
 	//need to construct some matrices to represent this camera
 	modelToCamera = construct_world_to_camera(eye, target, up);
 	cameraToScreen = perspective_projection(yfov, aspect_ratio, near, far);
 }
 Camera::~Camera() {}
+
+
+void Camera::update(glm::vec3 camera_pos, glm::vec3 camera_face) {
+	modelToCamera = construct_world_to_camera(camera_pos, camera_face, orientation);
+}
 
 
 /// <summary>
@@ -51,6 +57,8 @@ glm::mat4 Camera::construct_world_to_camera(glm::vec3 eye, glm::vec3 target, glm
 /// <returns></returns>
 glm::mat4 Camera::perspective_projection(float angle, float aspect, float n, float f) {
 	double c = 1.0 / (glm::tan(angle / 2));
+
+	printf("the value of the first input is: %f \n", aspect);
 
 	glm::mat4 projection = {
 		c / aspect, 0, 0, 0,

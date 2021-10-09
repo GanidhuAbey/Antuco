@@ -604,7 +604,7 @@ void GraphicsImpl::create_graphics_pipeline() {
     VkPushConstantRange pushRange{};
     pushRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     pushRange.offset = 0;
-    pushRange.size = sizeof(LightObject) + sizeof(PushFragConstant);
+    pushRange.size = sizeof(LightObject);
 
     VkPushConstantRange pushRanges[] = { pushRange };
 
@@ -872,9 +872,9 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
         for (size_t j = 0; j < game_objects.size(); j++) {
             for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
-                Mesh mesh_data = game_objects[j]->object_model.model_meshes[k];
-                uint32_t index_count = static_cast<uint32_t>(mesh_data.indices.size());
-                uint32_t vertex_count = static_cast<uint32_t>(mesh_data.vertices.size());
+                Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
+                uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
+                uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 
                 //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
                 //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
@@ -901,7 +901,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
 void GraphicsImpl::create_vertex_buffer() {
     mem::BufferCreateInfo buffer_info{};
-    buffer_info.size = (VkDeviceSize)5e7;
+    buffer_info.size = (VkDeviceSize)5e8;
     buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     buffer_info.queueFamilyIndexCount = 1;
@@ -913,7 +913,7 @@ void GraphicsImpl::create_vertex_buffer() {
 
 void GraphicsImpl::create_index_buffer() {
     mem::BufferCreateInfo buffer_info{};
-    buffer_info.size = (VkDeviceSize)5e7;
+    buffer_info.size = (VkDeviceSize)5e8;
     buffer_info.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     buffer_info.queueFamilyIndexCount = 1;
@@ -964,8 +964,17 @@ void GraphicsImpl::update_vertex_buffer(std::vector<Vertex> vertex_data) {
     mem::createBuffer(physical_device, device, &temp_info, &temp_buffer);
 
     //map data to temp buffer
+    for (size_t i = 0; i < vertex_data.size(); i++) {
+        printf("vertex_data: <%f, %f, %f> \n", vertex_data[i].position.x, vertex_data[i].position.y, vertex_data[i].position.z);
+    }
     mem::allocateMemory(sizeof(vertex_data[0]) * vertex_data.size(), &temp_buffer);
-    mem::mapMemory(device, sizeof(vertex_data[0]) * vertex_data.size(), &temp_buffer, &vertex_data);
+   
+    /* THIS CODE FOR SURE WORKS*/
+    //void* p_data;
+    //vkMapMemory(device, temp_buffer.memoryHandle, 0, sizeof(vertex_data[0]) * vertex_data.size(), 0, &p_data);
+    //memcpy(p_data, vertex_data.data(), sizeof(vertex_data[0]) * vertex_data.size());V
+
+    mem::mapMemory(device, sizeof(vertex_data[0]) * vertex_data.size(), &temp_buffer, vertex_data.data());
 
     //use command buffers to transfer data to device local buffer 
     mem::allocateMemory(sizeof(vertex_data[0]) * vertex_data.size(), &vertex_buffer);
@@ -1039,7 +1048,7 @@ void GraphicsImpl::end_command_buffer(VkCommandBuffer commandBuffer) {
     submitInfo.pCommandBuffers = &commandBuffer;
 
     vkQueueSubmit(graphics_queue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(present_queue);
+    vkQueueWaitIdle(graphics_queue);
 
     vkFreeCommandBuffers(device, command_pool, 1, &commandBuffer);
 }
@@ -1054,9 +1063,10 @@ void GraphicsImpl::create_uniform_buffer(UniformBufferObject ubo, mem::Memory* u
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     mem::createBuffer(physical_device, device, &buffer_info, uniform_buffer);
-    
+    /*
     mem::allocateMemory(sizeof(ubo), uniform_buffer);
     mem::mapMemory(device, sizeof(ubo), uniform_buffer, &ubo);
+    */
 }
 
 void GraphicsImpl::update_uniform_buffer(mem::Memory* uniform_buffer, UniformBufferObject ubo) {

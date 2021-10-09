@@ -44,7 +44,7 @@ void GraphicsImpl::update_camera(glm::mat4 world_to_camera, glm::mat4 projection
 	camera_projection = projection;
 }
 
-void GraphicsImpl::update_light(glm::vec3 color, glm::vec3 position) {
+void GraphicsImpl::update_light(glm::vec4 color, glm::vec4 position) {
 	light.color = color;
 	light.position = position;
 }
@@ -60,6 +60,7 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 	for (size_t i = 0; i < game_objects.size(); i++) {
 		//create ubo data
 		UniformBufferObject ubo;
+
 		ubo.modelToWorld = game_objects[i]->transform;
 		ubo.worldToCamera = camera_view;
 		ubo.projection = camera_projection;
@@ -70,30 +71,35 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 			mem::Memory* uniform_buffer = new mem::Memory{};
 			create_uniform_buffer(ubo, uniform_buffer);
 			
-			write_to_ubo(uniform_buffer);		
+			write_to_ubo(uniform_buffer);
 
 			ubo_data.push_back(uniform_buffer);
 
 			//TODO: for some reason model_meshes or object_model does not exist
 			//      and the program crashes when it attempts to access the data here.
-			std::vector<Mesh> meshes = game_objects[i]->object_model.model_meshes;
+			std::vector<Mesh*> meshes = game_objects[i]->object_model.model_meshes;
 			//create texture data
 			create_texture_pool(meshes.size());
 			create_texture_set(meshes.size());
 
 			for (size_t j = 0; j < meshes.size(); j++) {
 				//for now lets just assume this works so we can deal with the other errors...
-				update_vertex_buffer(meshes[j].vertices);
-				update_index_buffer(meshes[j].indices);
+				for (size_t l = 0; l < meshes[j]->indices.size(); l++) {
+					printf("index_data: | %u |", meshes[j]->indices[l]);
+				}
+				printf("\n");
+				update_vertex_buffer(meshes[j]->vertices);
+				update_index_buffer(meshes[j]->indices);
 
 				//create vulkan image
 				//why is textures even a vector???
-				create_texture_image(meshes[j].textures[0], i, j);
+				create_texture_image(meshes[j]->textures[0], i, j);
 			}
 			create_command_buffers(game_objects);
 
 		}
-		if (!game_objects[i]->update) update_uniform_buffer(ubo_data[game_objects[i]->back_end_data], ubo);
+		
+		update_uniform_buffer(ubo_data[game_objects[i]->back_end_data], ubo);
 
 		game_objects[i]->update = false;
 

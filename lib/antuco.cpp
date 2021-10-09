@@ -17,10 +17,10 @@ Antuco::~Antuco() {
 }
 
 /* Window Initialization */
-Window Antuco::init_window(int w, int h, const char* title) {
-	Window window(w, h, title);
+Window* Antuco::init_window(int w, int h, const char* title) {
+	Window* window = new Window(w, h, title);
 
-	pWindow = &window;
+	pWindow = window;
 
 	return window;
 }
@@ -30,19 +30,20 @@ void Antuco::init_graphics() {
 }
 
 /* World Object Initalization */
-Light Antuco::create_light(glm::vec3 light_pos, glm::vec3 light_color) {
-	Light light(light_pos, light_color);
+Light* Antuco::create_light(glm::vec3 light_pos, glm::vec3 light_color) {
+	Light* light = new Light(light_pos, light_color);
 
-	lights.push_back(&light);
+	lights.push_back(light);
 
 	return light;
 }
 
-Camera Antuco::create_camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up, float yfov, float near, float far) {
+Camera* Antuco::create_camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up, float yfov, float near, float far) {
 	float aspect_ratio = pWindow->get_width() / (float) pWindow->get_height();
-	Camera camera(eye, target, up, yfov, aspect_ratio, near, far);
+	
+	Camera* camera = new Camera(eye, target, up, yfov, aspect_ratio, near, far);
 
-	cameras.push_back(&camera);
+	cameras.push_back(camera);
 
 	return camera;
 }
@@ -58,6 +59,14 @@ GameObject* Antuco::create_object() {
 
 void Antuco::render() {
 	//check and update the camera information
+	//printf("camera position: <%f, %f, %f>", cameras[0]->construct_world_to_camera())
+	/*
+	printf("====================================================================== \n");
+	for (size_t i = 0; i < 4; i++) {
+		printf("| %f | %f | %f | %f | \n", cameras[0]->modelToCamera[i][0], cameras[0]->modelToCamera[i][1], cameras[0]->modelToCamera[i][2], cameras[0]->modelToCamera[i][3]);
+	}
+	printf("====================================================================== \n");
+	*/
 	p_graphics->update_camera(cameras[0]->modelToCamera, cameras[0]->cameraToScreen);
 
 	//check and update the light information

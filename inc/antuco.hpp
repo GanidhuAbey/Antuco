@@ -13,7 +13,7 @@ namespace tuco {
 class Antuco {
 	/* Window */
 public:
-	Window init_window(int w, int h, const char* title);
+	Window* init_window(int w, int h, const char* title);
 	void init_graphics();
 private:
 	Window* pWindow;
@@ -21,8 +21,8 @@ private:
 
 	/* World Objects */
 public:
-	Light create_light(glm::vec3 light_pos, glm::vec3 light_color);
-	Camera create_camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up, float yfov, float near, float far);
+	Light* create_light(glm::vec3 light_pos, glm::vec3 light_color);
+	Camera* create_camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up, float yfov, float near, float far);
 	GameObject* create_object();
 
 /* Rendering */

@@ -19,7 +19,7 @@ void Graphics::update_camera(glm::mat4 world_to_camera, glm::mat4 projection) {
 }
 
 void Graphics::update_light(glm::vec3 color, glm::vec3 position) {
-	pGraphics->update_light(color, position);
+	pGraphics->update_light(glm::vec4(color, 0.0), glm::vec4(position, 1.0));
 }
 
 void Graphics::update_draw(std::vector<GameObject*> game_object) {

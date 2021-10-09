@@ -1,3 +1,5 @@
+//TODO: change all iterations of vec3 to vec4 in lightobject and see if it works
+
 #pragma once
 
 #include "window.hpp"
@@ -31,7 +33,7 @@ public:
 	~GraphicsImpl();
 
 	void update_camera(glm::mat4 world_to_camera, glm::mat4 projection);
-	void update_light(glm::vec3 color, glm::vec3 position);
+	void update_light(glm::vec4 color, glm::vec4 position);
 	void update_draw(std::vector<GameObject*> game_objects);
 
 private:
