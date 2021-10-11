@@ -4,21 +4,56 @@
 #include <cstring>
 using namespace mem;
 
-Pool::Pool(VkDevice device, PoolCreateInfo* create_info) {
+
+
+Pool::Pool(VkDevice device, PoolCreateInfo create_info) {
+    pool_create_info = create_info;
+    createPool(device, create_info);
+}
+
+Pool::~Pool() {
+}
+
+void Pool::createPool(VkDevice device, PoolCreateInfo create_info) {
     //create pool described by pool_info
     VkDescriptorPoolSize pool_size{};
-    pool_size.type = create_info->set_type;
-    pool_size.descriptorCount = create_info->pool_size;
+    pool_size.type = create_info.set_type;
+    pool_size.descriptorCount = create_info.pool_size;
     
     VkDescriptorPoolCreateInfo pool_info{};
     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pool_info.maxSets = create_info->pool_size;
+    pool_info.maxSets = create_info.pool_size;
     pool_info.poolSizeCount = 1;
     pool_info.pPoolSizes = &pool_size;
 
     size_t current_size = pools.size();
     pools.resize(current_size + 1);
     vkCreateDescriptorPool(device, &pool_info, nullptr, &pools[current_size]);
+    allocations.push_back(create_info.pool_size);
+}
+
+void Pool::allocate(VkDevice device, VkDescriptorPool* pool) {
+    //check if we can allocate to a pool
+    bool allocate = false;
+    size_t pool_to_allocate = 0;
+    for (size_t i = 0; i < pools.size(); i++) {
+        if (allocations[i] > 0) {
+            allocate = true;
+            pool_to_allocate = i;
+            break;
+        }
+    }
+
+    if (!allocate) {
+        createPool(device, pool_create_info);
+        pool_to_allocate = allocations.size() - 1;
+    }
+
+    //now we have a pool to allocate to
+    allocations[pool_to_allocate] -= 1;
+
+    //ERROR? we might not get garbage data back from this...
+    pool = &pools[pool_to_allocate];
 }
 
 uint32_t mem::findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {

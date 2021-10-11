@@ -23,6 +23,8 @@ struct PoolCreateInfo {
     VkDescriptorType set_type; 
 };
 
+//there are more functions that the pool class will need, but since i don't need them yet,
+//and hence won't know exactly what i want from them, ill leave them unfinished for now.
 class Pool {
 private:
     //we'll have to create many different types of pools, but for now
@@ -30,11 +32,15 @@ private:
 
     //handle a vector of all the pools we'll be allocating
     std::vector<VkDescriptorPool> pools;
+    std::vector<uint32_t> allocations;
+
+    PoolCreateInfo pool_create_info;
 public:
-    Pool(VkDevice device, PoolCreateInfo* create_info);
+    Pool(VkDevice device, PoolCreateInfo create_info);
     ~Pool();
 public:
-    void allocate();
+    void createPool(VkDevice device, PoolCreateInfo create_info);
+    void allocate(VkDevice device, VkDescriptorPool* pool);
     void reset();
     void freeDescriptorSets();
 };
