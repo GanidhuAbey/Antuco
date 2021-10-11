@@ -6,7 +6,8 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
-const float PLAYER_SPEED = 0.05f;
+const float PLAYER_SPEED = 0.01f;
+const double MOUSE_SENSITIVITY = 0.1f;
 
 #define TIME_IT std::chrono::high_resolution_clock::now();
 
@@ -47,7 +48,35 @@ int main() {
 	//basic game loop
 	bool game_loop = true;
 
+	float pitch = 0.0f;
+	float yaw = 180.0f;
+
+	double x_pos = WIDTH / 2;
+	double y_pos = HEIGHT / 2;
+
+	double p_xpos = x_pos;
+	double p_ypos = y_pos;
+
+	//lock cursor
+	window->lock_cursor();
+
 	while (game_loop) {
+		//query mouse position
+		double offset_x = (x_pos - p_xpos) * MOUSE_SENSITIVITY;
+		double offset_y = (y_pos - p_ypos) * MOUSE_SENSITIVITY;
+
+		yaw += offset_x;
+		pitch = std::clamp(pitch - offset_y, -89.0, 89.0);
+
+		camera_face.x = (float) (glm::sin(glm::radians(yaw))) * glm::cos(glm::radians(pitch));
+		camera_face.y = (float) glm::sin(glm::radians(pitch));
+		camera_face.z = (float) (glm::cos(glm::radians(yaw))) * glm::cos(glm::radians(pitch));
+
+		camera_face = glm::normalize(camera_face);
+
+		//printf("yaw: %f | pitch: %f \n", yaw, pitch);
+
+
 		//take some input
 		if (window->get_key_state(tuco::WindowInput::X)) {
 			printf("the x button has been pressed \n");
@@ -57,10 +86,10 @@ int main() {
 			camera_pos += PLAYER_SPEED * camera_face;
 		}	
 		else if (window->get_key_state(tuco::WindowInput::A)) {
-			camera_pos -= glm::normalize(glm::cross(camera_orientation, camera_face)) * PLAYER_SPEED;
+			camera_pos -= glm::normalize(glm::cross(camera_face, camera_orientation)) * PLAYER_SPEED;
 		}	
 		else if (window->get_key_state(tuco::WindowInput::D)) {	
-			camera_pos += glm::normalize(glm::cross(camera_orientation, camera_face)) * PLAYER_SPEED;
+			camera_pos += glm::normalize(glm::cross(camera_face, camera_orientation)) * PLAYER_SPEED;
 		}
 		else if (window->get_key_state(tuco::WindowInput::S)) {
 			camera_pos -= PLAYER_SPEED * camera_face;
@@ -71,6 +100,10 @@ int main() {
 		//render the objects onto the screen
 		main_camera->update(camera_pos, camera_face);
 		antuco.render();
+
+		p_xpos = x_pos;
+		p_ypos = y_pos;
+		window->get_mouse_pos(&x_pos, &y_pos);
 
 		//check if user has closed the window
 		game_loop = !window->check_window_status(tuco::WindowStatus::CLOSE_REQUEST);

@@ -24,8 +24,10 @@ private:
 public:
 	~Window();
 
-	bool get_key_state(WindowInput);
 	bool check_window_status(WindowStatus);
+	void lock_cursor();
+	bool get_key_state(WindowInput);
+	void get_mouse_pos(double* x_pos, double* y_pos);
 	
 //for now we'll have to do this...
 

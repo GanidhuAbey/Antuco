@@ -38,10 +38,10 @@ Light* Antuco::create_light(glm::vec3 light_pos, glm::vec3 light_color) {
 	return light;
 }
 
-Camera* Antuco::create_camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up, float yfov, float near, float far) {
+Camera* Antuco::create_camera(glm::vec3 eye, glm::vec3 facing, glm::vec3 up, float yfov, float near, float far) {
 	float aspect_ratio = pWindow->get_width() / (float) pWindow->get_height();
 	
-	Camera* camera = new Camera(eye, target, up, yfov, aspect_ratio, near, far);
+	Camera* camera = new Camera(eye, facing, up, yfov, aspect_ratio, near, far);
 
 	cameras.push_back(camera);
 

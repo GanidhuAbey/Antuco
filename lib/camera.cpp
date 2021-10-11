@@ -22,12 +22,13 @@ void Camera::update(glm::vec3 camera_pos, glm::vec3 camera_face) {
 /// we must transform the objects such that when seen from the -z axis they appear as if they are seen by the imaginary camera
 /// </summary>
 /// <param name="eye"> the location of the camera </param>
-/// <param name="target"> vector showing where the camera is looking </param>
+/// <param name="target"> vector representing the direction the cameara is facing </param>
 /// <param name="up"> the orientation of the camera </param>
 /// <returns></returns>
 glm::mat4 Camera::construct_world_to_camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up) {
 	//create three orthogonal vectors to define a transformation that will take us from camera space to world space
-	glm::vec3 look_at = glm::normalize(target - eye);
+	glm::vec3 direction = target + eye;
+	glm::vec3 look_at = glm::normalize(direction - eye);
 	glm::vec3 right = glm::normalize(glm::cross(look_at, up));
 	up = glm::cross(right, look_at);
 

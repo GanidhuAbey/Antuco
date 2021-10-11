@@ -40,6 +40,23 @@ bool WindowImpl::check_window_status(WindowStatus windowEvent) {
 }
 
 /// <summary>
+/// retrieves the mouse position of the cursor.
+/// </summary>
+/// <param name="x_pos"> the x position of the mouse (data in this variable will be overwritten) </param>
+/// <param name="y_pos"> the y position of the mouse (data in this variable will be overwritten) </param>
+void WindowImpl::get_mouse_pos(double* x_pos, double* y_pos) {
+	glfwGetCursorPos(apiWindow, x_pos, y_pos);
+}
+
+
+/// <summary>
+/// locks ths mouse cursor to the screen
+/// </summary>
+void WindowImpl::lock_cursor() {
+	glfwSetInputMode(apiWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+}
+
+/// <summary>
 /// retrieves status of a keyboard input from user
 /// </summary>
 /// <param name="windowInput"> the window input that the user is querying for </param>

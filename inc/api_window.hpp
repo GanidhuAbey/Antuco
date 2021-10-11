@@ -24,6 +24,8 @@ public:
 
 	//retrieve key inputs
 	bool get_key_state(WindowInput windowInput);
+	void get_mouse_pos(double* x_pos, double* y_pos);
+	void lock_cursor();
 
 	void create_vulkan_surface(VkInstance instance, VkSurfaceKHR* surface);
 };

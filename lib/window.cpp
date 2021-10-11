@@ -20,6 +20,14 @@ bool Window::check_window_status(tuco::WindowStatus windowStatus) {
 	return pWindow->check_window_status(windowStatus);
 }
 
+void Window::get_mouse_pos(double* x_pos, double* y_pos) {
+	pWindow->get_mouse_pos(x_pos, y_pos);
+}
+
+void Window::lock_cursor() {
+	pWindow->lock_cursor();
+}
+
 bool Window::get_key_state(tuco::WindowInput windowInput) {
 	return pWindow->get_key_state(windowInput);
 }
