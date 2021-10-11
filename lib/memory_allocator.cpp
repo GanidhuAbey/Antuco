@@ -150,20 +150,29 @@ void mem::createImageView(VkDevice device, ImageViewCreateInfo viewInfo, Memory*
 //PARAMETRS - [VkDeviceSize] allocationSize (how much memory needs to be preserved in bytes)
 //            [Memory*] pMemory (memory struct which we will pass on the data for where the memory has been preserved)
 //RETURNS - NONE
-void mem::allocateMemory(VkDeviceSize allocationSize, Memory* pMemory) {
-    for (auto it = pMemory->locations.rbegin(); it != pMemory->locations.rend(); it++) {
-        if (it->size >= allocationSize) {
-            //printf("allocation spot size: %zu, allocation size: %zu \n", it->size, allocationSize);
-            VkDeviceSize offsetLocation;
-            memcpy(&offsetLocation, &(it->offset), sizeof(it->offset));
-            pMemory->offset = offsetLocation;
-            pMemory->allocate = true;
+void mem::allocateMemory(VkDeviceSize allocationSize, Memory* pMemory, VkDeviceSize* force_offset) {
+    if (force_offset != nullptr) {
+        //if the user is forcing this specific place in memory then all bets are off, and the user may end up
+        //overwriting data they needed.
 
-            it->offset = it->offset + allocationSize;
-            it->size = it->size - allocationSize;
+        pMemory->allocate = true;
+        pMemory->offset = *force_offset;
+    }
+    else {
+        for (auto it = pMemory->locations.rbegin(); it != pMemory->locations.rend(); it++) {
+            if (it->size >= allocationSize) {
+                //printf("allocation spot size: %zu, allocation size: %zu \n", it->size, allocationSize);
+                VkDeviceSize offsetLocation;
+                memcpy(&offsetLocation, &(it->offset), sizeof(it->offset));
+                pMemory->offset = offsetLocation;
+                pMemory->allocate = true;
 
-            //printf("allocation size afterwards: %zu", it->size);
-            break;
+                it->offset = it->offset + allocationSize;
+                it->size = it->size - allocationSize;
+
+                //printf("allocation size afterwards: %zu", it->size);
+                break;
+            }
         }
     }
 

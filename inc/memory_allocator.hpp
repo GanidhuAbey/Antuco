@@ -17,6 +17,27 @@
 //VkDeviceSize allocationSize = 5e8;
 
 namespace mem {
+
+struct PoolCreateInfo {
+    uint32_t pool_sizes; // how many descriptor sets can each pool allocate
+};
+
+class Pool {
+private:
+    //we'll have to create many different types of pools, but for now
+    //since we already know exactly which pools we want we'll just include them and made the system expandable.
+
+    
+
+public:
+    Pool();
+    ~Pool();
+public:
+    void allocate();
+    void reset();
+    void freeDescriptorSets();
+};
+
 struct MemoryInfo {
     VkDeviceSize bufferSize;
     VkDeviceSize allocationSize;
@@ -109,7 +130,7 @@ void mapMemory(VkDevice device, VkDeviceSize dataSize, Memory* pMemory, void* da
 uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 void createMemory(VkPhysicalDevice physicalDevice, VkDevice device, MemoryInfo* poolInfo, VkBuffer* buffer, Memory* maMemory);
-void allocateMemory(VkDeviceSize allocationSize, Memory* pMemory);
+void allocateMemory(VkDeviceSize allocationSize, Memory* pMemory, VkDeviceSize* force_offset=nullptr);
 void freeMemory(FreeMemoryInfo freeInfo, Memory* pMemory);
 void destroyBuffer(VkDevice device, Memory maMemory);
 void destroyImage(VkDevice device, Memory maMemory);

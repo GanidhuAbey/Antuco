@@ -27,13 +27,10 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	//create some buffers now
 	create_vertex_buffer();
 	create_index_buffer();
+	create_uniform_buffer();
 }
 
 GraphicsImpl::~GraphicsImpl() {
-	for (int i = 0; i < ubo_data.size(); i++) {
-		mem::destroyBuffer(device, *ubo_data[i]);
-	}
-
 	destroy_draw();
 	destroy_initialize();
 }
@@ -68,12 +65,11 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		if (game_objects[i]->update) {
 			game_objects[i]->back_end_data = create_ubo_pool();
 			create_ubo_set();
-			mem::Memory* uniform_buffer = new mem::Memory{};
-			create_uniform_buffer(ubo, uniform_buffer);
 			
-			write_to_ubo(uniform_buffer);
+			write_to_ubo();
 
-			ubo_data.push_back(uniform_buffer);
+			ubo_offsets.push_back(uniform_buffer.offset);
+			uniform_buffer.allocate = false;
 
 			//TODO: for some reason model_meshes or object_model does not exist
 			//      and the program crashes when it attempts to access the data here.
@@ -99,7 +95,7 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 
 		}
 		
-		update_uniform_buffer(ubo_data[game_objects[i]->back_end_data], ubo);
+		update_uniform_buffer(ubo_offsets[i], ubo);
 
 		game_objects[i]->update = false;
 

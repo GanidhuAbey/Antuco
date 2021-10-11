@@ -112,7 +112,7 @@ private:
 	VkCommandPool command_pool;
 	std::vector<VkCommandBuffer> command_buffers;
 
-	std::vector<mem::Memory*> ubo_data;
+	std::vector<VkDeviceSize> ubo_offsets; //holds the offset data for a objects ubo information within the uniform buffer
 	std::vector<std::vector<mem::Memory*>> texture_images;
 
 	size_t current_frame = 0;
@@ -139,9 +139,8 @@ private:
 	VkShaderModule create_shader_module(std::vector<char> shaderCode);
 	std::vector<char> read_file(const std::string& filename);
 	VkPipelineShaderStageCreateInfo fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
-	void write_to_ubo(mem::Memory* uniform_buffer);
-	void create_uniform_buffer(UniformBufferObject ubo, mem::Memory* uniform_buffer);
-	void update_uniform_buffer(mem::Memory* uniform_buffer, UniformBufferObject ubo);
+	void write_to_ubo();	
+	void update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo);
 	void copy_image(mem::Memory buffer, mem::Memory image, VkDeviceSize dst_offset, uint32_t image_width, uint32_t image_height);
 	void transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, mem::Memory* image);
 	void create_texture_image(aiString texturePath, size_t object, size_t texture_set);
@@ -158,7 +157,9 @@ private:
 private:
 	mem::Memory vertex_buffer;
 	mem::Memory index_buffer;
+	mem::Memory uniform_buffer;
 private:
+	void create_uniform_buffer();
 	void create_vertex_buffer();
 	void create_index_buffer();
 

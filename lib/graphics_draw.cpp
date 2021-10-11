@@ -640,11 +640,13 @@ void GraphicsImpl::create_graphics_pipeline() {
 
 }
 
-void GraphicsImpl::write_to_ubo(mem::Memory* uniform_buffer) {
+void GraphicsImpl::write_to_ubo() {
+    mem::allocateMemory((VkDeviceSize)sizeof(UniformBufferObject), &uniform_buffer);
+
     VkDescriptorBufferInfo buffer_info{};
-    buffer_info.buffer = uniform_buffer->buffer;
-    buffer_info.offset = 0;
-    buffer_info.range = VK_WHOLE_SIZE;
+    buffer_info.buffer = uniform_buffer.buffer;
+    buffer_info.offset = uniform_buffer.offset;
+    buffer_info.range = (VkDeviceSize)sizeof(UniformBufferObject);
 
     for (size_t i = 0; i < swapchain_images.size(); i++) {
         VkWriteDescriptorSet writeInfo{};
@@ -689,6 +691,7 @@ void GraphicsImpl::destroy_draw() {
     }
 
     mem::destroyBuffer(device, vertex_buffer);
+    mem::destroyBuffer(device, uniform_buffer);
     mem::destroyBuffer(device, index_buffer);
     
     vkDestroyCommandPool(device, command_pool, nullptr);
@@ -899,6 +902,19 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
     }
 }
 
+
+void GraphicsImpl::create_uniform_buffer() {
+    mem::BufferCreateInfo buffer_info{};
+    buffer_info.size = (VkDeviceSize)5e8;
+    buffer_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    buffer_info.queueFamilyIndexCount = 1;
+    buffer_info.pQueueFamilyIndices = &graphics_family;
+    buffer_info.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    mem::createBuffer(physical_device, device, &buffer_info, &uniform_buffer);
+}
+
 void GraphicsImpl::create_vertex_buffer() {
     mem::BufferCreateInfo buffer_info{};
     buffer_info.size = (VkDeviceSize)5e8;
@@ -1053,32 +1069,16 @@ void GraphicsImpl::end_command_buffer(VkCommandBuffer commandBuffer) {
     vkFreeCommandBuffers(device, command_pool, 1, &commandBuffer);
 }
 
-void GraphicsImpl::create_uniform_buffer(UniformBufferObject ubo, mem::Memory* uniform_buffer) {
-    mem::BufferCreateInfo buffer_info{};
-    buffer_info.size = sizeof(ubo);
-    buffer_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    buffer_info.queueFamilyIndexCount = 1;
-    buffer_info.pQueueFamilyIndices = &graphics_family;
-    buffer_info.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
-    mem::createBuffer(physical_device, device, &buffer_info, uniform_buffer);
-    /*
-    mem::allocateMemory(sizeof(ubo), uniform_buffer);
-    mem::mapMemory(device, sizeof(ubo), uniform_buffer, &ubo);
-    */
-}
-
-void GraphicsImpl::update_uniform_buffer(mem::Memory* uniform_buffer, UniformBufferObject ubo) {
+void GraphicsImpl::update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo) {
     //free current memory
     mem::FreeMemoryInfo free_info{};
-    free_info.deleteOffset = 0;
+    free_info.deleteOffset = memory_offset;
     free_info.deleteSize = sizeof(ubo);
-    mem::freeMemory(free_info, uniform_buffer);
+    mem::freeMemory(free_info, &uniform_buffer);
 
     //allocate memory and map new data
-    mem::allocateMemory(sizeof(ubo), uniform_buffer);
-    mem::mapMemory(device, sizeof(ubo), uniform_buffer, &ubo);
+    mem::allocateMemory(sizeof(ubo), &uniform_buffer, &memory_offset);
+    mem::mapMemory(device, sizeof(ubo), &uniform_buffer, &ubo);
 }
 
 
