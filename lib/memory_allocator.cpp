@@ -4,6 +4,23 @@
 #include <cstring>
 using namespace mem;
 
+Pool::Pool(VkDevice device, PoolCreateInfo* create_info) {
+    //create pool described by pool_info
+    VkDescriptorPoolSize pool_size{};
+    pool_size.type = create_info->set_type;
+    pool_size.descriptorCount = create_info->pool_size;
+    
+    VkDescriptorPoolCreateInfo pool_info{};
+    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_info.maxSets = create_info->pool_size;
+    pool_info.poolSizeCount = 1;
+    pool_info.pPoolSizes = &pool_size;
+
+    size_t current_size = pools.size();
+    pools.resize(current_size + 1);
+    vkCreateDescriptorPool(device, &pool_info, nullptr, &pools[current_size]);
+}
+
 uint32_t mem::findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
     VkPhysicalDeviceMemoryProperties memoryProperties;
     vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);

@@ -19,7 +19,8 @@
 namespace mem {
 
 struct PoolCreateInfo {
-    uint32_t pool_sizes; // how many descriptor sets can each pool allocate
+    uint32_t pool_size;
+    VkDescriptorType set_type; 
 };
 
 class Pool {
@@ -27,10 +28,10 @@ private:
     //we'll have to create many different types of pools, but for now
     //since we already know exactly which pools we want we'll just include them and made the system expandable.
 
-    
-
+    //handle a vector of all the pools we'll be allocating
+    std::vector<VkDescriptorPool> pools;
 public:
-    Pool();
+    Pool(VkDevice device, PoolCreateInfo* create_info);
     ~Pool();
 public:
     void allocate();
