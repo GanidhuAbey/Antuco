@@ -28,6 +28,9 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	create_vertex_buffer();
 	create_index_buffer();
 	create_uniform_buffer();
+
+	create_ubo_pool();
+	create_texture_pool();
 }
 
 GraphicsImpl::~GraphicsImpl() {
@@ -63,9 +66,7 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		ubo.projection = camera_projection;
 
 		if (game_objects[i]->update) {
-			game_objects[i]->back_end_data = create_ubo_pool();
-			create_ubo_set();
-			
+			create_ubo_set();	
 			write_to_ubo();
 
 			ubo_offsets.push_back(uniform_buffer.offset);
@@ -75,7 +76,6 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 			//      and the program crashes when it attempts to access the data here.
 			std::vector<Mesh*> meshes = game_objects[i]->object_model.model_meshes;
 			//create texture data
-			create_texture_pool(meshes.size());
 			create_texture_set(meshes.size());
 
 			for (size_t j = 0; j < meshes.size(); j++) {

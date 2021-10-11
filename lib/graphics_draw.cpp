@@ -288,34 +288,26 @@ void GraphicsImpl::create_ubo_layout() {
     }
 }
 
-size_t GraphicsImpl::create_ubo_pool() {
+void GraphicsImpl::create_ubo_pool() {
     //the previous system created both pools and descriptor sets as they were needed for new objects
     //the choices are to create new pools/descriptor sets for every object, or to reuse old descroptor sets/pools when needed...
+    mem::PoolCreateInfo pool_info{};
+    pool_info.pool_size = swapchain_images.size() * 50;
+    pool_info.set_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
-    VkDescriptorPoolSize pool_size{};
-    pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    pool_size.descriptorCount = swapchain_images.size(); 
-    
-    VkDescriptorPoolCreateInfo pool_info{};
-    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pool_info.maxSets = swapchain_images.size();
-    pool_info.poolSizeCount = 1;
-    pool_info.pPoolSizes = &pool_size;
-
-    size_t current_size = ubo_pools.size();
-    ubo_pools.resize(current_size + 1);
-    vkCreateDescriptorPool(device, &pool_info, nullptr, &ubo_pools[current_size]);
-    
-    //this doesn't make the removal system easy...
-    return current_size;
+    ubo_pool = std::make_unique<mem::Pool>(device, pool_info);
 }
 
 void GraphicsImpl::create_ubo_set() {
     std::vector<VkDescriptorSetLayout> ubo_layouts(swapchain_images.size(), ubo_layout);
 
     VkDescriptorSetAllocateInfo allocateInfo{};
+
+    VkDescriptorPool allocated_pool;
+    size_t pool_index = ubo_pool->allocate(device, swapchain_images.size());
+
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.descriptorPool = ubo_pools[ubo_pools.size() - 1];
+    allocateInfo.descriptorPool = ubo_pool->pools[pool_index];
     allocateInfo.descriptorSetCount = swapchain_images.size();
     allocateInfo.pSetLayouts = ubo_layouts.data();
 
@@ -331,24 +323,12 @@ void GraphicsImpl::create_ubo_set() {
     } 
 }
 
-void GraphicsImpl::create_texture_pool(size_t mesh_count) {
-    VkDescriptorPoolSize pool_size{};
-    pool_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    pool_size.descriptorCount = swapchain_images.size() * mesh_count;
+void GraphicsImpl::create_texture_pool() { 
+    mem::PoolCreateInfo pool_info{};
+    pool_info.pool_size = swapchain_images.size() * 100;
+    pool_info.set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-    VkDescriptorPoolCreateInfo pool_info{};
-    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pool_info.pNext = nullptr;
-    pool_info.maxSets = swapchain_images.size() * mesh_count;
-    pool_info.poolSizeCount = 1;
-    pool_info.pPoolSizes = &pool_size;
-
-    size_t current_size = texture_pools.size();
-    texture_pools.resize(current_size + 1);
-    if (vkCreateDescriptorPool(device, &pool_info, nullptr, &texture_pools[current_size]) != VK_SUCCESS) {
-        printf("[ERROR] - create_texture_pool : could not create texture pool");
-        throw std::runtime_error("");
-    }
+    texture_pool = std::make_unique<mem::Pool>(device, pool_info);
 }
 
 void GraphicsImpl::create_texture_set(size_t mesh_count) { 
@@ -356,7 +336,7 @@ void GraphicsImpl::create_texture_set(size_t mesh_count) {
 
     VkDescriptorSetAllocateInfo allocateInfo{};
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.descriptorPool = texture_pools[texture_pools.size() - 1];
+    allocateInfo.descriptorPool = texture_pool->pools[texture_pool->allocate(device, swapchain_images.size() * mesh_count)];
     allocateInfo.descriptorSetCount = swapchain_images.size();
     allocateInfo.pSetLayouts = texture_layouts.data();
 
@@ -652,7 +632,7 @@ void GraphicsImpl::write_to_ubo() {
         VkWriteDescriptorSet writeInfo{};
         writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeInfo.dstBinding = 0;
-        writeInfo.dstSet = ubo_sets[ubo_pools.size() - 1][i];
+        writeInfo.dstSet = ubo_sets[ubo_sets.size() - 1][i];
         writeInfo.descriptorCount = 1;
         writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         writeInfo.pBufferInfo = &buffer_info;
@@ -682,13 +662,8 @@ void GraphicsImpl::destroy_draw() {
         }
     }
 
-    for (size_t i = 0; i < ubo_pools.size(); i++) {
-        vkDestroyDescriptorPool(device, ubo_pools[i], nullptr);
-    }
-
-    for (size_t i = 0; i < texture_pools.size(); i++) {
-        vkDestroyDescriptorPool(device, texture_pools[i], nullptr);
-    }
+    ubo_pool->destroyPool(device);
+    texture_pool->destroyPool(device);
 
     mem::destroyBuffer(device, vertex_buffer);
     mem::destroyBuffer(device, uniform_buffer);
@@ -1347,8 +1322,8 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
     image_dimensions.width = static_cast<uint32_t>(imageWidth);
     image_dimensions.height = static_cast<uint32_t>(imageHeight);
 
-    texture_images.resize(texture_pools.size());
-    texture_images[texture_pools.size() - 1].push_back(new_texture_image);
+    texture_images.resize(texture_images.size() + 1);
+    texture_images[texture_images.size() - 1].push_back(new_texture_image);
 
     //write to texture set
     write_to_texture_set(texture_sets[object][texture_set], new_texture_image);

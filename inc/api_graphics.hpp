@@ -102,10 +102,11 @@ private:
 	
 	mem::Memory depth_memory;
 
-	std::vector<VkDescriptorPool> ubo_pools;
-	std::vector<std::vector<VkDescriptorSet>> ubo_sets;
+	std::unique_ptr<mem::Pool> ubo_pool;
+	std::unique_ptr<mem::Pool> texture_pool;
 
-	std::vector<VkDescriptorPool> texture_pools;
+	std::vector<std::vector<VkDescriptorSet>> ubo_sets;
+	
 	//game object -> mesh -> swapchain image
 	std::vector<std::vector<std::vector<VkDescriptorSet>>> texture_sets;
 
@@ -120,11 +121,11 @@ private:
 private:
 	void create_graphics_pipeline();
 	void create_ubo_layout();
-	size_t create_ubo_pool();
+	void create_ubo_pool();
 	void create_ubo_set();
 	void create_texture_layout();
 	void create_texture_image(aiString texturePath);
-	void create_texture_pool(size_t mesh_count);
+	void create_texture_pool();
 	void create_texture_set(size_t mesh_count);
 	void create_command_buffers(std::vector<GameObject*> game_objects);
 	void draw_frame();

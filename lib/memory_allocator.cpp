@@ -14,6 +14,12 @@ Pool::Pool(VkDevice device, PoolCreateInfo create_info) {
 Pool::~Pool() {
 }
 
+void Pool::destroyPool(VkDevice device) {
+    for (size_t i = 0; i < pools.size(); i++) {
+        vkDestroyDescriptorPool(device, pools[i], nullptr);
+    }
+}
+
 void Pool::createPool(VkDevice device, PoolCreateInfo create_info) {
     //create pool described by pool_info
     VkDescriptorPoolSize pool_size{};
@@ -32,12 +38,12 @@ void Pool::createPool(VkDevice device, PoolCreateInfo create_info) {
     allocations.push_back(create_info.pool_size);
 }
 
-void Pool::allocate(VkDevice device, VkDescriptorPool* pool) {
+size_t Pool::allocate(VkDevice device, VkDeviceSize allocation_size) {
     //check if we can allocate to a pool
     bool allocate = false;
     size_t pool_to_allocate = 0;
     for (size_t i = 0; i < pools.size(); i++) {
-        if (allocations[i] > 0) {
+        if (allocations[i] >= allocation_size) {
             allocate = true;
             pool_to_allocate = i;
             break;
@@ -50,10 +56,10 @@ void Pool::allocate(VkDevice device, VkDescriptorPool* pool) {
     }
 
     //now we have a pool to allocate to
-    allocations[pool_to_allocate] -= 1;
+    allocations[pool_to_allocate] -= allocation_size;
 
     //ERROR? we might not get garbage data back from this...
-    pool = &pools[pool_to_allocate];
+    return pool_to_allocate;
 }
 
 uint32_t mem::findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {

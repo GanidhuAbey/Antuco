@@ -31,16 +31,19 @@ private:
     //since we already know exactly which pools we want we'll just include them and made the system expandable.
 
     //handle a vector of all the pools we'll be allocating
-    std::vector<VkDescriptorPool> pools;
     std::vector<uint32_t> allocations;
-
     PoolCreateInfo pool_create_info;
+
+
 public:
     Pool(VkDevice device, PoolCreateInfo create_info);
     ~Pool();
-public:
+public:   
+    std::vector<VkDescriptorPool> pools;
+    
+    size_t allocate(VkDevice device, VkDeviceSize allocationSize);
+    void destroyPool(VkDevice device);
     void createPool(VkDevice device, PoolCreateInfo create_info);
-    void allocate(VkDevice device, VkDescriptorPool* pool);
     void reset();
     void freeDescriptorSets();
 };
