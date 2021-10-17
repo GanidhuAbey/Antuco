@@ -34,7 +34,21 @@ class Image {
 };
 
 class SearchBuffer {
-
+private:
+    std::vector<VkDeviceSize> memory_locations;
+    VkDeviceSize memory_offset;
+    VkDeviceMemory buffer_memory;
+public:
+    VkBuffer buffer;
+public:
+    SearchBuffer();
+    ~SearchBuffer();
+public:
+    void init(VkPhysicalDevice physical_device, VkDevice device, BufferCreateInfo* p_buffer_info);
+    void destroy(VkDevice device);
+    void write(VkDevice device, VkDeviceSize offset, VkDeviceSize data_size, void* p_data);
+    VkDeviceSize allocate(VkDeviceSize allocation_size);
+    void free(VkDeviceSize offset);
 };
 
 class StackBuffer {

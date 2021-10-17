@@ -20,6 +20,17 @@ void GameObject::add_mesh(const std::string& file_name) {
 	object_model.add_mesh(file_name);
 }
 
+void GameObject::translate(glm::vec3 t) {
+	glm::mat4 translation = {
+		1, 0, 0, t.x,
+		0, 1, 0, t.y,
+		0, 0, 1, t.z,
+		0, 0, 0, 1
+	};
+
+	transform = translation * transform;
+}
+
 void GameObject::scale(glm::vec3 scale_vector) {
 	glm::mat4 scale_mat = {
 		scale_vector.x, 0, 0, 0,

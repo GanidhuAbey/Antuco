@@ -36,11 +36,17 @@ int main() {
 	tuco::Light* light = antuco.create_light(glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
 
 	//create a simple game object
+	tuco::GameObject* another = antuco.create_object();
 	tuco::GameObject* some_object = antuco.create_object();
 
-	auto t1 = TIME_IT;
+	auto t1 = TIME_IT;	
+	another->add_mesh("objects/test_object/with_texture.obj");
+	another->scale(glm::vec3(0.1, 0.1, 0.1));
+	
 	some_object->add_mesh("objects/test_object/with_texture.obj"); //will hope texture data is located within model data.
-	some_object->scale(glm::vec3(0.1, 0.1, 0.1));
+	some_object->scale(glm::vec3(0.5, 0.5, 0.5));
+
+	//another->translate(glm::vec3(0, -1, 0));	
 	auto t2 = TIME_IT;
 
 	std::chrono::duration<double, std::milli> final_count = t2 - t1;

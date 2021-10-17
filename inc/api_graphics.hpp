@@ -175,7 +175,7 @@ private:
 private:
 	mem::Memory vertex_buffer;
 	mem::Memory index_buffer;
-	mem::Memory uniform_buffer;
+	mem::SearchBuffer uniform_buffer;
 private:
 	void create_uniform_buffer();
 	void create_vertex_buffer();

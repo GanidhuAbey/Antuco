@@ -63,6 +63,7 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 	//we need to create some command buffers
 	//update vertex and index buffers
 
+	bool update_command_buffers = false;
 	for (size_t i = 0; i < game_objects.size(); i++) {
 		//create ubo data
 		UniformBufferObject ubo;
@@ -72,11 +73,10 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		ubo.projection = camera_projection;
 
 		if (game_objects[i]->update) {
+			update_command_buffers = true;
+			game_objects[i]->update = false;
 			create_ubo_set();	
 			write_to_ubo();
-
-			ubo_offsets.push_back(uniform_buffer.offset);
-			uniform_buffer.allocate = false;
 
 			//TODO: for some reason model_meshes or object_model does not exist
 			//      and the program crashes when it attempts to access the data here.
@@ -93,15 +93,17 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 				//why is textures even a vector???
 				create_texture_image(meshes[j]->textures[0], i, j);
 			}
-			create_command_buffers(game_objects);
-
 		}
 		
 		update_uniform_buffer(ubo_offsets[i], ubo);
 
-		game_objects[i]->update = false;
-
 		//actually drawing the frame
-		draw_frame();
 	}
+
+	if (update_command_buffers) {	
+		create_command_buffers(game_objects);
+		update_command_buffers = false;
+	}
+
+	draw_frame();
 }

@@ -495,7 +495,7 @@ void GraphicsImpl::create_texture_set(size_t mesh_count) {
 void GraphicsImpl::create_shadowmap_layout() {
     /* SAMPLED IMAGE DESCRIPTOR SET (FOR TEXTURING) */
     VkDescriptorSetLayoutBinding texture_layout_binding{};
-    texture_layout_binding.binding = 0;
+    texture_layout_binding.binding = 1;
     texture_layout_binding.descriptorCount = 1;
     texture_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     texture_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -957,12 +957,14 @@ void GraphicsImpl::create_graphics_pipeline() {
 }
 
 void GraphicsImpl::write_to_ubo() {
-    mem::allocateMemory((VkDeviceSize)sizeof(UniformBufferObject), &uniform_buffer);
+    VkDeviceSize offset = uniform_buffer.allocate(sizeof(UniformBufferObject));
 
     VkDescriptorBufferInfo buffer_info{};
     buffer_info.buffer = uniform_buffer.buffer;
-    buffer_info.offset = uniform_buffer.offset;
+    buffer_info.offset = offset;
     buffer_info.range = (VkDeviceSize)sizeof(UniformBufferObject);
+
+    ubo_offsets.push_back(offset);
 
     for (size_t i = 0; i < swapchain_images.size(); i++) {
         VkWriteDescriptorSet writeInfo{};
@@ -1002,7 +1004,7 @@ void GraphicsImpl::destroy_draw() {
     texture_pool->destroyPool(device);
 
     mem::destroyBuffer(device, vertex_buffer);
-    mem::destroyBuffer(device, uniform_buffer);
+    uniform_buffer.destroy(device);
     mem::destroyBuffer(device, index_buffer);
     
     vkDestroyCommandPool(device, command_pool, nullptr);
@@ -1171,21 +1173,25 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         uint32_t total_vertices = 0;
 
         for (size_t j = 0; j < game_objects.size(); j++) {
-            for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
-                Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
-                uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
-                uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
+            if (!game_objects[j]->update) {
+                for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
+                    Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
+                    uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
+                    uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 
-                //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
-                //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
-                VkDescriptorSet descriptors[1] = {ubo_sets[j][i]};
-                vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_layout, 0, 1, descriptors, 0, nullptr);
-                vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
+                    //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
+                    //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
+                    VkDescriptorSet descriptors[1] = { ubo_sets[j][i] };
+                    vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_layout, 0, 1, descriptors, 0, nullptr);
+                    vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
 
-                total_indexes += index_count;
-                total_vertices += vertex_count;
+                    total_indexes += index_count;
+                    total_vertices += vertex_count;
+                }
             }
+            printf("here \n");
         }
+
         vkCmdEndRenderPass(command_buffers[i]);
         //now the hope is that the image attached to the frame buffer has data in it (hopefully)
         
@@ -1247,21 +1253,24 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         total_vertices = 0;
 
         for (size_t j = 0; j < game_objects.size(); j++) {
-            for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
-                Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
-                uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
-                uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
+            if (!game_objects[j]->update) {
+                for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
+                    Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
+                    uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
+                    uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 
-                //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
-                //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
+                    //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
+                    //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
 
-                VkDescriptorSet descriptors[2] = {ubo_sets[j][i], texture_sets[j][k][i]};
-                vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 2, descriptors, 0, nullptr);
-                vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
+                    VkDescriptorSet descriptors[2] = { ubo_sets[j][i], texture_sets[j][k][i] };
+                    vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 2, descriptors, 0, nullptr);
+                    vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
 
-                total_indexes += index_count;
-                total_vertices += vertex_count;
+                    total_indexes += index_count;
+                    total_vertices += vertex_count;
+                }
             }
+            printf("heres \n");
         }
 
         //vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(6), 1, 36, 0, 0);
@@ -1285,7 +1294,7 @@ void GraphicsImpl::create_uniform_buffer() {
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    mem::createBuffer(physical_device, device, &buffer_info, &uniform_buffer);
+    uniform_buffer.init(physical_device, device, &buffer_info);
 }
 
 void GraphicsImpl::create_vertex_buffer() {
@@ -1440,15 +1449,8 @@ void GraphicsImpl::end_command_buffer(VkCommandBuffer commandBuffer) {
 }
 
 void GraphicsImpl::update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo) {
-    //free current memory
-    mem::FreeMemoryInfo free_info{};
-    free_info.deleteOffset = memory_offset;
-    free_info.deleteSize = sizeof(ubo);
-    mem::freeMemory(free_info, &uniform_buffer);
-
-    //allocate memory and map new data
-    mem::allocateMemory(sizeof(ubo), &uniform_buffer, &memory_offset);
-    mem::mapMemory(device, sizeof(ubo), &uniform_buffer, &ubo);
+    //overwrite memory
+    uniform_buffer.write(device, memory_offset, sizeof(ubo), &ubo);
 }
 
 
