@@ -94,6 +94,7 @@ private:
 	VkSampler texture_sampler;
 
 	std::vector<VkFramebuffer> swapchain_framebuffers;
+	VkFramebuffer shadowpass_buffer;
 
 	std::vector<VkSemaphore> image_available_semaphores;
 	std::vector<VkSemaphore> render_finished_semaphores;
@@ -136,6 +137,7 @@ private:
 	void create_swapchain();
 	void create_depth_resources();
 	void create_frame_buffers();
+	void create_shadowpass_buffer();
 	void create_depth_buffer();
 	void create_colour_image_views();
 	void create_texture_sampler();

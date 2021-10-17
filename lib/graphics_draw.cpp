@@ -53,6 +53,25 @@ void GraphicsImpl::create_depth_buffer() {
     create_info.pAttachments = &shadow_pass_texture.imageView; //create_image here to store depth data.
 }
 
+
+void GraphicsImpl::create_shadowpass_buffer() { 
+	VkFramebufferCreateInfo createInfo{};
+	createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	createInfo.renderPass = shadowpass;
+	//we only want one image per frame buffer
+	createInfo.attachmentCount = 1;
+	//they put the image view in a separate array for some reason
+	VkImageView imageViews[1] = { shadow_pass_texture.imageView };
+	createInfo.pAttachments = imageViews;
+	createInfo.width = swapchain_extent.width;
+	createInfo.height = swapchain_extent.height;
+	createInfo.layers = 1;
+
+	if (vkCreateFramebuffer(device, &createInfo, nullptr, &shadowpass_buffer) != VK_SUCCESS) {
+		throw std::runtime_error("could not create a frame buffer");
+	}
+}
+
 void GraphicsImpl::create_frame_buffers() {
     //get the number of images we need to create framebuffers for
     size_t imageNum = swapchain_images.size();
