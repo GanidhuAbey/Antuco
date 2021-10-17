@@ -91,6 +91,9 @@ private:
 	VkPipelineLayout pipeline_layout;
 	VkPipeline graphics_pipeline;
 
+	VkPipelineLayout shadowpass_layout;
+	VkPipeline shadowpass_pipeline;
+
 	VkSampler texture_sampler;
 
 	std::vector<VkFramebuffer> swapchain_framebuffers;
@@ -143,6 +146,8 @@ private:
 	void create_texture_sampler();
 	void create_render_pass();
 	void create_shadowpass();
+	void create_shadowpass_resources();
+	void create_shadowpass_pipeline();
 	VkShaderModule create_shader_module(std::vector<char> shaderCode);
 	std::vector<char> read_file(const std::string& filename);
 	VkPipelineShaderStageCreateInfo fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
