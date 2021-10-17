@@ -86,6 +86,7 @@ private:
 	std::vector<VkImageView> swapchain_image_views;
 
 	VkRenderPass render_pass;
+	VkRenderPass shadowpass;
 
 	VkPipelineLayout pipeline_layout;
 	VkPipeline graphics_pipeline;

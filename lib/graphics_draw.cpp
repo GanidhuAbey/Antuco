@@ -216,10 +216,10 @@ void GraphicsImpl::create_shadowpass() {
     shadowpass_ref.attachment = 0;
     shadowpass_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkSubpassDescription shadowpass{};
-    shadowpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    shadowpass.colorAttachmentCount = 0;
-    shadowpass.pDepthStencilAttachment = &shadowpass_ref;
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 0;
+    subpass.pDepthStencilAttachment = &shadowpass_ref;
     
     VkRenderPassCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -227,13 +227,13 @@ void GraphicsImpl::create_shadowpass() {
     VkAttachmentDescription attachments[1] = { shadowpass_attachment };
     createInfo.pAttachments = attachments;
     createInfo.subpassCount = 1;
-    VkSubpassDescription subpasses[1] = {shadowpass};
+    VkSubpassDescription subpasses[1] = {subpass};
     createInfo.pSubpasses = subpasses;
     //createInfo.dependencyCount = 1;
     //createInfo.pDependencies = &dependency;
 
 
-    if (vkCreateRenderPass(device, &createInfo, nullptr, &render_pass) != VK_SUCCESS) {
+    if (vkCreateRenderPass(device, &createInfo, nullptr, &shadowpass) != VK_SUCCESS) {
         throw std::runtime_error("could not create render pass");
     }
 }
