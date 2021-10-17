@@ -1080,14 +1080,34 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         if (vkBeginCommandBuffer(command_buffers[i], &beginInfo) != VK_SUCCESS) {
             throw std::runtime_error("one of the command buffers failed to begin");
         }
+
+        //begin the shadow pass, and draw all the primitives, so that we can create the depth buffer
+        VkRenderPassBeginInfo shadowpass_info{};
+        shadowpass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        shadowpass_info.renderPass = shadowpass;
+        shadowpass_info.framebuffer = shadowpass_buffer;
+        VkRect2D renderArea{};
+        renderArea.offset = VkOffset2D{ 0, 0 };
+        renderArea.extent = swapchain_extent;
+        shadowpass_info.renderArea = renderArea;
+ 
+        VkClearValue shadowpass_clear;
+        shadowpass_clear.depthStencil = { 1.0, 0 };
+
+        shadowpass_info.clearValueCount = 1;
+        shadowpass_info.pClearValues = &shadowpass_clear;
+
+        vkCmdBeginRenderPass(command_buffers[i], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
+
+        //do stuff...
+
+        vkCmdEndRenderPass(command_buffers[i]);
+        
         //begin a render pass so that we can draw to the appropriate framebuffer
         VkRenderPassBeginInfo renderInfo{};
         renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderInfo.renderPass = render_pass;
         renderInfo.framebuffer = swapchain_framebuffers[i];
-        VkRect2D renderArea{};
-        renderArea.offset = VkOffset2D{ 0, 0 };
-        renderArea.extent = swapchain_extent;
         renderInfo.renderArea = renderArea;
 
         const size_t size_of_array = 3;
