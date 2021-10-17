@@ -1098,10 +1098,52 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         shadowpass_info.pClearValues = &shadowpass_clear;
 
         vkCmdBeginRenderPass(command_buffers[i], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
-
         //do stuff...
+        vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_pipeline);
 
+        VkViewport shadowpass_port = {};
+        shadowpass_port.x = 0;
+        shadowpass_port.y = 0;
+        shadowpass_port.width = (float)swapchain_extent.width;
+        shadowpass_port.height = (float)swapchain_extent.height;
+        shadowpass_port.minDepth = 0.0;
+        shadowpass_port.maxDepth = 1.0;
+        vkCmdSetViewport(command_buffers[i], 0, 1, &shadowpass_port);
+
+        VkRect2D shadowpass_scissor{};
+        shadowpass_scissor.offset = { 0, 0 };
+        shadowpass_scissor.extent = swapchain_extent;
+        vkCmdSetScissor(command_buffers[i], 0, 1, &shadowpass_scissor);
+
+        //time for the draw calls
+        const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
+        vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offsets);
+        vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+        //universal to every object so i can push the light constants before the for loop
+        //vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
+        //draw first object (cube)
+        uint32_t total_indexes = 0;
+        uint32_t total_vertices = 0;
+
+        for (size_t j = 0; j < game_objects.size(); j++) {
+            for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
+                Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
+                uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
+                uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
+
+                //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
+                //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
+                VkDescriptorSet descriptors[1] = {ubo_sets[j][i]};
+                vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_layout, 0, 1, descriptors, 0, nullptr);
+                vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
+
+                total_indexes += index_count;
+                total_vertices += vertex_count;
+            }
+        }
         vkCmdEndRenderPass(command_buffers[i]);
+        //now the hope is that the image attached to the frame buffer has data in it (hopefully)
         
         //begin a render pass so that we can draw to the appropriate framebuffer
         VkRenderPassBeginInfo renderInfo{};
@@ -1150,15 +1192,15 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         vkCmdSetScissor(command_buffers[i], 0, 1, &newScissor);
 
         //time for the draw calls
-        const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
-        vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offsets);
+        const VkDeviceSize offset[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
+        vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offset);
         vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
         //universal to every object so i can push the light constants before the for loop
         vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
         //draw first object (cube)
-        uint32_t total_indexes = 0;
-        uint32_t total_vertices = 0;
+        total_indexes = 0;
+        total_vertices = 0;
 
         for (size_t j = 0; j < game_objects.size(); j++) {
             for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
