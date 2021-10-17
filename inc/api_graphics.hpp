@@ -78,6 +78,7 @@ private:
 private:
 	VkDescriptorSetLayout ubo_layout;
 	VkDescriptorSetLayout texture_layout;
+	VkDescriptorSetLayout shadowmap_layout;
 
 	VkSwapchainKHR swapchain;
 	VkExtent2D swapchain_extent;
@@ -110,11 +111,13 @@ private:
 
 	std::unique_ptr<mem::Pool> ubo_pool;
 	std::unique_ptr<mem::Pool> texture_pool;
+	std::unique_ptr<mem::Pool> shadowmap_pool;
 
 	std::vector<std::vector<VkDescriptorSet>> ubo_sets;
 	
 	//game object -> mesh -> swapchain image
 	std::vector<std::vector<std::vector<VkDescriptorSet>>> texture_sets;
+	VkDescriptorSet shadowmap_set;
 
 	VkCommandPool command_pool;
 	std::vector<VkCommandBuffer> command_buffers;
@@ -157,6 +160,9 @@ private:
 	void transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, mem::Memory* image);
 	void create_texture_image(aiString texturePath, size_t object, size_t texture_set);
 	void write_to_texture_set(std::vector<VkDescriptorSet> texture_sets, mem::Memory* image);
+	void create_shadowmap_set();
+	void create_shadowmap_layout();
+	void create_shadowmap_pool();
 private:
 	void destroy_draw();
 

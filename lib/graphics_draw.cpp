@@ -435,12 +435,36 @@ void GraphicsImpl::create_ubo_set() {
     } 
 }
 
+void GraphicsImpl::create_shadowmap_pool() {
+    mem::PoolCreateInfo pool_info{};
+    pool_info.pool_size = 100;
+    pool_info.set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
+    texture_pool = std::make_unique<mem::Pool>(device, pool_info);
+}
+
 void GraphicsImpl::create_texture_pool() { 
     mem::PoolCreateInfo pool_info{};
     pool_info.pool_size = swapchain_images.size() * 100;
     pool_info.set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
     texture_pool = std::make_unique<mem::Pool>(device, pool_info);
+}
+
+void GraphicsImpl::create_shadowmap_set() {
+    VkDescriptorSetAllocateInfo allocateInfo{};
+    allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocateInfo.descriptorPool = shadowmap_pool->pools[texture_pool->allocate(device, 1)];
+    allocateInfo.descriptorSetCount = 1;
+    allocateInfo.pSetLayouts = &shadowmap_layout;
+
+    //size_t currentSize = descriptorSets.size();
+    //descriptorSets.resize(currentSize + 1);
+    //descriptorSets[currentSize].resize(swapChainImages.size());
+
+	if (vkAllocateDescriptorSets(device, &allocateInfo, &shadowmap_set) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate texture sets!");
+	}
 }
 
 void GraphicsImpl::create_texture_set(size_t mesh_count) { 
@@ -465,6 +489,26 @@ void GraphicsImpl::create_texture_set(size_t mesh_count) {
         if (vkAllocateDescriptorSets(device, &allocateInfo, texture_sets[current_size][i].data()) != VK_SUCCESS) {
             throw std::runtime_error("failed to allocate texture sets!");
         }
+    }
+}
+
+void GraphicsImpl::create_shadowmap_layout() {
+    /* SAMPLED IMAGE DESCRIPTOR SET (FOR TEXTURING) */
+    VkDescriptorSetLayoutBinding texture_layout_binding{};
+    texture_layout_binding.binding = 0;
+    texture_layout_binding.descriptorCount = 1;
+    texture_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    texture_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    texture_layout_binding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo layout_info{};
+    layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+
+    layout_info.bindingCount = 1;
+    layout_info.pBindings = &texture_layout_binding;
+
+    if (vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &shadowmap_layout) != VK_SUCCESS) {
+        throw std::runtime_error("could not create texture layout");
     }
 }
 
