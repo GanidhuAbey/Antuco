@@ -100,6 +100,7 @@ private:
 	std::vector<VkFence> in_flight_fences;
 	std::vector<VkFence> images_in_flight;
 	
+	mem::Memory shadow_pass_texture;
 	mem::Memory depth_memory;
 
 	std::unique_ptr<mem::Pool> ubo_pool;
@@ -134,9 +135,11 @@ private:
 	void create_swapchain();
 	void create_depth_resources();
 	void create_frame_buffers();
+	void create_depth_buffer();
 	void create_colour_image_views();
 	void create_texture_sampler();
 	void create_render_pass();
+	void create_shadowpass();
 	VkShaderModule create_shader_module(std::vector<char> shaderCode);
 	std::vector<char> read_file(const std::string& filename);
 	VkPipelineShaderStageCreateInfo fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule);

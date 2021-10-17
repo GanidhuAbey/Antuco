@@ -44,6 +44,15 @@ void GraphicsImpl::create_texture_sampler() {
     }
 }
 
+void GraphicsImpl::create_depth_buffer() {
+    //this buffer will generate a depth texture from the perspective of the light source.
+    VkFramebufferCreateInfo create_info{};
+    create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    create_info.renderPass = render_pass; //may have to change this not sure
+    create_info.attachmentCount = 1;
+    create_info.pAttachments = &shadow_pass_texture.imageView; //create_image here to store depth data.
+}
+
 void GraphicsImpl::create_frame_buffers() {
     //get the number of images we need to create framebuffers for
     size_t imageNum = swapchain_images.size();
@@ -191,6 +200,44 @@ void GraphicsImpl::create_colour_image_views() {
     }
 }
 
+void GraphicsImpl::create_shadowpass() {
+    VkAttachmentDescription shadowpass_attachment{};
+    shadowpass_attachment.format = VK_FORMAT_D16_UNORM;//format must be a depth/stencil format
+    shadowpass_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    shadowpass_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    shadowpass_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    shadowpass_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    shadowpass_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+    shadowpass_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    shadowpass_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference shadowpass_ref{};
+    shadowpass_ref.attachment = 0;
+    shadowpass_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription shadowpass{};
+    shadowpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    shadowpass.colorAttachmentCount = 0;
+    shadowpass.pDepthStencilAttachment = &shadowpass_ref;
+    
+    VkRenderPassCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    createInfo.attachmentCount = 1;
+    VkAttachmentDescription attachments[1] = { shadowpass_attachment };
+    createInfo.pAttachments = attachments;
+    createInfo.subpassCount = 1;
+    VkSubpassDescription subpasses[1] = {shadowpass};
+    createInfo.pSubpasses = subpasses;
+    //createInfo.dependencyCount = 1;
+    //createInfo.pDependencies = &dependency;
+
+
+    if (vkCreateRenderPass(device, &createInfo, nullptr, &render_pass) != VK_SUCCESS) {
+        throw std::runtime_error("could not create render pass");
+    }
+}
+
 void GraphicsImpl::create_render_pass() {
     //create a depth attachment and a depth subpass
     VkAttachmentDescription depthAttachment{};
@@ -240,10 +287,6 @@ void GraphicsImpl::create_render_pass() {
     //our framebuffer only has a color buffer attached to it so this layout will help optimize it
     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    VkSubpassDescription depthSubpass{};
-    depthSubpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    depthSubpass.pDepthStencilAttachment = &depthAttachmentRef;
-
     //creating the actual subpass using the reference we created above
     VkSubpassDescription colorSubpass{};
     colorSubpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -257,7 +300,7 @@ void GraphicsImpl::create_render_pass() {
     VkAttachmentDescription attachments[2] = { colorAttachment, depthAttachment };
     createInfo.pAttachments = attachments;
     createInfo.subpassCount = 1;
-    VkSubpassDescription subpasses[1] = { colorSubpass };
+    VkSubpassDescription subpasses[1] = {colorSubpass};
     createInfo.pSubpasses = subpasses;
     //createInfo.dependencyCount = 1;
     //createInfo.pDependencies = &dependency;
@@ -798,7 +841,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         renderArea.extent = swapchain_extent;
         renderInfo.renderArea = renderArea;
 
-        const size_t size_of_array = 2;
+        const size_t size_of_array = 3;
         std::vector<VkClearValue> clear_values;
 
         VkClearValue color_clear;
@@ -955,9 +998,6 @@ void GraphicsImpl::update_vertex_buffer(std::vector<Vertex> vertex_data) {
     mem::createBuffer(physical_device, device, &temp_info, &temp_buffer);
 
     //map data to temp buffer
-    for (size_t i = 0; i < vertex_data.size(); i++) {
-        printf("vertex_data: <%f, %f, %f> \n", vertex_data[i].position.x, vertex_data[i].position.y, vertex_data[i].position.z);
-    }
     mem::allocateMemory(sizeof(vertex_data[0]) * vertex_data.size(), &temp_buffer);
    
     /* THIS CODE FOR SURE WORKS*/

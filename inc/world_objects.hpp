@@ -51,6 +51,7 @@ private:
 public:
 	~GameObject();
 	void add_mesh(const std::string& fileName);
+	void scale(glm::vec3 scale_vector);
 };
 
 }

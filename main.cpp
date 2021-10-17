@@ -30,21 +30,22 @@ int main() {
 	glm::vec3 camera_face = glm::vec3(0.0, 0.0, -1.0);
 	glm::vec3 camera_orientation = glm::vec3(0.0, -1.0, 0.0);
 
-	tuco::Camera* main_camera = antuco.create_camera(camera_pos, camera_face, camera_orientation, glm::radians(45.0f), 0.1f, 150.0f);
+	tuco::Camera* main_camera = antuco.create_camera(camera_pos, camera_face, camera_orientation, glm::radians(45.0f), 0.01f, 150.0f);
 
 	//create some light for the scene
-	tuco::Light* light = antuco.create_light(glm::vec3(1.0f, 3.0f, 3.0f), glm::vec3(1.0, 1.0, 1.0));
+	tuco::Light* light = antuco.create_light(glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
 
 	//create a simple game object
 	tuco::GameObject* some_object = antuco.create_object();
 
 	auto t1 = TIME_IT;
 	some_object->add_mesh("objects/test_object/with_texture.obj"); //will hope texture data is located within model data.
+	some_object->scale(glm::vec3(0.1, 0.1, 0.1));
 	auto t2 = TIME_IT;
 
 	std::chrono::duration<double, std::milli> final_count = t2 - t1;
 	printf("time to load model: %f \n", final_count.count());
-
+	
 	//basic game loop
 	bool game_loop = true;
 

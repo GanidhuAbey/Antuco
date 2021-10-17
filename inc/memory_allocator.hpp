@@ -18,6 +18,43 @@
 
 namespace mem {
 
+struct BufferCreateInfo {
+    const void* pNext = nullptr;
+    VkBufferCreateFlags flags = 0;
+    VkDeviceSize size;
+    VkBufferUsageFlags usage;
+    VkSharingMode sharingMode;
+    uint32_t queueFamilyIndexCount;
+    const uint32_t* pQueueFamilyIndices;
+    VkMemoryPropertyFlags memoryProperties;
+};
+
+class Image {
+
+};
+
+class SearchBuffer {
+
+};
+
+class StackBuffer {
+private:
+    VkDeviceSize buffer_size;
+    VkDeviceSize offset;
+    VkDeviceMemory buffer_memory;
+    VkBuffer buffer;
+    //offset = i * allocations[i]   
+    std::vector<VkDeviceSize> allocations;
+public:
+    StackBuffer(VkPhysicalDevice physical_device, VkDevice device, BufferCreateInfo* p_buffer_info);
+    ~StackBuffer();
+
+public:
+    void destroy();
+    VkDeviceSize allocate(VkDeviceSize allocation_size);
+    void free(VkDeviceSize delete_offset);
+};
+
 struct PoolCreateInfo {
     uint32_t pool_size;
     VkDescriptorType set_type; 
@@ -55,18 +92,6 @@ struct MemoryInfo {
     VkMemoryPropertyFlags memoryProperties;
     uint32_t queueFamilyIndexCount;
 
-};
-
-struct BufferCreateInfo {
-    const void* pNext = nullptr;
-    VkBufferCreateFlags flags = 0;
-    VkDeviceSize size;
-    VkBufferUsageFlags usage;
-    VkSharingMode sharingMode;
-    uint32_t queueFamilyIndexCount;
-    const uint32_t* pQueueFamilyIndices;
-
-    VkMemoryPropertyFlags memoryProperties;
 };
 
 struct Space {

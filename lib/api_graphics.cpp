@@ -80,10 +80,6 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 
 			for (size_t j = 0; j < meshes.size(); j++) {
 				//for now lets just assume this works so we can deal with the other errors...
-				for (size_t l = 0; l < meshes[j]->indices.size(); l++) {
-					printf("index_data: | %u |", meshes[j]->indices[l]);
-				}
-				printf("\n");
 				update_vertex_buffer(meshes[j]->vertices);
 				update_index_buffer(meshes[j]->indices);
 
