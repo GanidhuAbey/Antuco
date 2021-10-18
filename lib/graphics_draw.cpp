@@ -44,6 +44,30 @@ void GraphicsImpl::create_texture_sampler() {
     }
 }
 
+void GraphicsImpl::create_shadowmap_sampler() {
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.pNext = nullptr;
+    samplerInfo.flags = 0;
+    samplerInfo.magFilter = VK_FILTER_NEAREST;
+    samplerInfo.minFilter = VK_FILTER_NEAREST;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.mipLodBias = 0.0f;
+    samplerInfo.anisotropyEnable = VK_FALSE;
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.minLod = 0.0f;
+    samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
+    samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+
+    if (vkCreateSampler(device, &samplerInfo, nullptr, &shadowmap_sampler) != VK_SUCCESS) {
+        printf("[ERROR] - createTextureSampler() : failed to create sampler object");
+    }
+}
+
 void GraphicsImpl::create_depth_buffer() {
     //this buffer will generate a depth texture from the perspective of the light source.
     VkFramebufferCreateInfo create_info{};
@@ -139,7 +163,7 @@ void GraphicsImpl::create_shadowpass_resources() {
     shadow_image_info.mipLevels = 1;
     shadow_image_info.samples = VK_SAMPLE_COUNT_1_BIT;
     shadow_image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-    shadow_image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    shadow_image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     shadow_image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     shadow_image_info.queueFamilyIndexCount = 1;
     shadow_image_info.pQueueFamilyIndices = &graphics_family;
@@ -151,7 +175,7 @@ void GraphicsImpl::create_shadowpass_resources() {
 	//create image view
 	VkImageViewUsageCreateInfo usageInfo{};
 	usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
-	usageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	usageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
 	//setup create struct for image views
 	mem::ImageViewCreateInfo createInfo{};
@@ -1194,6 +1218,9 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
         vkCmdEndRenderPass(command_buffers[i]);
         //now the hope is that the image attached to the frame buffer has data in it (hopefully)
+
+        //allocate descriptor set with image attached to render?
+        //create_shadowmap_set(shadow_pass_texture);
         
         //begin a render pass so that we can draw to the appropriate framebuffer
         VkRenderPassBeginInfo renderInfo{};
@@ -1658,6 +1685,7 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
     textureBufferInfo.queueFamilyIndexCount = 1;
     textureBufferInfo.pQueueFamilyIndices = &graphics_family;
 
+    //TODO: make buffer at runtime specifically for transfer commands
     mem::Memory newBuffer;
     mem::createBuffer(physical_device, device, &textureBufferInfo, &newBuffer);
     

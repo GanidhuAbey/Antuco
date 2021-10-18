@@ -125,6 +125,8 @@ private:
 	std::vector<VkDeviceSize> ubo_offsets; //holds the offset data for a objects ubo information within the uniform buffer
 	std::vector<std::vector<mem::Memory*>> texture_images;
 
+	VkSampler shadowmap_sampler;
+
 	size_t current_frame = 0;
 
 private:
@@ -163,6 +165,7 @@ private:
 	void create_shadowmap_set();
 	void create_shadowmap_layout();
 	void create_shadowmap_pool();
+	void create_shadowmap_sampler();
 private:
 	void destroy_draw();
 
