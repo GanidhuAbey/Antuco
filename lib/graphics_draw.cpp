@@ -1045,6 +1045,7 @@ void GraphicsImpl::destroy_draw() {
 
     for (int i = 0; i < swapchain_framebuffers.size(); i++) {
         vkDestroyFramebuffer(device, swapchain_framebuffers[i], nullptr);
+
     }
 
     mem::destroyImage(device, depth_memory);
@@ -1221,7 +1222,8 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
         //allocate descriptor set with image attached to render?
         //create_shadowmap_set(shadow_pass_texture);
-        
+        write_to_shadowmap_set();
+
         //begin a render pass so that we can draw to the appropriate framebuffer
         VkRenderPassBeginInfo renderInfo{};
         renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1659,7 +1661,7 @@ void GraphicsImpl::write_to_shadowmap_set() {
 
 	VkWriteDescriptorSet writeInfo{};
 	writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writeInfo.dstBinding = 0;
+	writeInfo.dstBinding = 1;
 	writeInfo.dstSet = shadowmap_set;
 	writeInfo.descriptorCount = 1;
 	writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
