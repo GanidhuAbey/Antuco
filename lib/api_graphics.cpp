@@ -28,6 +28,7 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	create_shadowmap_sampler();
 	create_frame_buffers();
 	create_shadowpass_buffer();
+	create_shadowmap_set();
 	create_semaphores();
 	create_fences();
 

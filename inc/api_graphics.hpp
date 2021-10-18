@@ -166,6 +166,7 @@ private:
 	void create_shadowmap_layout();
 	void create_shadowmap_pool();
 	void create_shadowmap_sampler();
+	void write_to_shadowmap_set();
 private:
 	void destroy_draw();
 

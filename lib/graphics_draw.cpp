@@ -464,7 +464,7 @@ void GraphicsImpl::create_shadowmap_pool() {
     pool_info.pool_size = 100;
     pool_info.set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-    texture_pool = std::make_unique<mem::Pool>(device, pool_info);
+    shadowmap_pool = std::make_unique<mem::Pool>(device, pool_info);
 }
 
 void GraphicsImpl::create_texture_pool() { 
@@ -478,7 +478,7 @@ void GraphicsImpl::create_texture_pool() {
 void GraphicsImpl::create_shadowmap_set() {
     VkDescriptorSetAllocateInfo allocateInfo{};
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.descriptorPool = shadowmap_pool->pools[texture_pool->allocate(device, 1)];
+    allocateInfo.descriptorPool = shadowmap_pool->pools[shadowmap_pool->allocate(device, 1)];
     allocateInfo.descriptorSetCount = 1;
     allocateInfo.pSetLayouts = &shadowmap_layout;
 
@@ -1649,6 +1649,24 @@ void GraphicsImpl::copy_image(mem::Memory buffer, mem::Memory image, VkDeviceSiz
 
     //destroy transfer buffer, shouldnt need it after copying the data.
     end_command_buffer(transferBuffer);
+}
+
+void GraphicsImpl::write_to_shadowmap_set() {
+    VkDescriptorImageInfo imageInfo;
+    imageInfo.sampler = shadowmap_sampler;
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfo.imageView = shadow_pass_texture.imageView;
+
+	VkWriteDescriptorSet writeInfo{};
+	writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writeInfo.dstBinding = 0;
+	writeInfo.dstSet = shadowmap_set;
+	writeInfo.descriptorCount = 1;
+	writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	writeInfo.pImageInfo = &imageInfo;
+	writeInfo.dstArrayElement = 0;
+
+	vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
 }
 
 void GraphicsImpl::write_to_texture_set(std::vector<VkDescriptorSet> texture_sets, mem::Memory* image) {
