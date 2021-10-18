@@ -28,7 +28,7 @@ void GameObject::translate(glm::vec3 t) {
 		0, 0, 0, 1
 	};
 
-	transform = translation * transform;
+	transform = glm::transpose(translation) * transform;
 }
 
 void GameObject::scale(glm::vec3 scale_vector) {
@@ -39,5 +39,5 @@ void GameObject::scale(glm::vec3 scale_vector) {
 		0, 0, 0, 1
 	};
 
-	transform = transform * scale_mat;
+	transform = transform * glm::transpose(scale_mat);
 }

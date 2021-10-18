@@ -6,7 +6,7 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
-const float PLAYER_SPEED = 0.01f;
+const float PLAYER_SPEED = 0.05f;
 const double MOUSE_SENSITIVITY = 0.1f;
 
 #define TIME_IT std::chrono::high_resolution_clock::now();
@@ -44,9 +44,10 @@ int main() {
 	another->scale(glm::vec3(0.1, 0.1, 0.1));
 	
 	some_object->add_mesh("objects/test_object/with_texture.obj"); //will hope texture data is located within model data.
-	some_object->scale(glm::vec3(0.5, 0.5, 0.5));
+	some_object->scale(glm::vec3(0.1, 0.1, 0.1));
 
-	//another->translate(glm::vec3(0, -1, 0));	
+
+	another->translate(glm::vec3(0, -0.1, 0));	
 	auto t2 = TIME_IT;
 
 	std::chrono::duration<double, std::milli> final_count = t2 - t1;
