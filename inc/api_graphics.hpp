@@ -167,6 +167,7 @@ private:
 	void create_shadowmap_pool();
 	void create_shadowmap_sampler();
 	void write_to_shadowmap_set();
+	void run_shadowpass(std::vector<GameObject*> game_objects);
 private:
 	void destroy_draw();
 

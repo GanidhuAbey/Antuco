@@ -29,6 +29,7 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	create_frame_buffers();
 	create_shadowpass_buffer();
 	create_shadowmap_set();
+	//write_to_shadowmap_set();
 	create_semaphores();
 	create_fences();
 
@@ -102,7 +103,8 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		//actually drawing the frame
 	}
 
-	if (update_command_buffers) {	
+	if (update_command_buffers) {
+		run_shadowpass(game_objects);
 		create_command_buffers(game_objects);
 		update_command_buffers = false;
 	}
