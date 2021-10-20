@@ -5,6 +5,7 @@ using namespace tuco;
 
 Camera::Camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up, float yfov, float aspect_ratio, float near, float far) {
 	orientation = up;
+	point_of_focus = target + eye;
 	//need to construct some matrices to represent this camera
 	modelToCamera = construct_world_to_camera(eye, target, up);
 	cameraToScreen = perspective_projection(yfov, aspect_ratio, near, far);

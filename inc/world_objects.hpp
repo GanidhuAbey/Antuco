@@ -4,6 +4,7 @@
 #pragma once
 
 #include "model.hpp"
+#include "graphics.hpp"
 
 #include <glm/glm.hpp>
 
@@ -14,17 +15,25 @@ class Light {
 private:
 	glm::vec3 position;
 	glm::vec3 color;
+
+	glm::mat4 world_to_light;
+	glm::mat4 perspective;
 private:
 	Light(glm::vec3 light_pos, glm::vec3 light_color);
+
+	void construct_light_matrices();
 public:
 	~Light();
 };
 
 class Camera {
-	friend class Antuco; 
+	friend class Antuco;
+	friend class GraphicsImpl;
 private:
 	glm::mat4 modelToCamera;
 	glm::mat4 cameraToScreen;
+
+	glm::vec3 point_of_focus;
 
 	glm::vec3 orientation;
 private:
@@ -39,7 +48,7 @@ private:
 
 class GameObject {
 	friend class Antuco;
-	friend class GraphicsImpl;
+	friend class Graphics;
 private:
 	glm::mat4 transform;
 	bool update = true;

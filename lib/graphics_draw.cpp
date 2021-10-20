@@ -628,7 +628,7 @@ VkPipelineShaderStageCreateInfo GraphicsImpl::fill_shader_stage_struct(VkShaderS
 
 void GraphicsImpl::create_shadowpass_pipeline() {
     //load in the appropriate shader code for a triangle
-    auto vertShaderCode = read_file("shaders/vert.spv");
+    auto vertShaderCode = read_file("shaders/shadow.spv");
 
     //convert the shader code into a vulkan object
     VkShaderModule vertShader = create_shader_module(vertShaderCode);
@@ -1145,74 +1145,72 @@ void GraphicsImpl::create_swapchain() {
 void GraphicsImpl::run_shadowpass(std::vector<GameObject*> game_objects) {
     VkCommandBuffer shadowpass_render = begin_command_buffer();
 
-	VkRenderPassBeginInfo shadowpass_info{};
-	shadowpass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	shadowpass_info.renderPass = shadowpass;
-	shadowpass_info.framebuffer = shadowpass_buffer;
-	VkRect2D renderArea{};
-	renderArea.offset = VkOffset2D{ 0, 0 };
-	renderArea.extent = swapchain_extent;
-	shadowpass_info.renderArea = renderArea;
-
-	VkClearValue shadowpass_clear;
-	shadowpass_clear.depthStencil = { 1.0, 0 };
-
-	shadowpass_info.clearValueCount = 1;
-	shadowpass_info.pClearValues = &shadowpass_clear;
-
-	vkCmdBeginRenderPass(shadowpass_render, &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
-	//do stuff...
-	vkCmdBindPipeline(shadowpass_render, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_pipeline);
-
-	VkViewport shadowpass_port = {};
-	shadowpass_port.x = 0;
-	shadowpass_port.y = 0;
-	shadowpass_port.width = (float)swapchain_extent.width;
-	shadowpass_port.height = (float)swapchain_extent.height;
-	shadowpass_port.minDepth = 0.0;
-	shadowpass_port.maxDepth = 1.0;
-	vkCmdSetViewport(shadowpass_render, 0, 1, &shadowpass_port);
-
-	VkRect2D shadowpass_scissor{};
-	shadowpass_scissor.offset = { 0, 0 };
-	shadowpass_scissor.extent = swapchain_extent;
-	vkCmdSetScissor(shadowpass_render, 0, 1, &shadowpass_scissor);
-
-	//time for the draw calls
-	const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
-	vkCmdBindVertexBuffers(shadowpass_render, 0, 1, &vertex_buffer.buffer, offsets);
-	vkCmdBindIndexBuffer(shadowpass_render, index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-	//universal to every object so i can push the light constants before the for loop
-	//vkCmdPushConstants(shadowpass_render, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
-	//draw first object (cube)
-	uint32_t total_indexes = 0;
-	uint32_t total_vertices = 0;
-
-	for (size_t j = 0; j < game_objects.size(); j++) {
-		if (!game_objects[j]->update) {
-			for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
-				Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
-				uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
-				uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
-
-				//we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
-				//vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
-				VkDescriptorSet descriptors[1] = { ubo_sets[j][0] };
-				vkCmdBindDescriptorSets(shadowpass_render, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_layout, 0, 1, descriptors, 0, nullptr);
-				vkCmdDrawIndexed(shadowpass_render, index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
-
-				total_indexes += index_count;
-				total_vertices += vertex_count;
-			}
-		}
-	}
-    vkCmdEndRenderPass(shadowpass_render);
     end_command_buffer(shadowpass_render);
 
     //now we can write to the image
     //transfer_image_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, &shadow_pass_texture);
     write_to_shadowmap_set();
+}
+
+//generate required matrices
+void GraphicsImpl::generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 position, std::vector<glm::mat4> transforms) {
+    glm::vec3 direction = point_of_focus;
+	//create three orthogonal vectors to define a transformation that will take us from camera space to world space
+	glm::vec3 eye = position;
+	glm::vec3 up = glm::vec3(0, 1, 0);
+
+	glm::vec3 look_at = glm::normalize(direction - eye);
+	glm::vec3 right = glm::normalize(glm::cross(look_at, up));
+	up = glm::cross(right, look_at);
+
+	look_at = -look_at;
+
+	//these three vectors can define the transformation from camera to world, but we need to inverse it to get world to camera
+	//this inverse will need to be multiplied by a translation that accounts for the location of the camera
+	glm::mat4 inverse = {
+		right.x, right.y, right.z, -glm::dot(right, eye),
+		up.x, up.y, up.z, -glm::dot(up, eye),
+		look_at.x, look_at.y, look_at.z, -glm::dot(look_at, eye),
+		0, 0, 0, 1
+	};
+
+	glm::mat4 world_to_light = glm::transpose(inverse);
+
+	float angle = 45.0f;
+	float aspect = 1.0f;
+	float n = 1.0f;
+	float f = 96.0f;
+
+	double c = 1.0 / (glm::tan(glm::radians(angle) / 2));
+
+	printf("the value of the first input is: %f \n", aspect);
+
+	glm::mat4 projection = {
+		c / aspect, 0, 0, 0,
+		0, c, 0, 0,
+		0, 0, -(f + n) / (f - n), -(2 * f * n) / (f - n),
+		0, 0, -1, 0,
+	};
+
+	glm::mat4 light_perspective = glm::transpose(projection);
+
+
+    //generate ubo set for each object on the screen.
+    for (size_t i = 0; i < transforms.size(); i++) {
+        //TODO: once shadowmapping is finished, redo this part to avoid having to make graphics a friend class..
+        UniformBufferObject ubo{};
+        ubo.modelToWorld = transforms[i];
+        ubo.projection = light_perspective;
+        ubo.worldToCamera = world_to_light;
+
+        //create descriptor set.
+        create_ubo_set();
+    }
+}
+
+
+void GraphicsImpl::create_light_ubo(UniformBufferObject ubo) {
+
 }
 
 void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects) {
@@ -1243,6 +1241,71 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         if (vkBeginCommandBuffer(command_buffers[i], &beginInfo) != VK_SUCCESS) {
             throw std::runtime_error("one of the command buffers failed to begin");
         }
+
+		VkRenderPassBeginInfo shadowpass_info{};
+		shadowpass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		shadowpass_info.renderPass = shadowpass;
+		shadowpass_info.framebuffer = shadowpass_buffer;
+		VkRect2D renderArea{};
+		renderArea.offset = VkOffset2D{ 0, 0 };
+		renderArea.extent = swapchain_extent;
+		shadowpass_info.renderArea = renderArea;
+
+		VkClearValue shadowpass_clear;
+		shadowpass_clear.depthStencil = { 1.0, 0 };
+
+		shadowpass_info.clearValueCount = 1;
+		shadowpass_info.pClearValues = &shadowpass_clear;
+
+		vkCmdBeginRenderPass(command_buffers[i], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
+		//do stuff...
+		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_pipeline);
+
+		VkViewport shadowpass_port = {};
+		shadowpass_port.x = 0;
+		shadowpass_port.y = 0;
+		shadowpass_port.width = (float)swapchain_extent.width;
+		shadowpass_port.height = (float)swapchain_extent.height;
+		shadowpass_port.minDepth = 0.0;
+		shadowpass_port.maxDepth = 1.0;
+		vkCmdSetViewport(command_buffers[i], 0, 1, &shadowpass_port);
+
+		VkRect2D shadowpass_scissor{};
+		shadowpass_scissor.offset = { 0, 0 };
+		shadowpass_scissor.extent = swapchain_extent;
+		vkCmdSetScissor(command_buffers[i], 0, 1, &shadowpass_scissor);
+
+		//time for the draw calls
+		const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
+		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offsets);
+		vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+		//universal to every object so i can push the light constants before the for loop
+		//vkCmdPushConstants(shadowpass_render, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
+		//draw first object (cube)
+		uint32_t total_indexes = 0;
+		uint32_t total_vertices = 0;
+
+		for (size_t j = 0; j < game_objects.size(); j++) {
+			if (!game_objects[j]->update) {
+				for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
+					Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
+					uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
+					uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
+
+					//we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
+					//vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
+					VkDescriptorSet descriptors[1] = { ubo_sets[j][0] };
+					vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_layout, 0, 1, descriptors, 0, nullptr);
+					vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
+
+					total_indexes += index_count;
+					total_vertices += vertex_count;
+				}
+			}
+		}
+		vkCmdEndRenderPass(command_buffers[i]);
+
         //now the hope is that the image attached to the frame buffer has data in it (hopefully)
 
         //allocate descriptor set with image attached to render?
