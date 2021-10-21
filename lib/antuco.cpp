@@ -12,7 +12,6 @@ Antuco::Antuco() {
 }
 
 Antuco::~Antuco() {
-
 	delete p_graphics;
 }
 
@@ -70,7 +69,7 @@ void Antuco::render() {
 	p_graphics->update_camera(cameras[0]->modelToCamera, cameras[0]->cameraToScreen);
 	//check and update the light information
 	//the engine can't handle multiple light sources right now, so we will only use the first light created
-	p_graphics->update_light(lights[0]->color, lights[0]->position, cameras[0]->point_of_focus);
+	p_graphics->update_light(lights[0]->color, lights[0]->position, cameras[0]->point_of_focus, objects);
 
 	//check and update the game object information, this would be where we update the command buffers as neccesary
 	p_graphics->update_draw(objects);

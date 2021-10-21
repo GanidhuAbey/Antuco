@@ -40,7 +40,7 @@ int main() {
 	tuco::GameObject* some_object = antuco.create_object();
 
 	auto t1 = TIME_IT;	
-	another->add_mesh("objects/test_object/big_texture.obj");
+	another->add_mesh("objects/test_object/with_texture.obj");
 	another->scale(glm::vec3(0.1, 0.1, 0.1));
 	
 	some_object->add_mesh("objects/test_object/with_texture.obj"); //will hope texture data is located within model data.

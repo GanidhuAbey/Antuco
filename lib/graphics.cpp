@@ -19,11 +19,7 @@ void Graphics::update_camera(glm::mat4 world_to_camera, glm::mat4 projection) {
 }
 
 void Graphics::update_light(glm::vec3 color, glm::vec3 position, glm::vec3 point_of_focus, std::vector<GameObject*> game_objects) {
-	std::vector<glm::mat4> transforms;
-	for (size_t i = 0; i < game_objects.size(); i++) {
-		transforms.push_back(game_objects[i]->transform);
-	}
-	pGraphics->update_light(glm::vec4(color, 0.0), glm::vec4(position, 1.0), point_of_focus, transforms);
+	pGraphics->update_light(glm::vec4(color, 0.0), glm::vec4(position, 1.0), point_of_focus, game_objects);
 }
 
 void Graphics::update_draw(std::vector<GameObject*> game_object) {

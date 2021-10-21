@@ -33,7 +33,7 @@ public:
 	~GraphicsImpl();
 
 	void update_camera(glm::mat4 world_to_camera, glm::mat4 projection);
-	void update_light(glm::vec4 color, glm::vec4 position, glm::vec3 point_of_focus, std::vector<glm::mat4> transforms);
+	void update_light(glm::vec4 color, glm::vec4 position, glm::vec3 point_of_focus, std::vector<GameObject*> game_objects);
 	void update_draw(std::vector<GameObject*> game_objects);
 
 private:
@@ -107,7 +107,8 @@ private:
 	std::vector<VkFence> images_in_flight;
 
 	std::vector<std::vector<VkDescriptorSet>> light_ubo;
-	
+	std::vector<uint32_t> light_offsets;
+
 	mem::Memory shadow_pass_texture;
 	mem::Memory depth_memory;
 
@@ -170,7 +171,7 @@ private:
 	void create_shadowmap_sampler();
 	void write_to_shadowmap_set();
 	void run_shadowpass(std::vector<GameObject*> game_objects);
-	void generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 position, std::vector<glm::mat4> transforms);
+	void generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 position, std::vector<GameObject*> game_objects);
 	void create_light_set(UniformBufferObject ubo);
 private:
 	void destroy_draw();

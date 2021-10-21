@@ -1153,7 +1153,7 @@ void GraphicsImpl::run_shadowpass(std::vector<GameObject*> game_objects) {
 }
 
 //generate required matrices
-void GraphicsImpl::generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 position, std::vector<glm::mat4> transforms) {
+void GraphicsImpl::generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 position, std::vector<GameObject*> game_objects) {
     glm::vec3 direction = point_of_focus;
 	//create three orthogonal vectors to define a transformation that will take us from camera space to world space
 	glm::vec3 eye = position;
@@ -1183,8 +1183,6 @@ void GraphicsImpl::generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 positi
 
 	double c = 1.0 / (glm::tan(glm::radians(angle) / 2));
 
-	printf("the value of the first input is: %f \n", aspect);
-
 	glm::mat4 projection = {
 		c / aspect, 0, 0, 0,
 		0, c, 0, 0,
@@ -1194,23 +1192,69 @@ void GraphicsImpl::generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 positi
 
 	glm::mat4 light_perspective = glm::transpose(projection);
 
-
     //generate ubo set for each object on the screen.
-    for (size_t i = 0; i < transforms.size(); i++) {
+    for (size_t i = 0; i < game_objects.size(); i++) {
         //TODO: once shadowmapping is finished, redo this part to avoid having to make graphics a friend class..
         UniformBufferObject ubo{};
-        ubo.modelToWorld = transforms[i];
+        ubo.modelToWorld = game_objects[i]->transform;
         ubo.projection = light_perspective;
         ubo.worldToCamera = world_to_light;
 
         //create descriptor set.
-        create_ubo_set();
+        create_light_set(ubo);
     }
 }
 
 
-void GraphicsImpl::create_light_ubo(UniformBufferObject ubo) {
+void GraphicsImpl::create_light_set(UniformBufferObject ubo) { 
+    std::vector<VkDescriptorSetLayout> ubo_layouts(swapchain_images.size(), ubo_layout);
 
+    VkDescriptorSetAllocateInfo allocateInfo{};
+
+    VkDescriptorPool allocated_pool;
+    size_t pool_index = ubo_pool->allocate(device, swapchain_images.size());
+
+    allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocateInfo.descriptorPool = ubo_pool->pools[pool_index];
+    allocateInfo.descriptorSetCount = swapchain_images.size();
+    allocateInfo.pSetLayouts = ubo_layouts.data();
+
+
+    //size_t currentSize = descriptorSets.size();
+    //descriptorSets.resize(currentSize + 1);
+    //descriptorSets[currentSize].resize(swapChainImages.size()); 
+    
+    size_t current_size = light_ubo.size();
+    light_ubo.resize(current_size + 1);
+    light_ubo[current_size].resize(swapchain_images.size());
+    if (vkAllocateDescriptorSets(device, &allocateInfo, light_ubo[current_size].data()) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate descriptor sets!");
+    }
+    
+    //write to set
+    VkDeviceSize offset = uniform_buffer.allocate(sizeof(UniformBufferObject));
+
+    VkDescriptorBufferInfo buffer_info{};
+    buffer_info.buffer = uniform_buffer.buffer;
+    buffer_info.offset = offset;
+    buffer_info.range = (VkDeviceSize)sizeof(UniformBufferObject);
+
+    light_offsets.push_back(offset);
+
+    for (size_t i = 0; i < swapchain_images.size(); i++) {
+        VkWriteDescriptorSet writeInfo{};
+        writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeInfo.dstBinding = 0;
+        writeInfo.dstSet = light_ubo[light_ubo.size() - 1][i];
+        writeInfo.descriptorCount = 1;
+        writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeInfo.pBufferInfo = &buffer_info;
+        writeInfo.dstArrayElement = 0;
+
+        vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
+    }
+
+    update_uniform_buffer(offset, ubo);
 }
 
 void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects) {
@@ -1318,7 +1362,6 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderInfo.renderPass = render_pass;
         renderInfo.framebuffer = swapchain_framebuffers[i];
-		VkRect2D renderArea{};
 		renderArea.offset = VkOffset2D{ 0, 0 };
 		renderArea.extent = swapchain_extent;
         renderInfo.renderArea = renderArea;
@@ -1370,8 +1413,8 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         //universal to every object so i can push the light constants before the for loop
         vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
         //draw first object (cube)
-	    uint32_t total_indexes = 0;
-	    uint32_t total_vertices = 0;
+	    total_indexes = 0;
+	    total_vertices = 0;
 
         for (size_t j = 0; j < game_objects.size(); j++) {
             if (!game_objects[j]->update) {

@@ -48,7 +48,7 @@ private:
 
 class GameObject {
 	friend class Antuco;
-	friend class Graphics;
+	friend class GraphicsImpl;
 private:
 	glm::mat4 transform;
 	bool update = true;

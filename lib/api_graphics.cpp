@@ -53,11 +53,11 @@ void GraphicsImpl::update_camera(glm::mat4 world_to_camera, glm::mat4 projection
 	camera_projection = projection;
 }
 
-void GraphicsImpl::update_light(glm::vec4 color, glm::vec4 position, glm::vec3 point_of_focus, std::vector<glm::mat4> transforms) {
+void GraphicsImpl::update_light(glm::vec4 color, glm::vec4 position, glm::vec3 point_of_focus, std::vector<GameObject*> game_objects) {
 	light.color = color;
 	light.position = position;
 
-	generate_light_ubo(point_of_focus, glm::vec3(position) , transforms);
+	generate_light_ubo(point_of_focus, glm::vec3(position) , game_objects);
 }
 
 //TODO: with that most of the rendering segments are in place all thats actually left is to implement texturing, and we can begin
