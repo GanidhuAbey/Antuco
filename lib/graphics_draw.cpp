@@ -87,8 +87,8 @@ void GraphicsImpl::create_shadowpass_buffer() {
 	//they put the image view in a separate array for some reason
 	VkImageView imageViews[1] = { shadow_pass_texture.imageView };
 	createInfo.pAttachments = imageViews;
-	createInfo.width = swapchain_extent.width;
-	createInfo.height = swapchain_extent.height;
+    createInfo.width = shadowmap_width;
+	createInfo.height = shadowmap_height;
 	createInfo.layers = 1;
 
 	if (vkCreateFramebuffer(device, &createInfo, nullptr, &shadowpass_buffer) != VK_SUCCESS) {
@@ -156,7 +156,7 @@ void GraphicsImpl::create_fences() {
 void GraphicsImpl::create_shadowpass_resources() {
     mem::ImageCreateInfo shadow_image_info{};
     shadow_image_info.arrayLayers = 1;
-    shadow_image_info.extent = VkExtent3D{ swapchain_extent.width, swapchain_extent.height, 1 };
+    shadow_image_info.extent = VkExtent3D{ shadowmap_width, shadowmap_height, 1 };
     shadow_image_info.flags = 0;
     shadow_image_info.imageType = VK_IMAGE_TYPE_2D;
     shadow_image_info.format = VK_FORMAT_D16_UNORM;
@@ -688,14 +688,17 @@ void GraphicsImpl::create_shadowpass_pipeline() {
     VkViewport viewport{};
     viewport.x = 0;
     viewport.y = 0;
-    viewport.width = (float)swapchain_extent.width;
-    viewport.height = (float)swapchain_extent.height;
+    viewport.width = (float)shadowmap_width;
+    viewport.height = (float)shadowmap_height;
     viewport.minDepth = 0.0;
     viewport.maxDepth = 1.0;
 
     VkRect2D scissor{   };
     scissor.offset = { 0, 0 };
-    scissor.extent = swapchain_extent;
+    VkExtent2D shadowmap_extent;
+    shadowmap_extent.width = shadowmap_width;
+    shadowmap_extent.height = shadowmap_height;
+    scissor.extent = shadowmap_extent;
 
     VkPipelineViewportStateCreateInfo viewportInfo{};
 
@@ -1292,7 +1295,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		shadowpass_info.framebuffer = shadowpass_buffer;
 		VkRect2D renderArea{};
 		renderArea.offset = VkOffset2D{ 0, 0 };
-		renderArea.extent = swapchain_extent;
+        renderArea.extent = VkExtent2D{ shadowmap_width, shadowmap_height };
 		shadowpass_info.renderArea = renderArea;
 
 		VkClearValue shadowpass_clear;
@@ -1308,8 +1311,8 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		VkViewport shadowpass_port = {};
 		shadowpass_port.x = 0;
 		shadowpass_port.y = 0;
-		shadowpass_port.width = (float)swapchain_extent.width;
-		shadowpass_port.height = (float)swapchain_extent.height;
+		shadowpass_port.width = (float)shadowmap_width;
+        shadowpass_port.height = (float)shadowmap_height;
 		shadowpass_port.minDepth = 0.0;
 		shadowpass_port.maxDepth = 1.0;
 		vkCmdSetViewport(command_buffers[i], 0, 1, &shadowpass_port);
@@ -1339,7 +1342,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
 					//we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
 					//vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
-					VkDescriptorSet descriptors[1] = { ubo_sets[j][0] };
+					VkDescriptorSet descriptors[1] = { light_ubo[j][i] };
 					vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_layout, 0, 1, descriptors, 0, nullptr);
 					vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
 

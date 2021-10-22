@@ -132,6 +132,10 @@ private:
 
 	size_t current_frame = 0;
 
+	//not sure why these numbers are the best
+	uint32_t shadowmap_width = 2048;
+	uint32_t shadowmap_height = 2048;
+
 private:
 	void create_graphics_pipeline();
 	void create_ubo_layout();

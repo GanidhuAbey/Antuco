@@ -6,7 +6,7 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
-const float PLAYER_SPEED = 0.05f;
+const float PLAYER_SPEED = 0.01f;
 const double MOUSE_SENSITIVITY = 0.1f;
 
 #define TIME_IT std::chrono::high_resolution_clock::now();
@@ -31,7 +31,7 @@ int main() {
 	glm::vec3 camera_orientation = glm::vec3(0.0, -1.0, 0.0);
 
 	tuco::Camera* main_camera = antuco.create_camera(camera_pos, camera_face, camera_orientation, glm::radians(45.0f), 0.01f, 150.0f);
-
+		
 	//create some light for the scene
 	tuco::Light* light = antuco.create_light(glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
 
