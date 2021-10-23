@@ -18,10 +18,10 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	create_colour_image_views();
 	create_render_pass();
 	create_shadowpass();
-	create_ubo_layout();
+	create_ubo_layout();	
 	create_texture_layout();
 	create_shadowmap_layout();
-	create_shadowmap_pool();
+	create_shadowmap_pool();	
 	create_graphics_pipeline();
 	create_shadowpass_pipeline();
 	create_texture_sampler();

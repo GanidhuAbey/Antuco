@@ -132,6 +132,8 @@ private:
 
 	size_t current_frame = 0;
 
+	VkDescriptorSetLayout light_layout;
+
 	//not sure why these numbers are the best
 	uint32_t shadowmap_width = 2048;
 	uint32_t shadowmap_height = 2048;
@@ -177,6 +179,7 @@ private:
 	void run_shadowpass(std::vector<GameObject*> game_objects);
 	void generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 position, std::vector<GameObject*> game_objects);
 	void create_light_set(UniformBufferObject ubo);
+	void create_light_layout();
 private:
 	void destroy_draw();
 
