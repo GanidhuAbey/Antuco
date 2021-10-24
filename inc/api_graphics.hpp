@@ -134,6 +134,8 @@ private:
 
 	VkDescriptorSetLayout light_layout;
 
+	bool not_created;
+
 	//not sure why these numbers are the best
 	uint32_t shadowmap_width = 2048;
 	uint32_t shadowmap_height = 2048;
@@ -180,6 +182,7 @@ private:
 	void generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 position, std::vector<GameObject*> game_objects);
 	void create_light_set(UniformBufferObject ubo);
 	void create_light_layout();
+	void update_light_set(UniformBufferObject ubo);
 private:
 	void destroy_draw();
 

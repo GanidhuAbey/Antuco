@@ -424,6 +424,27 @@ void GraphicsImpl::create_render_pass() {
     }
 }
 
+void GraphicsImpl::create_light_layout() {
+    /* UNIFORM BUFFER DESCRIPTOR SET */
+    VkDescriptorSetLayoutBinding ubo_layout_binding{};
+    ubo_layout_binding.binding = 1;
+    ubo_layout_binding.descriptorCount = 1;
+    ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    ubo_layout_binding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo layout_info{};
+    layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+
+    layout_info.bindingCount = 1;
+    layout_info.pBindings = &ubo_layout_binding;
+
+    if (vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &light_layout) != VK_SUCCESS) {
+        throw std::runtime_error("could not create ubo layout");
+    }
+}
+
+
 void GraphicsImpl::create_ubo_layout() {
     /* UNIFORM BUFFER DESCRIPTOR SET */
     VkDescriptorSetLayoutBinding ubo_layout_binding{};
@@ -777,7 +798,7 @@ void GraphicsImpl::create_shadowpass_pipeline() {
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     const uint32_t layoutCount = 1;
     pipelineLayoutInfo.setLayoutCount = 1;
-    VkDescriptorSetLayout layouts[layoutCount] = { ubo_layout };
+    VkDescriptorSetLayout layouts[layoutCount] = { light_layout };
     pipelineLayoutInfo.pSetLayouts = layouts;
     pipelineLayoutInfo.pushConstantRangeCount = 0;
 
@@ -958,9 +979,9 @@ void GraphicsImpl::create_graphics_pipeline() {
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    const uint32_t layoutCount = 3;
+    const uint32_t layoutCount = 4;
     pipelineLayoutInfo.setLayoutCount = layoutCount;
-    VkDescriptorSetLayout layouts[layoutCount] = { ubo_layout, texture_layout, shadowmap_layout };
+    VkDescriptorSetLayout layouts[layoutCount] = { ubo_layout, light_layout, texture_layout, shadowmap_layout };
     pipelineLayoutInfo.pSetLayouts = layouts;
     pipelineLayoutInfo.pushConstantRangeCount = 1;
 
@@ -1204,13 +1225,17 @@ void GraphicsImpl::generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 positi
         ubo.worldToCamera = world_to_light;
 
         //create descriptor set.
-        create_light_set(ubo);
+        if (not_created) {
+            create_light_set(ubo);
+            not_created = false;
+        }
+        update_uniform_buffer(light_offsets[0], ubo);
     }
 }
 
 
 void GraphicsImpl::create_light_set(UniformBufferObject ubo) { 
-    std::vector<VkDescriptorSetLayout> ubo_layouts(swapchain_images.size(), ubo_layout);
+    std::vector<VkDescriptorSetLayout> ubo_layouts(swapchain_images.size(), light_layout);
 
     VkDescriptorSetAllocateInfo allocateInfo{};
 
@@ -1247,7 +1272,7 @@ void GraphicsImpl::create_light_set(UniformBufferObject ubo) {
     for (size_t i = 0; i < swapchain_images.size(); i++) {
         VkWriteDescriptorSet writeInfo{};
         writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeInfo.dstBinding = 0;
+        writeInfo.dstBinding = 1;
         writeInfo.dstSet = light_ubo[light_ubo.size() - 1][i];
         writeInfo.descriptorCount = 1;
         writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1342,7 +1367,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
 					//we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
 					//vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
-					VkDescriptorSet descriptors[1] = { light_ubo[j][i] };
+					VkDescriptorSet descriptors[1] = { light_ubo[0][i] };
 					vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_layout, 0, 1, descriptors, 0, nullptr);
 					vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
 
@@ -1429,8 +1454,9 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                     //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
                     //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
 
-                    VkDescriptorSet descriptors[3] = { ubo_sets[j][i], texture_sets[j][k][i], shadowmap_set };
-                    vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 3, descriptors, 0, nullptr);
+                    VkDescriptorSet descriptors[4] = { ubo_sets[j][i], light_ubo[0][i], texture_sets[j][k][i], shadowmap_set };
+                    vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 4, descriptors, 0, nullptr); 
+                    //vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, set1, 0, nullptr);
                     vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
 
                     total_indexes += index_count;

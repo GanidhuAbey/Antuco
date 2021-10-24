@@ -5,6 +5,8 @@
 using namespace tuco;
 
 GraphicsImpl::GraphicsImpl(Window* pWindow) {
+	not_created = true;
+
 	create_instance(pWindow->get_title());
 	pWindow->pWindow->create_vulkan_surface(instance, &surface); //it aint pretty, but it'll get er done.
 	pick_physical_device();
@@ -18,7 +20,8 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	create_colour_image_views();
 	create_render_pass();
 	create_shadowpass();
-	create_ubo_layout();	
+	create_ubo_layout();
+	create_light_layout();
 	create_texture_layout();
 	create_shadowmap_layout();
 	create_shadowmap_pool();	
