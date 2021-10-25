@@ -52,9 +52,9 @@ void GraphicsImpl::create_shadowmap_sampler() {
     samplerInfo.magFilter = VK_FILTER_NEAREST;
     samplerInfo.minFilter = VK_FILTER_NEAREST;
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
     samplerInfo.mipLodBias = 0.0f;
     samplerInfo.anisotropyEnable = VK_FALSE;
     samplerInfo.compareEnable = VK_FALSE;
@@ -67,16 +67,6 @@ void GraphicsImpl::create_shadowmap_sampler() {
         printf("[ERROR] - createTextureSampler() : failed to create sampler object");
     }
 }
-
-void GraphicsImpl::create_depth_buffer() {
-    //this buffer will generate a depth texture from the perspective of the light source.
-    VkFramebufferCreateInfo create_info{};
-    create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    create_info.renderPass = render_pass; //may have to change this not sure
-    create_info.attachmentCount = 1;
-    create_info.pAttachments = &shadow_pass_texture.imageView; //create_image here to store depth data.
-}
-
 
 void GraphicsImpl::create_shadowpass_buffer() { 
 	VkFramebufferCreateInfo createInfo{};
@@ -302,7 +292,7 @@ void GraphicsImpl::create_shadowpass() {
     shadowpass_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     shadowpass_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     shadowpass_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    shadowpass_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+    shadowpass_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
     shadowpass_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     shadowpass_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
@@ -774,7 +764,7 @@ void GraphicsImpl::create_shadowpass_pipeline() {
     depthStencilInfo.flags = 0;
     depthStencilInfo.depthTestEnable = VK_TRUE;
     depthStencilInfo.depthWriteEnable = VK_TRUE;
-    depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+    depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
     depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
     depthStencilInfo.stencilTestEnable = VK_FALSE;
 
@@ -1178,16 +1168,19 @@ void GraphicsImpl::run_shadowpass(std::vector<GameObject*> game_objects) {
 
 //generate required matrices
 void GraphicsImpl::generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 position, std::vector<GameObject*> game_objects) {
-    glm::vec3 direction = point_of_focus;
+    glm::vec3 direction = glm::vec3(0.0, 0.0, 0.0);
 	//create three orthogonal vectors to define a transformation that will take us from camera space to world space
 	glm::vec3 eye = position;
-	glm::vec3 up = glm::vec3(0, 1, 0);
+	glm::vec3 up = glm::vec3(0, 0, 1);
 
 	glm::vec3 look_at = glm::normalize(direction - eye);
 	glm::vec3 right = glm::normalize(glm::cross(look_at, up));
 	up = glm::cross(right, look_at);
 
 	look_at = -look_at;
+
+    //0.39559
+    //0.7833
 
 	//these three vectors can define the transformation from camera to world, but we need to inverse it to get world to camera
 	//this inverse will need to be multiplied by a translation that accounts for the location of the camera
@@ -1198,7 +1191,7 @@ void GraphicsImpl::generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 positi
 		0, 0, 0, 1
 	};
 
-	glm::mat4 world_to_light = glm::transpose(inverse);
+    glm::mat4 world_to_light = glm::transpose(inverse);
 
 	float angle = 45.0f;
 	float aspect = 1.0f;
@@ -1214,7 +1207,7 @@ void GraphicsImpl::generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 positi
 		0, 0, -1, 0,
 	};
 
-	glm::mat4 light_perspective = glm::transpose(projection);
+    glm::mat4 light_perspective = glm::transpose(projection);
 
     //generate ubo set for each object on the screen.
     for (size_t i = 0; i < game_objects.size(); i++) {
@@ -1344,13 +1337,17 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
 		VkRect2D shadowpass_scissor{};
 		shadowpass_scissor.offset = { 0, 0 };
-		shadowpass_scissor.extent = swapchain_extent;
+		shadowpass_scissor.extent.width = shadowmap_width;
+        shadowpass_scissor.extent.height = shadowmap_height;
 		vkCmdSetScissor(command_buffers[i], 0, 1, &shadowpass_scissor);
 
 		//time for the draw calls
 		const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offsets);
 		vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+
+        //vkCmdSetDepthBias()
 
 		//universal to every object so i can push the light constants before the for loop
 		//vkCmdPushConstants(shadowpass_render, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
