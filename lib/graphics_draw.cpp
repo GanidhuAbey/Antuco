@@ -15,6 +15,9 @@
 
 #include <stdexcept>
 
+
+const std::string GET_SHADER_PATH = "../../../shaders/";
+
 const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
 
 using namespace tuco;
@@ -639,7 +642,7 @@ VkPipelineShaderStageCreateInfo GraphicsImpl::fill_shader_stage_struct(VkShaderS
 
 void GraphicsImpl::create_shadowpass_pipeline() {
     //load in the appropriate shader code for a triangle
-    auto vertShaderCode = read_file("shaders/shadow.spv");
+    auto vertShaderCode = read_file(GET_SHADER_PATH + "shadow.spv");
 
     //convert the shader code into a vulkan object
     VkShaderModule vertShader = create_shader_module(vertShaderCode);
@@ -822,8 +825,8 @@ void GraphicsImpl::create_shadowpass_pipeline() {
 
 void GraphicsImpl::create_graphics_pipeline() {
     //load in the appropriate shader code for a triangle
-    auto vertShaderCode = read_file("shaders/vert.spv");
-    auto fragShaderCode = read_file("shaders/frag.spv");
+    auto vertShaderCode = read_file(GET_SHADER_PATH + "vert.spv");
+    auto fragShaderCode = read_file(GET_SHADER_PATH + "frag.spv");
 
     //convert the shader code into a vulkan object
     VkShaderModule vertShader = create_shader_module(vertShaderCode);

@@ -35,11 +35,17 @@ int main() {
 	tuco::Camera* main_camera = antuco.create_camera(camera_pos, camera_face, camera_orientation, glm::radians(45.0f), 0.1f, 150.0f);
 		
 	//create some light for the scene
-	tuco::Light* light = antuco.create_light(glm::vec3(0.0f, 3.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
+	//TODO: implement debug mode where we'll render light with mesh
+	tuco::Light* light = antuco.create_light(glm::vec3(1.0f, 3.0f, -2.0f), glm::vec3(1.0, 1.0, 1.0));
 
 	//create a simple game object
 	tuco::GameObject* another = antuco.create_object();
 	tuco::GameObject* some_object = antuco.create_object();
+	//tuco::GameObject* light_mesh = antuco.create_object();
+
+	//light_mesh->add_mesh("objects/test_object/white.obj");
+	//light_mesh->translate(glm::vec3(1.0f, 3.0f, -2.0f));
+	//light_mesh->scale(glm::vec3(0.1, 0.1, 0.1));
 
 	auto t1 = TIME_IT;	
 	another->add_mesh("objects/test_object/with_texture.obj");

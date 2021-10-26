@@ -17,7 +17,6 @@ void Camera::update(glm::vec3 camera_pos, glm::vec3 camera_face) {
 	modelToCamera = construct_world_to_camera(camera_pos, camera_face, orientation);
 }
 
-
 /// <summary>
 /// constructs a matrix to translate objects from world space to space relative to the camera. since the camera can't exist and we can only ever see straight down the -z axis
 /// we must transform the objects such that when seen from the -z axis they appear as if they are seen by the imaginary camera
