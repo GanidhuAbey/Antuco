@@ -1174,7 +1174,7 @@ void GraphicsImpl::generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 positi
     glm::vec3 direction = glm::vec3(0.0, 0.0, 0.0);
 	//create three orthogonal vectors to define a transformation that will take us from camera space to world space
 	glm::vec3 eye = position;
-	glm::vec3 up = glm::vec3(0, 0, 1);
+	glm::vec3 up = glm::vec3(0, -1, 0);
 
 	glm::vec3 look_at = glm::normalize(direction - eye);
 	glm::vec3 right = glm::normalize(glm::cross(look_at, up));
@@ -1223,10 +1223,10 @@ void GraphicsImpl::generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 positi
         //create descriptor set.
         if (not_created) {
             create_light_set(ubo);
-            not_created = false;
         }
-        update_uniform_buffer(light_offsets[0], ubo);
+        update_uniform_buffer(light_offsets[i], ubo);
     }
+    not_created = false;
 }
 
 
@@ -1367,7 +1367,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
 					//we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
 					//vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
-					VkDescriptorSet descriptors[1] = { light_ubo[0][i] };
+					VkDescriptorSet descriptors[1] = { light_ubo[j][i] };
 					vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_layout, 0, 1, descriptors, 0, nullptr);
 					vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
 
@@ -1454,7 +1454,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                     //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
                     //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
 
-                    VkDescriptorSet descriptors[4] = { ubo_sets[j][i], light_ubo[0][i], texture_sets[j][k][i], shadowmap_set };
+                    VkDescriptorSet descriptors[4] = { ubo_sets[j][i], light_ubo[j][i], texture_sets[j][k][i], shadowmap_set };
                     vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 4, descriptors, 0, nullptr); 
                     //vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, set1, 0, nullptr);
                     vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));

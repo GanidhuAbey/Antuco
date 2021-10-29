@@ -20,10 +20,9 @@ private:
 	glm::mat4 perspective;
 private:
 	Light(glm::vec3 light_pos, glm::vec3 light_color);
-
-	void construct_light_matrices();
 public:
 	~Light();
+	void update(glm::vec3 translation);
 };
 
 class Camera {

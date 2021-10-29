@@ -47,7 +47,12 @@ void main() {
 
     //float fragment_depth = (1/(far-near))*(light_perspective.z - near);
 
-    float shadow_factor = closest_to_light - sample_value.z;
+    float shadow_factor =  closest_to_light - sample_value.z;
 
-    outColor = vec4(0.1, 0, sample_value.z, 1.0);
+    if (shadow_factor < 0) {
+      outColor = vec4(1.0, 0.0, 0.0, 1.0);
+    }
+    else {
+      outColor = vec4(0.0, 1.0, 0.0, 1.0);
+    }
 }
