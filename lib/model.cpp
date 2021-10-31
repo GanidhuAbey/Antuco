@@ -8,14 +8,19 @@ using namespace tuco;
 void Model::add_mesh(const std::string& fileName) {
 	//have assimp read file
 	Assimp::Importer importer;
-	
+
+	auto t1 = std::chrono::high_resolution_clock::now();
 	const aiScene* scene = importer.ReadFile(fileName,
 		aiProcess_GenNormals |
 		aiProcess_CalcTangentSpace |
 		aiProcess_JoinIdenticalVertices |
 		aiProcess_Triangulate |
 		aiProcess_SortByPType);
+	auto t2 = std::chrono::high_resolution_clock::now();
 
+	std::chrono::duration<double, std::milli> final_count = t2 - t1;
+	printf("assimp time: %f \n", final_count.count());
+	
 	if (!scene) {
 		printf("[ERROR] - Mode::add_mesh() : given model data could not be read");
 		throw std::runtime_error("");

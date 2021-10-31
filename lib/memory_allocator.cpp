@@ -4,7 +4,145 @@
 #include <cstring>
 using namespace mem;
 
+SearchBuffer::SearchBuffer() {}
+SearchBuffer::~SearchBuffer() {}
 
+void SearchBuffer::init(VkPhysicalDevice physical_device, VkDevice device, BufferCreateInfo* p_buffer_info) { 
+    VkBufferCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    createInfo.pNext = p_buffer_info->pNext;
+    createInfo.flags = p_buffer_info->flags;
+    createInfo.usage = p_buffer_info->usage;
+    createInfo.size = p_buffer_info->size;
+    createInfo.sharingMode = p_buffer_info->sharingMode;
+    createInfo.queueFamilyIndexCount = p_buffer_info->queueFamilyIndexCount;
+    createInfo.pQueueFamilyIndices = p_buffer_info->pQueueFamilyIndices;
+
+    if (vkCreateBuffer(device, &createInfo, nullptr, &buffer) != VK_SUCCESS) {
+        throw std::runtime_error("could not create buffer");
+    };
+
+    //allocate desired memory to buffer
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+
+    //allocate memory for buffer
+    VkMemoryAllocateInfo memoryInfo{};
+    memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memoryInfo.allocationSize = memRequirements.size;
+    //too lazy to even check if this exists will do later TODO
+    memoryInfo.memoryTypeIndex = findMemoryType(physical_device, memRequirements.memoryTypeBits, p_buffer_info->memoryProperties);
+
+    VkResult allocResult = vkAllocateMemory(device, &memoryInfo, nullptr, &buffer_memory);
+
+    if (allocResult != VK_SUCCESS) {
+        throw std::runtime_error("could not allocate memory for memory pool");
+    }
+
+    if (vkBindBufferMemory(device, buffer, buffer_memory, 0) != VK_SUCCESS) {
+        throw std::runtime_error("could not bind allocated memory to buffer");
+    }
+
+    memory_offset = 0;
+}
+
+void SearchBuffer::destroy(VkDevice device) {
+    vkDeviceWaitIdle(device);
+
+    vkFreeMemory(device, buffer_memory, nullptr);
+
+    vkDestroyBuffer(device, buffer, nullptr);
+}
+
+VkDeviceSize SearchBuffer::allocate(VkDeviceSize allocation_size) {
+    VkDeviceSize offset = memory_offset;
+    memory_locations.push_back(offset);
+
+    memory_offset += allocation_size;
+
+    return offset;
+}
+
+void SearchBuffer::write(VkDevice device, VkDeviceSize offset, VkDeviceSize data_size, void* p_data) {
+    void* pData;
+    if (vkMapMemory(device, buffer_memory, offset, data_size, 0, &pData) != VK_SUCCESS) {
+        throw std::runtime_error("could not map data to memory");
+    }
+    memcpy(pData, p_data, data_size);
+    vkUnmapMemory(device, buffer_memory);
+}
+
+//this almost never needed when dealing with uniform buffer, so i'm not gonna write this function for now
+void SearchBuffer::free(VkDeviceSize offset) {
+}
+
+StackBuffer::StackBuffer(VkPhysicalDevice physical_device, VkDevice device, BufferCreateInfo* p_buffer_info) {
+    //create buffer 
+    VkBufferCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    createInfo.pNext = p_buffer_info->pNext;
+    createInfo.flags = p_buffer_info->flags;
+    createInfo.usage = p_buffer_info->usage;
+    createInfo.size = p_buffer_info->size;
+    createInfo.sharingMode = p_buffer_info->sharingMode;
+    createInfo.queueFamilyIndexCount = p_buffer_info->queueFamilyIndexCount;
+    createInfo.pQueueFamilyIndices = p_buffer_info->pQueueFamilyIndices;
+
+    if (vkCreateBuffer(device, &createInfo, nullptr, &buffer) != VK_SUCCESS) {
+        throw std::runtime_error("could not create buffer");
+    };
+
+    //allocate desired memory to buffer
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+
+    //allocate memory for buffer
+    VkMemoryAllocateInfo memoryInfo{};
+    memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memoryInfo.allocationSize = memRequirements.size;
+    //too lazy to even check if this exists will do later TODO
+    memoryInfo.memoryTypeIndex = findMemoryType(physical_device, memRequirements.memoryTypeBits, p_buffer_info->memoryProperties);
+
+    VkResult allocResult = vkAllocateMemory(device, &memoryInfo, nullptr, &buffer_memory);
+
+    if (allocResult != VK_SUCCESS) {
+        throw std::runtime_error("could not allocate memory for memory pool");
+    }
+
+    if (vkBindBufferMemory(device, buffer, buffer_memory, 0) != VK_SUCCESS) {
+        throw std::runtime_error("could not bind allocated memory to buffer");
+    }
+
+    buffer_size = p_buffer_info->size;
+    offset = 0;
+}
+
+VkDeviceSize StackBuffer::allocate(VkDeviceSize allocation_size) {
+    if (allocation_size > buffer_size) {
+        //not sure how to handle this case right now
+        printf("COULD ALLOCATE INTO BUFFER, OUT OF SPACE \n");
+        return 0;
+    }
+    buffer_size -= allocation_size;
+    VkDeviceSize push_to = offset;
+    offset += allocation_size;
+    allocations.push_back(allocation_size);
+
+    return push_to;
+}
+
+void StackBuffer::free(VkDeviceSize delete_offset) {
+    //the only thing the user would have at this point is the offset
+    VkDeviceSize current_offset = 0;
+    for (auto it = allocations.begin(); it != allocations.end(); it++) {
+        if (delete_offset == current_offset) {
+            //delete at location
+            allocations.erase(it);
+            break;
+        }
+        current_offset += *it;
+    }
+}
 
 Pool::Pool(VkDevice device, PoolCreateInfo create_info) {
     pool_create_info = create_info;

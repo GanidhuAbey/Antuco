@@ -24,4 +24,10 @@ struct LightObject {
 	glm::vec4 position;
 };
 
+struct LightUniformBuffer {
+	glm::mat4 model_to_world;
+	glm::mat4 camera_to_world;
+	glm::mat4 projection;
+};
+
 }

@@ -30,21 +30,37 @@ int main() {
 	glm::vec3 camera_face = glm::vec3(0.0, 0.0, -1.0);
 	glm::vec3 camera_orientation = glm::vec3(0.0, -1.0, 0.0);
 
-	tuco::Camera* main_camera = antuco.create_camera(camera_pos, camera_face, camera_orientation, glm::radians(45.0f), 0.1f, 150.0f);
+	//0.4032
 
+	tuco::Camera* main_camera = antuco.create_camera(camera_pos, camera_face, camera_orientation, glm::radians(45.0f), 0.1f, 150.0f);
+		
 	//create some light for the scene
-	tuco::Light* light = antuco.create_light(glm::vec3(1.0f, 3.0f, 3.0f), glm::vec3(1.0, 1.0, 1.0));
+	//TODO: implement debug mode where we'll render light with mesh
+	tuco::Light* light = antuco.create_light(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(1.0, 1.0, 1.0));
 
 	//create a simple game object
+	tuco::GameObject* another = antuco.create_object();
 	tuco::GameObject* some_object = antuco.create_object();
+	//tuco::GameObject* light_mesh = antuco.create_object();
 
-	auto t1 = TIME_IT;
-	some_object->add_mesh("objects/test_object/with_texture.obj"); //will hope texture data is located within model data.
+	//light_mesh->add_mesh("objects/test_object/white.obj");
+	//light_mesh->translate(glm::vec3(0.0f, 4.0f, 0.0f));
+	//light_mesh->scale(glm::vec3(0.1, 0.1, 0.1));
+
+	auto t1 = TIME_IT;	
+	another->add_mesh("objects/test_object/with_texture.obj");
+	another->scale(glm::vec3(5, 0.1, 5));
+	
+	some_object->add_mesh("objects/test_object/white.obj"); //will hope texture data is located within model data.
+	some_object->scale(glm::vec3(0.1, 0.1, 0.1));
+
+
+	another->translate(glm::vec3(0, -1, 0));	
 	auto t2 = TIME_IT;
 
 	std::chrono::duration<double, std::milli> final_count = t2 - t1;
 	printf("time to load model: %f \n", final_count.count());
-
+	
 	//basic game loop
 	bool game_loop = true;
 
@@ -96,6 +112,8 @@ int main() {
 		}
 
 		//printf("camera_pos: <%f, %f, %f> \n", camera_pos.x, camera_pos.y, camera_pos.z);
+
+		light->update(glm::vec3(0.0001, 0.0, 0.0));
 
 		//render the objects onto the screen
 		main_camera->update(camera_pos, camera_face);

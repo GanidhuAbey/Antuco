@@ -33,7 +33,7 @@ public:
 	~GraphicsImpl();
 
 	void update_camera(glm::mat4 world_to_camera, glm::mat4 projection);
-	void update_light(glm::vec4 color, glm::vec4 position);
+	void update_light(glm::vec4 color, glm::vec4 position, glm::vec3 point_of_focus, std::vector<GameObject*> game_objects);
 	void update_draw(std::vector<GameObject*> game_objects);
 
 private:
@@ -78,6 +78,7 @@ private:
 private:
 	VkDescriptorSetLayout ubo_layout;
 	VkDescriptorSetLayout texture_layout;
+	VkDescriptorSetLayout shadowmap_layout;
 
 	VkSwapchainKHR swapchain;
 	VkExtent2D swapchain_extent;
@@ -86,29 +87,40 @@ private:
 	std::vector<VkImageView> swapchain_image_views;
 
 	VkRenderPass render_pass;
+	VkRenderPass shadowpass;
 
 	VkPipelineLayout pipeline_layout;
 	VkPipeline graphics_pipeline;
 
+	VkPipelineLayout shadowpass_layout;
+	VkPipeline shadowpass_pipeline;
+
 	VkSampler texture_sampler;
 
 	std::vector<VkFramebuffer> swapchain_framebuffers;
+	VkFramebuffer shadowpass_buffer;
 
 	std::vector<VkSemaphore> image_available_semaphores;
 	std::vector<VkSemaphore> render_finished_semaphores;
 
 	std::vector<VkFence> in_flight_fences;
 	std::vector<VkFence> images_in_flight;
-	
+
+	std::vector<std::vector<VkDescriptorSet>> light_ubo;
+	std::vector<uint32_t> light_offsets;
+
+	mem::Memory shadow_pass_texture;
 	mem::Memory depth_memory;
 
 	std::unique_ptr<mem::Pool> ubo_pool;
 	std::unique_ptr<mem::Pool> texture_pool;
+	std::unique_ptr<mem::Pool> shadowmap_pool;
 
 	std::vector<std::vector<VkDescriptorSet>> ubo_sets;
 	
 	//game object -> mesh -> swapchain image
 	std::vector<std::vector<std::vector<VkDescriptorSet>>> texture_sets;
+	VkDescriptorSet shadowmap_set;
 
 	VkCommandPool command_pool;
 	std::vector<VkCommandBuffer> command_buffers;
@@ -116,7 +128,17 @@ private:
 	std::vector<VkDeviceSize> ubo_offsets; //holds the offset data for a objects ubo information within the uniform buffer
 	std::vector<std::vector<mem::Memory*>> texture_images;
 
+	VkSampler shadowmap_sampler;
+
 	size_t current_frame = 0;
+
+	VkDescriptorSetLayout light_layout;
+
+	bool not_created;
+
+	//not sure why these numbers are the best
+	uint32_t shadowmap_width = 2048;
+	uint32_t shadowmap_height = 2048;
 
 private:
 	void create_graphics_pipeline();
@@ -134,9 +156,14 @@ private:
 	void create_swapchain();
 	void create_depth_resources();
 	void create_frame_buffers();
+	void create_shadowpass_buffer();
+	void create_depth_buffer();
 	void create_colour_image_views();
 	void create_texture_sampler();
 	void create_render_pass();
+	void create_shadowpass();
+	void create_shadowpass_resources();
+	void create_shadowpass_pipeline();
 	VkShaderModule create_shader_module(std::vector<char> shaderCode);
 	std::vector<char> read_file(const std::string& filename);
 	VkPipelineShaderStageCreateInfo fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
@@ -146,6 +173,16 @@ private:
 	void transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, mem::Memory* image);
 	void create_texture_image(aiString texturePath, size_t object, size_t texture_set);
 	void write_to_texture_set(std::vector<VkDescriptorSet> texture_sets, mem::Memory* image);
+	void create_shadowmap_set();
+	void create_shadowmap_layout();
+	void create_shadowmap_pool();
+	void create_shadowmap_sampler();
+	void write_to_shadowmap_set();
+	void run_shadowpass(std::vector<GameObject*> game_objects);
+	void generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 position, std::vector<GameObject*> game_objects);
+	void create_light_set(UniformBufferObject ubo);
+	void create_light_layout();
+	void update_light_set(UniformBufferObject ubo);
 private:
 	void destroy_draw();
 
@@ -158,7 +195,7 @@ private:
 private:
 	mem::Memory vertex_buffer;
 	mem::Memory index_buffer;
-	mem::Memory uniform_buffer;
+	mem::SearchBuffer uniform_buffer;
 private:
 	void create_uniform_buffer();
 	void create_vertex_buffer();

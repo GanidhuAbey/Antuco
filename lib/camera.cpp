@@ -5,6 +5,7 @@ using namespace tuco;
 
 Camera::Camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up, float yfov, float aspect_ratio, float near, float far) {
 	orientation = up;
+	point_of_focus = target + eye;
 	//need to construct some matrices to represent this camera
 	modelToCamera = construct_world_to_camera(eye, target, up);
 	cameraToScreen = perspective_projection(yfov, aspect_ratio, near, far);
@@ -15,7 +16,6 @@ Camera::~Camera() {}
 void Camera::update(glm::vec3 camera_pos, glm::vec3 camera_face) {
 	modelToCamera = construct_world_to_camera(camera_pos, camera_face, orientation);
 }
-
 
 /// <summary>
 /// constructs a matrix to translate objects from world space to space relative to the camera. since the camera can't exist and we can only ever see straight down the -z axis
