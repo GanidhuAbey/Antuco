@@ -15,6 +15,8 @@
 
 #include <stdexcept>
 
+#include <glm/ext.hpp>
+
 
 const std::string GET_SHADER_PATH = "../../../shaders/";
 
@@ -309,7 +311,7 @@ void GraphicsImpl::create_shadowpass() {
     subpass.colorAttachmentCount = 0;
     subpass.pDepthStencilAttachment = &shadowpass_ref;
 
-    std::array<VkSubpassDependency, 2> dependencies;
+    std::vector<VkSubpassDependency> dependencies(2);
 
     dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
     dependencies[0].dstSubpass = 0;
@@ -596,9 +598,9 @@ void GraphicsImpl::create_texture_layout() {
 std::vector<char> GraphicsImpl::read_file(const std::string& filename) {
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
-    if (!file.is_open()) {
-        printf("could not open file \n");
-        throw std::runtime_error("could not open file");
+    if (!file.is_open()) { 
+        std::cout << "could not find file at " << filename << std::endl; 
+        throw std::runtime_error("could not open file \n");
     }
 
     size_t fileSize = (size_t)file.tellg();
@@ -731,10 +733,10 @@ void GraphicsImpl::create_shadowpass_pipeline() {
     rasterizationInfo.lineWidth = 1.0f;
     rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
     rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
-    rasterizationInfo.depthBiasEnable = VK_FALSE;
-    rasterizationInfo.depthBiasConstantFactor = 0.0f; // Optional
+    rasterizationInfo.depthBiasEnable = VK_TRUE;
+    rasterizationInfo.depthBiasConstantFactor = 1.0f; // Optional
     rasterizationInfo.depthBiasClamp = 0.0f; // Optional
-    rasterizationInfo.depthBiasSlopeFactor = 0.0f; // Optional
+    rasterizationInfo.depthBiasSlopeFactor = 1.75f; // Optional
 
     VkPipelineMultisampleStateCreateInfo multisampling{};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -779,12 +781,13 @@ void GraphicsImpl::create_shadowpass_pipeline() {
 
     VkDynamicState dynamicStates[] = {
         VK_DYNAMIC_STATE_VIEWPORT,
-        VK_DYNAMIC_STATE_SCISSOR
+        VK_DYNAMIC_STATE_SCISSOR,
+        VK_DYNAMIC_STATE_DEPTH_BIAS,
     };
 
     VkPipelineDynamicStateCreateInfo dynamicInfo{};
     dynamicInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicInfo.dynamicStateCount = 2;
+    dynamicInfo.dynamicStateCount = sizeof(dynamicStates) / sizeof(VkDynamicState);
     dynamicInfo.pDynamicStates = dynamicStates;
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -1174,7 +1177,7 @@ void GraphicsImpl::generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 positi
     glm::vec3 direction = glm::vec3(0.0, 0.0, 0.0);
 	//create three orthogonal vectors to define a transformation that will take us from camera space to world space
 	glm::vec3 eye = position;
-	glm::vec3 up = glm::vec3(0, -1, 0);
+	glm::vec3 up = glm::vec3(0, 0, -1);
 
 	glm::vec3 look_at = glm::normalize(direction - eye);
 	glm::vec3 right = glm::normalize(glm::cross(look_at, up));
@@ -1187,30 +1190,8 @@ void GraphicsImpl::generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 positi
 
 	//these three vectors can define the transformation from camera to world, but we need to inverse it to get world to camera
 	//this inverse will need to be multiplied by a translation that accounts for the location of the camera
-	glm::mat4 inverse = {
-		right.x, right.y, right.z, -glm::dot(right, eye),
-		up.x, up.y, up.z, -glm::dot(up, eye),
-		look_at.x, look_at.y, look_at.z, -glm::dot(look_at, eye),
-		0, 0, 0, 1
-	};
-
-    glm::mat4 world_to_light = glm::transpose(inverse);
-
-	float angle = 45.0f;
-	float aspect = 1.0f;
-	float n = 1.0f;
-	float f = 96.0f;
-
-	double c = 1.0 / (glm::tan(glm::radians(angle) / 2));
-
-	glm::mat4 projection = {
-		c / aspect, 0, 0, 0,
-		0, c, 0, 0,
-		0, 0, -(f + n) / (f - n), -(2 * f * n) / (f - n),
-		0, 0, -1, 0,
-	};
-
-    glm::mat4 light_perspective = glm::transpose(projection);
+    glm::mat4 world_to_light = glm::lookAt(position, direction, up);
+    glm::mat4 light_perspective = glm::perspective(glm::radians(45.0f), 1.0f, 1.0f, 96.0f);
 
     //generate ubo set for each object on the screen.
     for (size_t i = 0; i < game_objects.size(); i++) {
@@ -1226,6 +1207,8 @@ void GraphicsImpl::generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 positi
         }
         update_uniform_buffer(light_offsets[i], ubo);
     }
+    //TODO: what happens when new objects are added?
+    //      need to update method
     not_created = false;
 }
 
@@ -1347,10 +1330,9 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		//time for the draw calls
 		const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offsets);
-		vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-
-        //vkCmdSetDepthBias()
+        vkCmdSetDepthBias(command_buffers[i], 1.0f, 0.0f, 1.75f);
 
 		//universal to every object so i can push the light constants before the for loop
 		//vkCmdPushConstants(shadowpass_render, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);

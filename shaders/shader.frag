@@ -20,8 +20,23 @@ in vec4 gl_FragCoord;
 //going to hard code this values to check for now but will edit them once the effect
 //is working as intended
 
-float near = 1.0;
-float far = 96.0;
+//returns 0 if in shadow, otherwise 1
+float check_shadow(vec3 light_view) {
+  float pixel_depth = light_view.z;
+  //check if pixel_depth can sample closest depth
+  if ((pixel_depth < 1.0) && (pixel_depth > -1.0)) {
+    //then closest depth must be a valid value, so now we need to clamp to 0 or 1
+    float closest_depth = texture(shadowmap, light_view.st).r; 
+    if ((closest_depth - (pixel_depth - 0.01)) > 0) {
+      return 1.0;
+    }
+    else {
+      return 0.0;
+    }
+  }
+  //else lets leave it partially lit
+  return 0.5;
+}
 
 void main() {
     //get vector of light
@@ -35,24 +50,16 @@ void main() {
     //now sample the depth at that screen coordinate
 
     //analyze depth at the given coordinate of the object
-    float depth_from_light = (light_perspective.z / light_perspective.w);
-
     float light_dist = length(pfc.lightPosition - vec3(vPos));
 
     //check z_buffer depth at this pixel location
     //the actual problem now is that im not sampling the texture correctly
     
     vec4 sample_value = light_perspective * (1/light_perspective.w);
-    float closest_to_light = (texture(shadowmap, vec2(sample_value))).r;
+    //float closest_to_light = (texture(shadowmap, sample_value.st)).r;
 
-    //float fragment_depth = (1/(far-near))*(light_perspective.z - near);
+    //just solve it first, and then solve it well
+    float shadow_factor = check_shadow(vec3(sample_value));
 
-    float shadow_factor =  closest_to_light - sample_value.z;
-
-    if (shadow_factor < 0) {
-      outColor = vec4(1.0, 0.0, 0.0, 1.0);
-    }
-    else {
-      outColor = vec4(0.0, 1.0, 0.0, 1.0);
-    }
+    outColor = vec4(vec3(1.0, 1.0, 1.0) * shadow_factor, 1.0);
 }

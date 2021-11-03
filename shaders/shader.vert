@@ -31,12 +31,20 @@ mat4 mapping_matrix = mat4(
     0, 0, 0, 1
 );
 
+
+//NOTE: MATRICES IN GLSL ARE READ AS ROW MAJOR, AND NOT COLUMN MAJOR!!!!!
+const mat4 biasMat = mat4( 
+	0.5, 0.0, 0.0, 0.0,
+	0.0, 0.5, 0.0, 0.0,
+	0.0, 0.0, 1.0, 0.0,
+	0.5, 0.5, 0.0, 1.0 );
+
 void main() {
 
     gl_Position =  ubo.projection * ubo.worldToCamera * ubo.modelToWorld * vec4(inPosition, 1.0); //opengl automatically divids the components of the vector by 'w'
 
     surfaceNormal = vec3(ubo.modelToWorld * vec4(inNormal, 1.0));
     vPos = ubo.modelToWorld * vec4(inPosition, 1.0);
-    light_perspective = lbo.projection * lbo.world_to_light * lbo.model_to_world * vec4(inPosition, 1.0);
+    light_perspective = biasMat * lbo.projection * lbo.world_to_light * lbo.model_to_world * vec4(inPosition, 1.0);
     texCoord = inTexCoord;
 }
