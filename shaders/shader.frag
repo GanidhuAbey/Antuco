@@ -27,7 +27,7 @@ float check_shadow(vec3 light_view) {
   //then closest depth must be a valid value, so now we need to clamp to 0 or 1
   float closest_depth = texture(shadowmap, light_view.st).r; 
 
-  float in_shadow = ceil(closest_depth - (pixel_depth - 0.01));
+  float in_shadow = ceil(closest_depth - pixel_depth);
   return in_shadow;
 }
 

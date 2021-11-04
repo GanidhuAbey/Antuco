@@ -1065,6 +1065,7 @@ void GraphicsImpl::destroy_draw() {
     }
 
     ubo_pool->destroyPool(device);
+    shadowmap_pool->destroyPool(device);
     texture_pool->destroyPool(device);
 
     mem::destroyBuffer(device, vertex_buffer);
@@ -1072,24 +1073,34 @@ void GraphicsImpl::destroy_draw() {
     mem::destroyBuffer(device, index_buffer);
     
     vkDestroyCommandPool(device, command_pool, nullptr);
+    
+    vkDestroyPipelineLayout(device, shadowpass_layout, nullptr);
+    vkDestroyPipeline(device, shadowpass_pipeline, nullptr);
 
     vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
     vkDestroyPipeline(device, graphics_pipeline, nullptr);
-
+    
+    vkDestroyRenderPass(device, shadowpass, nullptr);
     vkDestroyRenderPass(device, render_pass, nullptr);
 
     vkDestroyDescriptorSetLayout(device, ubo_layout, nullptr);
+    vkDestroyDescriptorSetLayout(device, light_layout, nullptr);
+    vkDestroyDescriptorSetLayout(device, shadowmap_layout, nullptr);
     vkDestroyDescriptorSetLayout(device, texture_layout, nullptr);
 
     vkDestroySampler(device, texture_sampler, nullptr);
+    vkDestroySampler(device, shadowmap_sampler, nullptr);
 
     for (int i = 0; i < swapchain_framebuffers.size(); i++) {
         vkDestroyFramebuffer(device, swapchain_framebuffers[i], nullptr);
 
     }
+    vkDestroyFramebuffer(device, shadowpass_buffer, nullptr);
 
     mem::destroyImage(device, depth_memory);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
+    //will need to destroy multiple later
+    mem::destroyImage(device, shadow_pass_texture);
 }
 
 VkSurfaceFormatKHR choose_best_format(std::vector<VkSurfaceFormatKHR> formats) {
@@ -1283,7 +1294,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offsets);
         vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-        vkCmdSetDepthBias(command_buffers[i], 1.0f, 0.0f, 1.75f);
+        vkCmdSetDepthBias(command_buffers[i], 5.0f, 0.0f, 1.75f);
 
 		//universal to every object so i can push the light constants before the for loop
 		//vkCmdPushConstants(shadowpass_render, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
