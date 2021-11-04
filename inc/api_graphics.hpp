@@ -140,6 +140,8 @@ private:
 	uint32_t shadowmap_width = 2048;
 	uint32_t shadowmap_height = 2048;
 
+	std::vector<GameObject*>* recent_objects;
+
 private:
 	void create_graphics_pipeline();
 	void create_ubo_layout();
@@ -179,6 +181,8 @@ private:
 	void write_to_shadowmap_set();
 	void create_light_set(UniformBufferObject ubo);
 	void create_light_layout();
+	void cleanup_swapchain();
+	void recreate_swapchain();
 private:
 	void destroy_draw();
 

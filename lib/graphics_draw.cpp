@@ -1244,6 +1244,8 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
     //push all my command buffers into an exectute stage.
     //TODO: multithread this process
+    //[HOLD] - not going to do this probably, if I implement it now, when deffered shading is implemented i'd have to scrap
+    //         it anyways
 
     for (size_t i = 0; i < command_buffers.size(); i++) {
         VkCommandBufferBeginInfo beginInfo{};
@@ -1523,7 +1525,6 @@ void GraphicsImpl::copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer, V
     //transfer between buffers
     VkBufferCopy copyData{};
     copyData.srcOffset = 0;
-    //TODO: need to allocate memory and choose a proper offset for this
     copyData.dstOffset = dst_offset;
     copyData.size = data_size;
 
@@ -1589,7 +1590,40 @@ void GraphicsImpl::update_uniform_buffer(VkDeviceSize memory_offset, UniformBuff
     uniform_buffer.write(device, memory_offset, sizeof(ubo), &ubo);
 }
 
+/// <summary>
+/// When called, this function will destroy all objects associated with the swapchain.
+/// </summary>
+void GraphicsImpl::cleanup_swapchain() {
+    vkDeviceWaitIdle(device);
 
+    for (const auto& frame_buffer : swapchain_framebuffers) {
+        vkDestroyFramebuffer(device, frame_buffer, nullptr);
+    }
+
+    for (size_t i = 0; i < swapchain_images.size(); i++) {
+        vkDestroyImageView(device, swapchain_image_views[i], nullptr);
+    }
+ 
+    mem::destroyImage(device, depth_memory);
+    vkDestroyRenderPass(device, render_pass, nullptr);
+    vkDestroySwapchainKHR(device, swapchain, nullptr);
+}
+
+/// <summary>
+/// When called, this function create all necesarry objects for the swapchain
+/// </summary>
+void GraphicsImpl::recreate_swapchain() {
+    create_swapchain();
+    create_depth_resources();
+    create_colour_image_views();
+    create_render_pass();
+    create_frame_buffers();
+        
+    //this part is the kinda annoying part...
+    //we basically have to store a copy of the game_objects in the scene which doesn't seem that great
+    //il try storing a pointer instead i guess?
+    create_command_buffers(*recent_objects);
+}
 
 void GraphicsImpl::draw_frame() {
     //make sure that the current frame thats being drawn in parallel is available
@@ -1599,15 +1633,6 @@ void GraphicsImpl::draw_frame() {
 
     VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, image_available_semaphores[current_frame], VK_NULL_HANDLE, &nextImage);
 
-    /* Window Resizing Functionality: will implement after finishing rendering TODO
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-        cleanupSwapChain(false);
-        //VkSwapchainKHR oldSwapChain = swapChain;
-        recreateSwapChain();
-
-        return;
-    }
-    */
     if (result != VK_SUCCESS) {
         throw std::runtime_error("could not aquire image from swapchain");
     }
@@ -1653,14 +1678,9 @@ void GraphicsImpl::draw_frame() {
 
     VkResult presentResult = vkQueuePresentKHR(present_queue, &presentInfo);
 
-    /*
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-        cleanupSwapChain(false);
-        recreateSwapChain();
-    }
-    */
-    if (result != VK_SUCCESS) {
-        throw std::runtime_error("failed to present swap chain image!");
+    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR) {
+        cleanup_swapchain();
+        recreate_swapchain();
     }
 
     current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;

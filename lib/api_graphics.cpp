@@ -70,6 +70,9 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 	//we need to create some command buffers
 	//update vertex and index buffers
 
+	//store a pointer of all the objects in the scene, in case we have to render the image again for whatever reason
+	recent_objects = &game_objects;
+
 	bool update_command_buffers = false;
 	for (size_t i = 0; i < game_objects.size(); i++) {
 
