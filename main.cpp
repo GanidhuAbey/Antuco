@@ -36,7 +36,7 @@ int main() {
 		
 	//create some light for the scene
 	//TODO: implement debug mode where we'll render light with mesh
-	tuco::Light* light = antuco.create_light(glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
+	tuco::Light* light = antuco.create_light(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
 
 	//create a simple game object
 	tuco::GameObject* another = antuco.create_object();
@@ -54,7 +54,7 @@ int main() {
 	another->scale(glm::vec3(5, 0.1, 5));
 	
 	some_object->add_mesh("objects/test_object/white.obj"); //will hope texture data is located within model data.
-	some_object->scale(glm::vec3(0.1, 0.1, 0.1));
+	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
 	printf("hi there again \n");
 
 	another->translate(glm::vec3(0, -1, 0));	
@@ -78,7 +78,10 @@ int main() {
 	//lock cursor
 	window->lock_cursor();
 
+	float timer = 0.0f;
+
 	while (game_loop) {
+		timer += 0.0001f;
 		//query mouse position
 		double offset_x = (x_pos - p_xpos) * MOUSE_SENSITIVITY;
 		double offset_y = (y_pos - p_ypos) * MOUSE_SENSITIVITY;
@@ -114,8 +117,15 @@ int main() {
 		}
 
 		//printf("camera_pos: <%f, %f, %f> \n", camera_pos.x, camera_pos.y, camera_pos.z);
-
-		//light->update(glm::vec3(0.0001, 0.0, 0.0));
+		
+		//there seems to be a very glitchy looking shadow that pops for a frame or two right when the 
+		//light goes off the surface and right when its about to re-enter. My assumption is that this is occuring
+		//right when the light source is at its boundary in the near plane and is beginning to see everythin at the same depth.
+		//it might be helpful to incease our depth bias constant to compensate for this.
+		float light_x = glm::cos(glm::radians(timer * 360.0f)) * 40.0f;
+		float light_y = glm::sin(glm::radians(timer * 360.0f)) * 20.0f - 10.0f;
+		float light_z = glm::sin(glm::radians(timer * 360.0f)) * 5.0f + 5.0f;
+		light->update(glm::vec3(light_x, light_y, light_z));
 
 		//render the objects onto the screen
 		main_camera->update(camera_pos, camera_face);

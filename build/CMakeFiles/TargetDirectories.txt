@@ -1,4 +1,0 @@
-C:/Users/Ganidhu/Desktop/test/Antuco/build/CMakeFiles/required_libs.dir
-C:/Users/Ganidhu/Desktop/test/Antuco/build/CMakeFiles/main.dir
-C:/Users/Ganidhu/Desktop/test/Antuco/build/CMakeFiles/ALL_BUILD.dir
-C:/Users/Ganidhu/Desktop/test/Antuco/build/CMakeFiles/ZERO_CHECK.dir

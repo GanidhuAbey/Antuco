@@ -24,18 +24,11 @@ in vec4 gl_FragCoord;
 float check_shadow(vec3 light_view) {
   float pixel_depth = light_view.z;
   //check if pixel_depth can sample closest depth
-  if ((pixel_depth < 1.0) && (pixel_depth > -1.0)) {
-    //then closest depth must be a valid value, so now we need to clamp to 0 or 1
-    float closest_depth = texture(shadowmap, light_view.st).r; 
-    if ((closest_depth - (pixel_depth - 0.01)) > 0) {
-      return 1.0;
-    }
-    else {
-      return 0.0;
-    }
-  }
-  //else lets leave it partially lit
-  return 0.5;
+  //then closest depth must be a valid value, so now we need to clamp to 0 or 1
+  float closest_depth = texture(shadowmap, light_view.st).r; 
+
+  float in_shadow = ceil(closest_depth - (pixel_depth - 0.01));
+  return in_shadow;
 }
 
 void main() {
@@ -61,5 +54,5 @@ void main() {
     //just solve it first, and then solve it well
     float shadow_factor = check_shadow(vec3(sample_value));
 
-    outColor = vec4(vec3(1.0, 1.0, 1.0) * shadow_factor, 1.0);
+    outColor = vec4(vec3(texture(texture1, texCoord)) * shadow_factor, 1.0);
 }

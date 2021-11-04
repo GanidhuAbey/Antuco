@@ -83,7 +83,7 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		UniformBufferObject lbo;
 
 		lbo.modelToWorld = ubo.modelToWorld;
-		lbo.worldToCamera = glm::lookAt(glm::vec3(light.position), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 1.0));
+		lbo.worldToCamera = glm::lookAt(glm::vec3(light.position), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
 		lbo.projection = glm::perspective(glm::radians(45.0f), 1.0f, 1.0f, 96.0f); //hard coding this values may cause problems, but for now it should be fine
 
 		if (game_objects[i]->update) {
