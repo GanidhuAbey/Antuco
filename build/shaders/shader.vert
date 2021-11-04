@@ -32,12 +32,11 @@ mat4 mapping_matrix = mat4(
 );
 
 
-//NOTE: MATRICES IN GLSL ARE READ AS ROW MAJOR, AND NOT COLUMN MAJOR!!!!!
 const mat4 biasMat = mat4( 
-	0.5, 0.0, 0.0, 0.0,
-	0.0, 0.5, 0.0, 0.0,
+	0.5, 0.0, 0.0, 0.5,
+	0.0, 0.5, 0.0, 0.5,
 	0.0, 0.0, 1.0, 0.0,
-	0.5, 0.5, 0.0, 1.0 );
+	0.0, 0.0, 0.0, 1.0 );
 
 void main() {
 

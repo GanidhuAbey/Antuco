@@ -146,7 +146,6 @@ private:
 	void create_ubo_pool();
 	void create_ubo_set();
 	void create_texture_layout();
-	void create_texture_image(aiString texturePath);
 	void create_texture_pool();
 	void create_texture_set(size_t mesh_count);
 	void create_command_buffers(std::vector<GameObject*> game_objects);
@@ -178,11 +177,8 @@ private:
 	void create_shadowmap_pool();
 	void create_shadowmap_sampler();
 	void write_to_shadowmap_set();
-	void run_shadowpass(std::vector<GameObject*> game_objects);
-	void generate_light_ubo(glm::vec3 point_of_focus, glm::vec3 position, std::vector<GameObject*> game_objects);
 	void create_light_set(UniformBufferObject ubo);
 	void create_light_layout();
-	void update_light_set(UniformBufferObject ubo);
 private:
 	void destroy_draw();
 

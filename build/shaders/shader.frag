@@ -20,6 +20,9 @@ in vec4 gl_FragCoord;
 //going to hard code this values to check for now but will edit them once the effect
 //is working as intended
 
+float near = 1.0;
+float far = 96.0;
+
 //returns 0 if in shadow, otherwise 1
 float check_shadow(vec3 light_view) {
   float pixel_depth = light_view.z;
@@ -27,7 +30,7 @@ float check_shadow(vec3 light_view) {
   if ((pixel_depth < 1.0) && (pixel_depth > -1.0)) {
     //then closest depth must be a valid value, so now we need to clamp to 0 or 1
     float closest_depth = texture(shadowmap, light_view.st).r; 
-    if ((closest_depth - (pixel_depth - 0.01)) > 0) {
+    if ((closest_depth - pixel_depth + 0.01) >= 0) {
       return 1.0;
     }
     else {
@@ -50,6 +53,8 @@ void main() {
     //now sample the depth at that screen coordinate
 
     //analyze depth at the given coordinate of the object
+    float depth_from_light = (light_perspective.z / light_perspective.w);
+
     float light_dist = length(pfc.lightPosition - vec3(vPos));
 
     //check z_buffer depth at this pixel location
@@ -61,5 +66,5 @@ void main() {
     //just solve it first, and then solve it well
     float shadow_factor = check_shadow(vec3(sample_value));
 
-    outColor = vec4(vec3(1.0, 1.0, 1.0) * shadow_factor, 1.0);
+    outColor = vec4(vec3(texture(texture1, texCoord)) * shadow_factor, 1.0);
 }

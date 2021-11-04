@@ -1,52 +1,52 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="C:\Users\Ganidhu\Desktop\Antuco\lib\antuco.cpp">
+    <ClCompile Include="C:\Users\Ganidhu\Desktop\test\Antuco\lib\antuco.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Ganidhu\Desktop\Antuco\lib\api_graphics.cpp">
+    <ClCompile Include="C:\Users\Ganidhu\Desktop\test\Antuco\lib\api_graphics.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Ganidhu\Desktop\Antuco\lib\api_window.cpp">
+    <ClCompile Include="C:\Users\Ganidhu\Desktop\test\Antuco\lib\api_window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Ganidhu\Desktop\Antuco\lib\camera.cpp">
+    <ClCompile Include="C:\Users\Ganidhu\Desktop\test\Antuco\lib\camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Ganidhu\Desktop\Antuco\lib\game_objects.cpp">
+    <ClCompile Include="C:\Users\Ganidhu\Desktop\test\Antuco\lib\game_objects.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Ganidhu\Desktop\Antuco\lib\graphics.cpp">
+    <ClCompile Include="C:\Users\Ganidhu\Desktop\test\Antuco\lib\graphics.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Ganidhu\Desktop\Antuco\lib\graphics_draw.cpp">
+    <ClCompile Include="C:\Users\Ganidhu\Desktop\test\Antuco\lib\graphics_draw.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Ganidhu\Desktop\Antuco\lib\graphics_initialize.cpp">
+    <ClCompile Include="C:\Users\Ganidhu\Desktop\test\Antuco\lib\graphics_initialize.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Ganidhu\Desktop\Antuco\lib\light.cpp">
+    <ClCompile Include="C:\Users\Ganidhu\Desktop\test\Antuco\lib\light.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Ganidhu\Desktop\Antuco\lib\memory_allocator.cpp">
+    <ClCompile Include="C:\Users\Ganidhu\Desktop\test\Antuco\lib\memory_allocator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Ganidhu\Desktop\Antuco\lib\mesh.cpp">
+    <ClCompile Include="C:\Users\Ganidhu\Desktop\test\Antuco\lib\mesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Ganidhu\Desktop\Antuco\lib\model.cpp">
+    <ClCompile Include="C:\Users\Ganidhu\Desktop\test\Antuco\lib\model.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Ganidhu\Desktop\Antuco\lib\window.cpp">
+    <ClCompile Include="C:\Users\Ganidhu\Desktop\test\Antuco\lib\window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\Ganidhu\Desktop\Antuco\CMakeLists.txt" />
+    <CustomBuild Include="C:\Users\Ganidhu\Desktop\test\Antuco\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">
-      <UniqueIdentifier>{5E9EAC29-D50E-32CD-848E-7E47B3E2D742}</UniqueIdentifier>
+      <UniqueIdentifier>{AEFD6B1C-AA7B-383F-9657-845F7A8391A9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

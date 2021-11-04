@@ -4,6 +4,7 @@
 #include <cstring>
 using namespace mem;
 
+
 SearchBuffer::SearchBuffer() {}
 SearchBuffer::~SearchBuffer() {}
 
@@ -76,7 +77,11 @@ void SearchBuffer::write(VkDevice device, VkDeviceSize offset, VkDeviceSize data
 void SearchBuffer::free(VkDeviceSize offset) {
 }
 
-StackBuffer::StackBuffer(VkPhysicalDevice physical_device, VkDevice device, BufferCreateInfo* p_buffer_info) {
+StackBuffer::StackBuffer() {}
+
+StackBuffer::~StackBuffer() {}
+
+void StackBuffer::init(VkPhysicalDevice physical_device, VkDevice device, BufferCreateInfo* p_buffer_info) { 
     //create buffer 
     VkBufferCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -115,22 +120,28 @@ StackBuffer::StackBuffer(VkPhysicalDevice physical_device, VkDevice device, Buff
 
     buffer_size = p_buffer_info->size;
     offset = 0;
+
+    //store device as a pointer for destruction
+    p_device = &device;
 }
 
 VkDeviceSize StackBuffer::allocate(VkDeviceSize allocation_size) {
     if (allocation_size > buffer_size) {
         //not sure how to handle this case right now
-        printf("COULD ALLOCATE INTO BUFFER, OUT OF SPACE \n");
+        //will most likely need to create new vertex buffer, copy all the old data, and 
+        //destroy the old buffer.
+        printf("COULD NOT ALLOCATE INTO BUFFER, OUT OF SPACE \n");
         return 0;
     }
     buffer_size -= allocation_size;
     VkDeviceSize push_to = offset;
     offset += allocation_size;
-    allocations.push_back(allocation_size);
+    allocations.push_back(offset);
 
     return push_to;
 }
 
+//TODO: we can use a hash
 void StackBuffer::free(VkDeviceSize delete_offset) {
     //the only thing the user would have at this point is the offset
     VkDeviceSize current_offset = 0;

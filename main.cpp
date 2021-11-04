@@ -36,7 +36,7 @@ int main() {
 		
 	//create some light for the scene
 	//TODO: implement debug mode where we'll render light with mesh
-	tuco::Light* light = antuco.create_light(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(1.0, 1.0, 1.0));
+	tuco::Light* light = antuco.create_light(glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
 
 	//create a simple game object
 	tuco::GameObject* another = antuco.create_object();
@@ -47,13 +47,15 @@ int main() {
 	//light_mesh->translate(glm::vec3(0.0f, 4.0f, 0.0f));
 	//light_mesh->scale(glm::vec3(0.1, 0.1, 0.1));
 
-	auto t1 = TIME_IT;	
+	auto t1 = TIME_IT;
+	printf("hellow \n");
 	another->add_mesh("objects/test_object/with_texture.obj");
+	printf("hey there \n");
 	another->scale(glm::vec3(5, 0.1, 5));
 	
 	some_object->add_mesh("objects/test_object/white.obj"); //will hope texture data is located within model data.
 	some_object->scale(glm::vec3(0.1, 0.1, 0.1));
-
+	printf("hi there again \n");
 
 	another->translate(glm::vec3(0, -1, 0));	
 	auto t2 = TIME_IT;
@@ -113,7 +115,7 @@ int main() {
 
 		//printf("camera_pos: <%f, %f, %f> \n", camera_pos.x, camera_pos.y, camera_pos.z);
 
-		light->update(glm::vec3(0.0001, 0.0, 0.0));
+		//light->update(glm::vec3(0.0001, 0.0, 0.0));
 
 		//render the objects onto the screen
 		main_camera->update(camera_pos, camera_face);
