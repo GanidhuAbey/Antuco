@@ -29,7 +29,7 @@ x86/
 bld/
 build/
 CMakeFiles/
-external_include/
+external_include/*
 [Bb]in/
 [Oo]bj/
 [Oo]ut/
