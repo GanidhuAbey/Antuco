@@ -19,6 +19,8 @@ void Graphics::update_camera(glm::mat4 world_to_camera, glm::mat4 projection) {
 }
 
 void Graphics::update_light(glm::vec3 color, glm::vec3 position, glm::vec3 point_of_focus, std::vector<GameObject*> game_objects) {
+	//TODO: we aren't dealing with lighting all that seriously right now so we are just gonna disable this while we work on shadowmaps
+	//		leaving this todo to comeback to this after i implemented multiple shadowmaps
 	pGraphics->update_light(glm::vec4(color, 0.0), glm::vec4(position, 1.0), point_of_focus, game_objects);
 }
 

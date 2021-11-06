@@ -38,7 +38,14 @@
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
-      "inheritEnvironments": [ "clang_cl_x64_x64" ]
+      "inheritEnvironments": [ "clang_cl_x64_x64" ],
+      "variables": [
+        {
+          "name": "VULKAN_SDK",
+          "value": "C:/VulkanSDK/1.2.189.0",
+          "type": "FILEPATH"
+        }
+      ]
     }
   ]
 }

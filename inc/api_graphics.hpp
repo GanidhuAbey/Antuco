@@ -112,6 +112,9 @@ private:
 	mem::Memory shadow_pass_texture;
 	mem::Memory depth_memory;
 
+	//this will be the shadowmap atlas that will contain all the shadowmap data for the scene
+	mem::Memory shadowmap_atlas;
+
 	std::unique_ptr<mem::Pool> ubo_pool;
 	std::unique_ptr<mem::Pool> texture_pool;
 	std::unique_ptr<mem::Pool> shadowmap_pool;

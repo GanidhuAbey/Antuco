@@ -188,7 +188,6 @@ void GraphicsImpl::create_shadowpass_resources() {
 	createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
 	//deciding on how many layers are in the image, and if we're using any mipmap levels.
-	//TODO: come back here when you know what those mean
 	//layers are used for steroscopic 3d applications in which you would provide multiple images to each eye, creating a 3D effect.
 	//mipmap levels are an optimization made so that lower quality textures are used when further away to save resources.
 	createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -239,7 +238,6 @@ void GraphicsImpl::create_depth_resources() {
     createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
     //deciding on how many layers are in the image, and if we're using any mipmap levels.
-    //TODO: come back here when you know what those mean
     //layers are used for steroscopic 3d applications in which you would provide multiple images to each eye, creating a 3D effect.
     //mipmap levels are an optimization made so that lower quality textures are used when further away to save resources.
     createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -275,7 +273,6 @@ void GraphicsImpl::create_colour_image_views() {
         createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
         //deciding on how many layers are in the image, and if we're using any mipmap levels.
-        //TODO: come back here when you know what those mean
         //layers are used for steroscopic 3d applications in which you would provide multiple images to each eye, creating a 3D effect.
         //mipmap levels are an optimization made so that lower quality textures are used when further away to save resources.
         createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -369,11 +366,10 @@ void GraphicsImpl::create_render_pass() {
     //this is too make after the rendering too screen is done makes sure the rendered contents aren't cleared and are still readable.
     colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-    //TODO: dont know much about stencilling, seems to be something about colouring in the image from a different layer?
+    //NOTE: dont know much about stencilling, seems to be something about colouring in the image from a different layer?
     colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
-    //TODO: what does the undefined here mean? that it can be anything?
     //"The initialLayout specifies which layout the image will have before the render pass begins" - vulkan tutorial
     //"Using VK_IMAGE_LAYOUT_UNDEFINED for initialLayout means that we don't care what previous layout the image was in" - vulkan tutorial
     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; //the other subpass does not affect the layout of the image this subpass uses.
@@ -729,7 +725,6 @@ void GraphicsImpl::create_shadowpass_pipeline() {
     rasterizationInfo.depthClampEnable = VK_FALSE;
     rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
     rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
-    //TODO: try to enable the wideLines gpu feature
     rasterizationInfo.lineWidth = 1.0f;
     rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
     rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
@@ -913,7 +908,6 @@ void GraphicsImpl::create_graphics_pipeline() {
     rasterizationInfo.depthClampEnable = VK_FALSE;
     rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
     rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
-    //TODO: try to enable the wideLines gpu feature
     rasterizationInfo.lineWidth = 1.0f;
     rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
     rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;

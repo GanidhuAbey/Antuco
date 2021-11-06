@@ -38,6 +38,8 @@ int main() {
 	//TODO: implement debug mode where we'll render light with mesh
 	tuco::Light* light = antuco.create_light(glm::vec3(5.0f, 10.0f, 3.0f), glm::vec3(1.0, 1.0, 1.0));
 
+	tuco::Light* another_light = antuco.create_light(glm::vec3(0.0, 8.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
+
 	//create a simple game object
 	tuco::GameObject* another = antuco.create_object();
 	tuco::GameObject* some_object = antuco.create_object();
