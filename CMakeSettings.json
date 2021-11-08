@@ -44,6 +44,11 @@
           "name": "VULKAN_SDK",
           "value": "C:/VulkanSDK/1.2.189.0",
           "type": "FILEPATH"
+        },
+        {
+          "name": "EXECUTABLE_OUTPUT_PATH",
+          "value": "C:/Users/Ganidhu/Desktop/Antuco/out/build/x64-Clang-Debug",
+          "type": "PATH"
         }
       ]
     }
