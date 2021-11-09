@@ -24,11 +24,13 @@ add_library(
     ${SOURCES}
 )
 
+find_package(Vulkan)
+
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/assimp" "${CMAKE_CURRENT_SOURCE_DIR}/external/build/assimp")
 
 #these handle the include directores for all my external dependencies, in case one these don't link properly, you can use set
 #an absolute path from your root folder here
-include_directories("${VULKAN_SDK}/Include")
+include_directories("${Vulkan_INCLUDE_DIR}")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glm")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/stb")
@@ -45,6 +47,6 @@ add_executable(main main.cpp)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/external/libraries/assimp-vc142-mtd.dll" "${CMAKE_CURRENT_BINARY_DIR}/assimp-vc142-mtd.dll" COPYONLY)
 
 target_link_libraries(main PRIVATE REQUIRED_LIBRARIES)
-target_link_libraries(main PRIVATE "${VULKAN_SDK}/Lib/vulkan-1.lib")
+target_link_libraries(main PRIVATE "${Vulkan_LIBRARIES}")
 target_link_libraries(main PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/external/libraries/glfw3.lib")
 target_link_libraries(main PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/external/libraries/assimp-vc142-mtd.lib")
