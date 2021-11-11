@@ -29,8 +29,8 @@ void Antuco::init_graphics() {
 }
 
 /* World Object Initalization */
-Light* Antuco::create_light(glm::vec3 light_pos, glm::vec3 light_color) {
-	Light* light = new Light(light_pos, light_color);
+Light* Antuco::create_light(glm::vec3 light_pos, glm::vec3 light_target, glm::vec3 light_color, glm::vec3 up) {
+	Light* light = new Light(light_pos, light_target, light_color, up);
 
 	lights.push_back(light);
 
@@ -57,6 +57,7 @@ GameObject* Antuco::create_object() {
 }
 
 void Antuco::render() {
+	printf("light position is now: < %f | %f | %f > \n", lights[0]->position.x, lights[0]->position.y, lights[0]->position.z);
 	//check and update the camera information
 	//printf("camera position: <%f, %f, %f>", cameras[0]->construct_world_to_camera())
 	/*
@@ -69,7 +70,7 @@ void Antuco::render() {
 	p_graphics->update_camera(cameras[0]->modelToCamera, cameras[0]->cameraToScreen);
 	//check and update the light information
 	//the engine can't handle multiple light sources right now, so we will only use the first light created
-	p_graphics->update_light(lights[0]->color, lights[0]->position, cameras[0]->point_of_focus, objects);
+	p_graphics->update_light(lights);
 
 	//check and update the game object information, this would be where we update the command buffers as neccesary
 	p_graphics->update_draw(objects);

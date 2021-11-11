@@ -58,9 +58,8 @@ void GraphicsImpl::update_camera(glm::mat4 world_to_camera, glm::mat4 projection
 	camera_projection = projection;
 }
 
-void GraphicsImpl::update_light(glm::vec4 color, glm::vec4 position, glm::vec3 point_of_focus, std::vector<GameObject*> game_objects) {
-	light.color = color;
-	light.position = position;
+void GraphicsImpl::update_light(std::vector<Light*> lights) {
+	light_data = lights;
 }
 
 //TODO: with that most of the rendering segments are in place all thats actually left is to implement texturing, and we can begin
@@ -86,8 +85,8 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		UniformBufferObject lbo;
 
 		lbo.modelToWorld = ubo.modelToWorld;
-		lbo.worldToCamera = glm::lookAt(glm::vec3(light.position), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 1.0));
-		lbo.projection = glm::perspective(glm::radians(45.0f), 1.0f, 1.0f, 96.0f); //hard coding this values may cause problems, but for now it should be fine
+		lbo.worldToCamera = light_data[0]->world_to_light;
+		lbo.projection = light_data[0]->perspective;
 
 		if (game_objects[i]->update) {
 			update_command_buffers = true;

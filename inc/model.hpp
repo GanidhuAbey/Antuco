@@ -1,13 +1,5 @@
 #pragma once
 
-//      the current game object inherits the model data, but i don't think this inheritance method plays to the best effects of what
-//      we need. When u think about in inheritance hierachy would model an "is a" structure, and a gameobject is certainly not a 
-//      model so the whole this falls apart.
-
-//TODO: Revise the system so that each game object is created with a "component" model that is empty. the user will call the "add mesh()"
-//      command on the game object which will call the Model class and fill the model component of the game object with model data.
-//      This method would allow us to then access the required model resources from antuco and is far more inline with the
-//      component oriented system from unity that our gameobjects were originally mimicking.
 
 #include "mesh.hpp"
 

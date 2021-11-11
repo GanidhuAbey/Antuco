@@ -21,7 +21,7 @@ private:
 
 	/* World Objects */
 public:
-	Light* create_light(glm::vec3 light_pos, glm::vec3 light_color);
+	Light* create_light(glm::vec3 light_pos, glm::vec3 light_direction, glm::vec3 light_color, glm::vec3 up=glm::vec3(0.0, 1.0, 0.0));
 	Camera* create_camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up, float yfov, float near, float far);
 	GameObject* create_object();
 
@@ -35,6 +35,7 @@ private:
 	std::vector<GameObject*> objects;
 	//the camera at the zeroth index will always be the "main camera"
 	std::vector<Camera*> cameras;
+
 	std::vector<Light*> lights;
 
 	/* Antuco Initalization */

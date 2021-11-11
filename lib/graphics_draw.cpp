@@ -1377,6 +1377,10 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
         //universal to every object so i can push the light constants before the for loop
+        //convert to light_object;
+        LightObject light{};
+        light.position = light_data[0]->position;
+        light.color = light_data[0]->color;
         vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
         //draw first object (cube)
 	    total_indexes = 0;

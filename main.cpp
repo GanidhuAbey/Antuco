@@ -11,6 +11,8 @@ const double MOUSE_SENSITIVITY = 0.1f;
 
 #define TIME_IT std::chrono::high_resolution_clock::now();
 
+const std::string OBJECT_PATH = "../../../";
+
 int main() {
 	//when beginning a new game, one must first create the window, but user should only ever interact with the library wrapper "Antuco_lib"
 	tuco::Antuco& antuco = tuco::Antuco::get_engine();
@@ -19,6 +21,8 @@ int main() {
 
 	//create engine here so the title exists?
 	antuco.init_graphics();
+
+	int never_used = 1;
 
 	//in order to create a scene we need a camera, a light, and a object right?
 
@@ -36,9 +40,10 @@ int main() {
 		
 	//create some light for the scene
 	//TODO: implement debug mode where we'll render light with mesh
-	tuco::Light* light = antuco.create_light(glm::vec3(5.0f, 10.0f, 3.0f), glm::vec3(1.0, 1.0, 1.0));
+	//its kinda hard to determine a direction for a user, much easier for them to give a location to light
+	tuco::Light* light = antuco.create_light(glm::vec3(5.0f, 10.0f, 3.0f), glm::vec3(0.0, 0.0, 0.0), glm::vec3(1.0, 1.0, 1.0));
 
-	tuco::Light* another_light = antuco.create_light(glm::vec3(0.0, 8.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
+	//tuco::Light* another_light = antuco.create_light(glm::vec3(0.0, 8.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
 
 	//create a simple game object
 	tuco::GameObject* another = antuco.create_object();
@@ -51,11 +56,11 @@ int main() {
 
 	auto t1 = TIME_IT;
 	printf("hellow \n");
-	another->add_mesh("objects/test_object/with_texture.obj");
+	another->add_mesh(OBJECT_PATH + "objects/test_object/with_texture.obj");
 	printf("hey there \n");
 	another->scale(glm::vec3(5, 0.1, 5));
 	
-	some_object->add_mesh("objects/test_object/white.obj"); //will hope texture data is located within model data.
+	some_object->add_mesh(OBJECT_PATH + "objects/test_object/white.obj"); //will hope texture data is located within model data.
 	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
 	printf("hi there again \n");
 
@@ -81,6 +86,10 @@ int main() {
 	window->lock_cursor();
 
 	float timer = 0.0f;
+
+
+	//update light position
+	light->update(glm::vec3(3.0f, 0.0f, 0.0f));
 
 	while (game_loop) {
 		timer += 0.0001f;
@@ -128,7 +137,7 @@ int main() {
 		float light_y = glm::sin(glm::radians(timer * 360.0f)) * 20.0f - 10.0f;
 		float light_z = glm::sin(glm::radians(timer * 360.0f)) * 5.0f + 5.0f;
 		//light->update(glm::vec3(0.0f, 5.0f, 0.0f));
-
+		
 		//render the objects onto the screen
 		main_camera->update(camera_pos, camera_face);
 		antuco.render();

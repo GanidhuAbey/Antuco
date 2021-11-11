@@ -33,14 +33,14 @@ public:
 	~GraphicsImpl();
 
 	void update_camera(glm::mat4 world_to_camera, glm::mat4 projection);
-	void update_light(glm::vec4 color, glm::vec4 position, glm::vec3 point_of_focus, std::vector<GameObject*> game_objects);
+	void update_light(std::vector<Light*> lights);
 	void update_draw(std::vector<GameObject*> game_objects);
 
 private:
 	glm::mat4 camera_view;
 	glm::mat4 camera_projection;
 
-	LightObject light;
+	std::vector<Light*> light_data; //a reference to all the light data we need.
 
 //initialize data
 private:
@@ -75,10 +75,30 @@ private:
 
 
 //draw
+
+//shadow map data
+private:
+	uint32_t shadowmap_width = 2048;
+	uint32_t shadowmap_height = 2048;
+
+	VkSampler shadowmap_sampler;	
+	VkDescriptorSetLayout shadowmap_layout;
+
+	VkRenderPass shadowpass;
+
+	VkPipeline shadowpass_pipeline;
+
+	VkPipelineLayout shadowpass_layout;
+	
+	VkFramebuffer shadowpass_buffer;
+
+	mem::Memory shadow_pass_texture;
+	
+	mem::Memory shadowmap_atlas;
+
 private:
 	VkDescriptorSetLayout ubo_layout;
 	VkDescriptorSetLayout texture_layout;
-	VkDescriptorSetLayout shadowmap_layout;
 
 	VkSwapchainKHR swapchain;
 	VkExtent2D swapchain_extent;
@@ -87,18 +107,14 @@ private:
 	std::vector<VkImageView> swapchain_image_views;
 
 	VkRenderPass render_pass;
-	VkRenderPass shadowpass;
 
 	VkPipelineLayout pipeline_layout;
 	VkPipeline graphics_pipeline;
 
-	VkPipelineLayout shadowpass_layout;
-	VkPipeline shadowpass_pipeline;
 
 	VkSampler texture_sampler;
 
 	std::vector<VkFramebuffer> swapchain_framebuffers;
-	VkFramebuffer shadowpass_buffer;
 
 	std::vector<VkSemaphore> image_available_semaphores;
 	std::vector<VkSemaphore> render_finished_semaphores;
@@ -109,11 +125,9 @@ private:
 	std::vector<std::vector<VkDescriptorSet>> light_ubo;
 	std::vector<uint32_t> light_offsets;
 
-	mem::Memory shadow_pass_texture;
 	mem::Memory depth_memory;
 
 	//this will be the shadowmap atlas that will contain all the shadowmap data for the scene
-	mem::Memory shadowmap_atlas;
 
 	std::unique_ptr<mem::Pool> ubo_pool;
 	std::unique_ptr<mem::Pool> texture_pool;
@@ -131,7 +145,6 @@ private:
 	std::vector<VkDeviceSize> ubo_offsets; //holds the offset data for a objects ubo information within the uniform buffer
 	std::vector<std::vector<mem::Memory*>> texture_images;
 
-	VkSampler shadowmap_sampler;
 
 	size_t current_frame = 0;
 
@@ -140,9 +153,6 @@ private:
 	bool not_created;
 
 	//not sure why these numbers are the best
-	uint32_t shadowmap_width = 2048;
-	uint32_t shadowmap_height = 2048;
-
 	std::vector<GameObject*>* recent_objects;
 
 private:
