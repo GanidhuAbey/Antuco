@@ -18,11 +18,89 @@
 #include <glm/ext.hpp>
 
 
+#define TIME_IT std::chrono::high_resolution_clock::now();
+
 const std::string GET_SHADER_PATH = "../../../shaders/";
 
 const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
 
 using namespace tuco;
+
+/// <summary>
+///  create device memory buffer to transfer data between the shadowmap texture (created by a render pass) to the shadowmap atlas
+/// </summary>
+void GraphicsImpl::create_shadowmap_transfer_buffer() {
+    //create 4 buffers to transfer a quarter of the image at a time (this way we only have to tranfer a regular shadow map size, and later on it'll be easy
+    //to multi-thread the code
+    
+    //because we plan to have variable shadowmaps in the future i'll make this buffer the same size as the shadow map atlas, since thats the largest
+    //shadowmap that we'll have to support
+    mem::BufferCreateInfo buffer_info{};
+    buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    buffer_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    //maximum size stored is : region->bufferOffset + (((z * imageHeight) + y) * rowLength + x) * texelBlockSize
+    //imageHeight*rowLength + imageHeight*rowLength + rowLength
+    buffer_info.size = 2 * shadowmap_height * shadowmap_width * 128;
+    buffer_info.queueFamilyIndexCount = 1;
+    buffer_info.pQueueFamilyIndices = &graphics_family;
+    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    buffer_info.pNext = nullptr;
+
+    for (size_t i = 0; i < MAX_SHADOW_CASTERS; i++) {
+        //create all required buffers
+        shadowmap_buffers[i].init(physical_device, device, &buffer_info);
+    }
+}
+
+/// <summary>
+/// Creates a large image to contain the depth textures of all the lights in the scene
+/// </summary>
+void GraphicsImpl::create_shadowmap_atlas() {
+    mem::ImageCreateInfo shadow_image_info{};
+    shadow_image_info.arrayLayers = 1;
+    shadow_image_info.extent = VkExtent3D{ shadowmap_atlas_width, shadowmap_atlas_height, 1 };
+    shadow_image_info.flags = 0;
+    shadow_image_info.imageType = VK_IMAGE_TYPE_2D;
+    shadow_image_info.format = VK_FORMAT_D16_UNORM;
+    shadow_image_info.mipLevels = 1;
+    shadow_image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+    shadow_image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    shadow_image_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    shadow_image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    shadow_image_info.queueFamilyIndexCount = 1;
+    shadow_image_info.pQueueFamilyIndices = &graphics_family;
+    shadow_image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    mem::createImage(physical_device, device, &shadow_image_info, &shadowmap_atlas);
+
+	VkImageViewUsageCreateInfo usageInfo{};
+	usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
+	usageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+	//setup create struct for image views
+	mem::ImageViewCreateInfo createInfo{};
+	createInfo.pNext = &usageInfo;
+	createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	createInfo.format = VK_FORMAT_D16_UNORM;
+
+
+	//this changes the colour output of the image, currently set to standard colours
+	createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+	//layers are used for steroscopic 3d applications in which you would provide multiple images to each eye, creating a 3D effect.
+	//mipmap levels are an optimization made so that lower quality textures are used when further away to save resources.
+	createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	createInfo.subresourceRange.baseMipLevel = 0;
+	createInfo.subresourceRange.levelCount = 1;
+	createInfo.subresourceRange.baseArrayLayer = 0;
+	createInfo.subresourceRange.layerCount = 1;
+
+	mem::createImageView(device, createInfo, &shadowmap_atlas);
+}
 
 void GraphicsImpl::create_texture_sampler() {
     /* Create Sampler */
@@ -158,7 +236,7 @@ void GraphicsImpl::create_shadowpass_resources() {
     shadow_image_info.mipLevels = 1;
     shadow_image_info.samples = VK_SAMPLE_COUNT_1_BIT;
     shadow_image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-    shadow_image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    shadow_image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     shadow_image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     shadow_image_info.queueFamilyIndexCount = 1;
     shadow_image_info.pQueueFamilyIndices = &graphics_family;
@@ -172,7 +250,7 @@ void GraphicsImpl::create_shadowpass_resources() {
 	//create image view
 	VkImageViewUsageCreateInfo usageInfo{};
 	usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
-	usageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	usageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
 	//setup create struct for image views
 	mem::ImageViewCreateInfo createInfo{};
@@ -1319,6 +1397,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		vkCmdEndRenderPass(command_buffers[i]);
 
         //now the hope is that the image attached to the frame buffer has data in it (hopefully)
+        //copy the data from the texture onto the atlas
 
         //allocate descriptor set with image attached to render?
         //transfer_image_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, &shadow_pass_texture);
@@ -1784,7 +1863,41 @@ void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLa
     end_command_buffer(commandBuffer);
 }
 
-void GraphicsImpl::copy_image(mem::Memory buffer, mem::Memory image, VkDeviceSize dst_offset, uint32_t image_width, uint32_t image_height) {
+/// <summary>
+///   Copies the entire contents of an image onto a particular place in a buffer
+/// </summary>
+/// <param name="buffer"> buffer the image data will be copied to </param>
+/// <param name="image"> the image that will be transfered </param>
+/// <param name="image_layout"> the layout of the iamge </param>
+/// <param name="image_aspect"> the aspect of the image </param>
+/// <param name="dst_offset"> the offset of the buffer</param>
+void GraphicsImpl::copy_image_to_buffer(mem::Memory buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset)  {
+    VkCommandBuffer transfer_buffer = begin_command_buffer();
+
+
+    //we won't be dealing with mipmap levels for a while i think so i can change this then
+    VkImageSubresourceLayers image_layers{};
+    image_layers.aspectMask = image_aspect;
+    image_layers.mipLevel = 0;
+    image_layers.layerCount = 1;
+    image_layers.baseArrayLayer = 0;
+
+    VkBufferImageCopy copy_data{};
+    copy_data.bufferOffset = dst_offset;
+    copy_data.bufferImageHeight = 0.0f; //ignore
+    copy_data.bufferRowLength = 0.0f;
+    copy_data.imageSubresource = image_layers;
+    copy_data.imageOffset = VkOffset3D{ 0, 0, 0 };
+    copy_data.imageExtent = VkExtent3D{ image.imageDimensions.width, image.imageDimensions.height, 1 };
+
+    //copy image to buffer
+    //TODO: contain this various image data within the memory object so the user doesnt have to keep track of it
+    vkCmdCopyImageToBuffer(transfer_buffer, image.image, image_layout, buffer.buffer, 1, &copy_data);
+
+    end_command_buffer(transfer_buffer);
+}
+
+void GraphicsImpl::copy_buffer_to_image(mem::Memory buffer, mem::Memory image, VkDeviceSize dst_offset, uint32_t image_width, uint32_t image_height) {
         //create command buffer
     VkCommandBuffer transferBuffer = begin_command_buffer();
 
@@ -1914,7 +2027,7 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
     //mem::maAllocateMemory(dataSize, &newTextureImage);
     //transfer the image to appropriate layout for copying
     transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, new_texture_image);
-    copy_image(newBuffer, *new_texture_image, 0.0, imageWidth, imageHeight);
+    copy_buffer_to_image(newBuffer, *new_texture_image, 0.0, imageWidth, imageHeight);
     //transfer the image again to a more optimal layout for texture sampling?
     transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, new_texture_image);
 

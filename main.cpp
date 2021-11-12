@@ -155,7 +155,7 @@ int main() {
 		glm::vec2 rotate_item = glm::vec2(light_position.x, light_position.z);
 		glm::vec2 rotate_point = glm::vec2(light_look_at.x, light_look_at.z);
 
-		glm::vec2 step_rotation = rotate_around_point(rotate_item, rotate_point, 1.0f);
+		glm::vec2 step_rotation = rotate_around_point(rotate_item, rotate_point, 0.1f);
 
 		//update light_position
 		light_position = glm::vec3(step_rotation.x, light_position.y, step_rotation.y);
