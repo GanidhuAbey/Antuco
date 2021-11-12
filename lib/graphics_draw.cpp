@@ -976,7 +976,7 @@ void GraphicsImpl::create_graphics_pipeline() {
     pipelineLayoutInfo.pushConstantRangeCount = 1;
 
     VkPushConstantRange pushRange{};
-    pushRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     pushRange.offset = 0;
     pushRange.size = sizeof(LightObject);
 
@@ -1380,8 +1380,9 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         //convert to light_object;
         LightObject light{};
         light.position = light_data[0]->position;
+        light.direction = light_data[0]->target;
         light.color = light_data[0]->color;
-        vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
+        vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(light), &light);
         //draw first object (cube)
 	    total_indexes = 0;
 	    total_vertices = 0;

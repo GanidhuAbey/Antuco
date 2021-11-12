@@ -1,15 +1,13 @@
 #version 450
 
-layout(push_constant) uniform PushFragConstant {
-  vec3 lightColor;
-  vec3 lightPosition;
-} pfc;
-
 layout(location=0) out vec4 outColor;
 layout(location=3) in vec3 surfaceNormal;
 layout(location=4) in vec4 vPos;
 layout(location=5) in vec2 texCoord;
 layout(location=6) in vec4 light_perspective;
+
+layout(location=7) in vec3 light_position;
+layout(location=8) in vec3 light_color;
 
 layout(set=2, binding=0) uniform sampler2D texture1;
 layout(set=3, binding=1) uniform sampler2D shadowmap;
@@ -33,17 +31,17 @@ float check_shadow(vec3 light_view) {
 
 void main() {
     //get vector of light
-    vec3 lightToObject = normalize(pfc.lightPosition - vec3(vPos));
+    vec3 lightToObject = normalize(light_position - vec3(vPos));
 
     float lightIntensity = max(0.01f, dot(lightToObject, surfaceNormal));
     //float mapIntensity = (lightIntensity/2) + 0.5;
 
-    vec3 newColor = pfc.lightColor * lightIntensity;
+    vec3 newColor = light_color * lightIntensity;
 
     //now sample the depth at that screen coordinate
 
     //analyze depth at the given coordinate of the object
-    float light_dist = length(pfc.lightPosition - vec3(vPos));
+    float light_dist = length(light_position - vec3(vPos));
 
     //check z_buffer depth at this pixel location
     //the actual problem now is that im not sampling the texture correctly

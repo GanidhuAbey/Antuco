@@ -13,6 +13,28 @@ const double MOUSE_SENSITIVITY = 0.1f;
 
 const std::string OBJECT_PATH = "../../../";
 
+/// <summary>
+///  rotates point (rotation_item) with respect to a given point (rotation_point) by a given angle (rotation_angle)
+/// </summary>
+/// <param name="rotation_item"> the point that will get rotated </param>
+/// <param name="rotation_point"> the point that is being rotated around </param>
+/// <param name="rotation_angle"> the amount that rotation_item will be rotated by in degrees </param>
+/// <returns> new point thats rotated around a point </returns>
+glm::vec2 rotate_around_point(glm::vec2 rotation_item, glm::vec2 rotation_point, float rotation_angle) {
+	//define rotation matrix
+	float theta = glm::radians(rotation_angle);
+	glm::mat2 rotation_matrix = {
+		glm::cos(theta), -glm::sin(theta),
+		glm::sin(theta), glm::cos(theta),
+	};
+
+	//rotate rotation_item
+	glm::vec2 rotation = rotation_item - rotation_point;
+	glm::vec2 rotate_point = rotation_matrix * rotation_item;
+
+	return rotate_point + rotation_point;
+}
+
 int main() {
 	//when beginning a new game, one must first create the window, but user should only ever interact with the library wrapper "Antuco_lib"
 	tuco::Antuco& antuco = tuco::Antuco::get_engine();
@@ -41,7 +63,9 @@ int main() {
 	//create some light for the scene
 	//TODO: implement debug mode where we'll render light with mesh
 	//its kinda hard to determine a direction for a user, much easier for them to give a location to light
-	tuco::Light* light = antuco.create_light(glm::vec3(5.0f, 10.0f, 3.0f), glm::vec3(0.0, 0.0, 0.0), glm::vec3(1.0, 1.0, 1.0));
+	glm::vec3 light_position = glm::vec3(5.0f, 10.0f, 3.0f);
+	glm::vec3 light_look_at = glm::vec3(0.0f, 0.0f, 0.0f);
+	tuco::Light* light = antuco.create_light(light_position, light_look_at, glm::vec3(1.0, 1.0, 1.0));
 
 	//tuco::Light* another_light = antuco.create_light(glm::vec3(0.0, 8.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
 
@@ -98,7 +122,7 @@ int main() {
 		double offset_y = (y_pos - p_ypos) * MOUSE_SENSITIVITY;
 
 		yaw += offset_x;
-		pitch = std::clamp(pitch - offset_y, -89.0, 89.0);
+		pitch = glm::clamp(pitch - offset_y, -89.0, 89.0);
 
 		camera_face.x = (float) (glm::sin(glm::radians(yaw))) * glm::cos(glm::radians(pitch));
 		camera_face.y = (float) glm::sin(glm::radians(pitch));
@@ -127,15 +151,22 @@ int main() {
 			camera_pos -= PLAYER_SPEED * camera_face;
 		}
 
-		//printf("camera_pos: <%f, %f, %f> \n", camera_pos.x, camera_pos.y, camera_pos.z);
+		//cut the y axis to analze the rotation from two dimensions.
+		glm::vec2 rotate_item = glm::vec2(light_position.x, light_position.z);
+		glm::vec2 rotate_point = glm::vec2(light_look_at.x, light_look_at.z);
+
+		glm::vec2 step_rotation = rotate_around_point(rotate_item, rotate_point, 1.0f);
+
+		//update light_position
+		light_position = glm::vec3(step_rotation.x, light_position.y, step_rotation.y);
+
+		//update light
+		light->update(light_position);
 		
 		//there seems to be a very glitchy looking shadow that pops for a frame or two right when the 
 		//light goes off the surface and right when its about to re-enter. My assumption is that this is occuring
 		//right when the light source is at its boundary in the near plane and is beginning to see everythin at the same depth.
 		//it might be helpful to incease our depth bias constant to compensate for this.
-		float light_x = glm::cos(glm::radians(timer * 360.0f)) * 40.0f;
-		float light_y = glm::sin(glm::radians(timer * 360.0f)) * 20.0f - 10.0f;
-		float light_z = glm::sin(glm::radians(timer * 360.0f)) * 5.0f + 5.0f;
 		//light->update(glm::vec3(0.0f, 5.0f, 0.0f));
 		
 		//render the objects onto the screen

@@ -18,6 +18,7 @@ private:
 	glm::vec4 position;
 	glm::vec4 target;
 	glm::vec4 color;
+	glm::vec3 orientation;
 
 	glm::mat4 world_to_light;
 	glm::mat4 perspective;
