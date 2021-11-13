@@ -100,6 +100,8 @@ void GraphicsImpl::create_shadowmap_atlas() {
 	createInfo.subresourceRange.layerCount = 1;
 
 	mem::createImageView(device, createInfo, &shadowmap_atlas);
+
+    //transfer image to depth stencil read only (or shader read only if they wont allow the first one
 }
 
 void GraphicsImpl::create_texture_sampler() {
@@ -1344,7 +1346,9 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		shadowpass_info.clearValueCount = 1;
 		shadowpass_info.pClearValues = &shadowpass_clear;
 
-		vkCmdBeginRenderPass(command_buffers[i], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
+		
+        //gonna have to run the render pass 4 times...
+        vkCmdBeginRenderPass(command_buffers[i], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
 		//do stuff...
 		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_pipeline);
 
@@ -1402,6 +1406,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         //allocate descriptor set with image attached to render?
         //transfer_image_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, &shadow_pass_texture);
 
+        transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, shadowmap_atlas.image);
         //begin a render pass so that we can draw to the appropriate framebuffer
         VkRenderPassBeginInfo renderInfo{};
         renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1764,7 +1769,7 @@ void GraphicsImpl::draw_frame() {
     current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, mem::Memory* image) {
+void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, VkImage image) {
     //begin command buffer
     VkCommandBuffer commandBuffer = begin_command_buffer();
 
@@ -1777,7 +1782,7 @@ void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLa
     imageTransfer.newLayout = output_layout;
     imageTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     imageTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageTransfer.image = image->image;
+    imageTransfer.image = image;
     imageTransfer.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     imageTransfer.subresourceRange.baseMipLevel = 0;
     imageTransfer.subresourceRange.levelCount = 1;
@@ -1812,8 +1817,6 @@ void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLa
     else if (output_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
         imageTransfer.srcAccessMask = 0;
         imageTransfer.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-        printf("made it here? \n");
 
         imageTransfer.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
@@ -1943,8 +1946,8 @@ void GraphicsImpl::write_to_shadowmap_set() {
     //transfer_image_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, &shadow_pass_texture);
     VkDescriptorImageInfo imageInfo;
     imageInfo.sampler = shadowmap_sampler;
-    imageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-    imageInfo.imageView = shadow_pass_texture.imageView;
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfo.imageView = shadowmap_atlas.imageView;
 
 	VkWriteDescriptorSet writeInfo{};
 	writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -2026,10 +2029,10 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
 
     //mem::maAllocateMemory(dataSize, &newTextureImage);
     //transfer the image to appropriate layout for copying
-    transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, new_texture_image);
+    transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, new_texture_image->image);
     copy_buffer_to_image(newBuffer, *new_texture_image, 0.0, imageWidth, imageHeight);
     //transfer the image again to a more optimal layout for texture sampling?
-    transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, new_texture_image);
+    transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, new_texture_image->image);
 
     //create image view for image
     mem::ImageViewCreateInfo viewInfo{};

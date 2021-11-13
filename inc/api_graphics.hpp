@@ -194,7 +194,7 @@ private:
 	void update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo);
 	void copy_buffer_to_image(mem::Memory buffer, mem::Memory image, VkDeviceSize dst_offset, uint32_t image_width, uint32_t image_height);	
 	void copy_image_to_buffer(mem::Memory buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset);
-	void transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, mem::Memory* image);
+	void transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, VkImage image);
 	void create_shadowmap_transfer_buffer();
 	void create_texture_image(aiString texturePath, size_t object, size_t texture_set);
 	void write_to_texture_set(std::vector<VkDescriptorSet> texture_sets, mem::Memory* image);
