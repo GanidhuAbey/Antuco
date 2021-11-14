@@ -7,11 +7,10 @@ A game engine/renderer made from vulkan
 
 - clone the repo (make sure to get the submodules with `--recursive`)
 - open with project folder with visual studio
-- go to the `CMakeSettings.json` file and set up the CMake configurations, just add a configuration for the Clang compiler and save the file to build the CMake
-- if you get a "permission denied" error try running visual studio in admin mode
-- if the cmake built without errors you should be able to run it!
+- open up the `CMakeSettings.json` and create a configuration, this project should work for both the `msvc` and `clang-cl` compiler but since i'm currently developing exclusively with the `clang-cl` compiler I won't know how long the project will support `msvc`. It is important to note that due to one of the submodules i'm using (assimp) `clang-cl` will throw a bunch of warnings, which is pretty annoying but you can edit their files to deal with it.
+- ideally, saving this file should now generate the ninja files and then you can build the project and run.
 
-If you get an error like `assimp-vc142-mtd.lib could not be found` try checking if theirs a file with that name in the build directory and if their isn't you can manually drag it in from the `external/libraries` folder.
+If you get an error like `assimp-vc142-mtd.lib could not be found` try checking if theres a file with that name in the build directory and if their isn't you can manually drag it in from the `external/libraries` folder.
 
 ### Other Platforms
 
