@@ -20,7 +20,7 @@ Window* Antuco::init_window(int w, int h, const char* title) {
 	Window* window = new Window(w, h, title);
 
 	pWindow = window;
-
+	
 	return window;
 }
 

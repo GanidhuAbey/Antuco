@@ -323,6 +323,9 @@ void mem::createImage(VkPhysicalDevice physicalDevice, VkDevice device, ImageCre
 
     memoryAlloc.memoryTypeIndex = findMemoryType(physicalDevice, memoryReq.memoryTypeBits, imageInfo->memoryProperties);
 
+    //save image dimensions we may need depth in the future but it won't be hard to add
+    pMemory->imageDimensions.width = imageInfo->extent.width;
+    pMemory->imageDimensions.height = imageInfo->extent.height;
 
     VkResult allocResult = vkAllocateMemory(device, &memoryAlloc, nullptr, &pMemory->memoryHandle);
 

@@ -17,7 +17,6 @@
 
 #include <glm/ext.hpp>
 
-
 #define TIME_IT std::chrono::high_resolution_clock::now();
 
 const std::string GET_SHADER_PATH = "../../../shaders/";
@@ -41,13 +40,13 @@ void GraphicsImpl::create_shadowmap_transfer_buffer() {
 
     //maximum size stored is : region->bufferOffset + (((z * imageHeight) + y) * rowLength + x) * texelBlockSize
     //imageHeight*rowLength + imageHeight*rowLength + rowLength
-    buffer_info.size = 2 * shadowmap_height * shadowmap_width * 128;
+    buffer_info.size = (4*shadowmap_height*shadowmap_width) * 128;
     buffer_info.queueFamilyIndexCount = 1;
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     buffer_info.pNext = nullptr;
 
-    for (size_t i = 0; i < MAX_SHADOW_CASTERS; i++) {
+    for (size_t i = 0; i < 1; i++) {
         //create all required buffers
         shadowmap_buffers[i].init(physical_device, device, &buffer_info);
     }
@@ -131,6 +130,7 @@ void GraphicsImpl::create_texture_sampler() {
 
 void GraphicsImpl::create_shadowmap_sampler() {
     VkSamplerCreateInfo samplerInfo{};
+
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     samplerInfo.pNext = nullptr;
     samplerInfo.flags = 0;
@@ -154,21 +154,21 @@ void GraphicsImpl::create_shadowmap_sampler() {
 }
 
 void GraphicsImpl::create_shadowpass_buffer() { 
-	VkFramebufferCreateInfo createInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	createInfo.renderPass = shadowpass;
-	//we only want one image per frame buffer
-	createInfo.attachmentCount = 1;
-	//they put the image view in a separate array for some reason
-	VkImageView imageViews[1] = { shadow_pass_texture.imageView };
-	createInfo.pAttachments = imageViews;
+    VkFramebufferCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    createInfo.renderPass = shadowpass;
+    //we only want one image per frame buffer
+    createInfo.attachmentCount = 1;
+    //they put the image view in a separate array for some reason
+    VkImageView imageViews[1] = { shadow_pass_texture.imageView };
+    createInfo.pAttachments = imageViews;
     createInfo.width = shadowmap_width;
-	createInfo.height = shadowmap_height;
-	createInfo.layers = 1;
+    createInfo.height = shadowmap_height;
+	  createInfo.layers = 1;
 
-	if (vkCreateFramebuffer(device, &createInfo, nullptr, &shadowpass_buffer) != VK_SUCCESS) {
-		throw std::runtime_error("could not create a frame buffer");
-	}
+    if (vkCreateFramebuffer(device, &createInfo, nullptr, &shadowpass_buffer) != VK_SUCCESS) {
+        throw std::runtime_error("could not create a frame buffer");
+    }
 }
 
 void GraphicsImpl::create_frame_buffers() {
@@ -383,12 +383,13 @@ void GraphicsImpl::create_shadowpass() {
     shadowpass_ref.attachment = 0;
     shadowpass_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+
     VkSubpassDescription subpass{};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 0;
     subpass.pDepthStencilAttachment = &shadowpass_ref;
 
-    std::vector<VkSubpassDependency> dependencies(2);
+    std::vector<VkSubpassDependency> dependencies(3);
 
     dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
     dependencies[0].dstSubpass = 0;
@@ -404,6 +405,14 @@ void GraphicsImpl::create_shadowpass() {
     dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+ 
+    dependencies[1].srcSubpass = 0;
+    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    dependencies[1].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
     dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
     
     VkRenderPassCreateInfo createInfo{};
@@ -1244,7 +1253,6 @@ void GraphicsImpl::create_swapchain() {
     vkGetSwapchainImagesKHR(device, swapchain, &swapchain_image_count, nullptr);
     swapchain_images.resize(swapchain_image_count);
     vkGetSwapchainImagesKHR(device, swapchain, &swapchain_image_count, swapchain_images.data());
-
 }
 
 
@@ -1332,12 +1340,13 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         }
 
 		VkRenderPassBeginInfo shadowpass_info{};
-		shadowpass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+
+    shadowpass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		shadowpass_info.renderPass = shadowpass;
 		shadowpass_info.framebuffer = shadowpass_buffer;
 		VkRect2D renderArea{};
 		renderArea.offset = VkOffset2D{ 0, 0 };
-        renderArea.extent = VkExtent2D{ shadowmap_width, shadowmap_height };
+		renderArea.extent = VkExtent2D{ shadowmap_width, shadowmap_height };
 		shadowpass_info.renderArea = renderArea;
 
 		VkClearValue shadowpass_clear;
@@ -1347,8 +1356,8 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		shadowpass_info.pClearValues = &shadowpass_clear;
 
 		
-        //gonna have to run the render pass 4 times...
-        vkCmdBeginRenderPass(command_buffers[i], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
+		//gonna have to run the render pass 4 times...
+		vkCmdBeginRenderPass(command_buffers[i], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
 		//do stuff...
 		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_pipeline);
 
@@ -1356,7 +1365,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		shadowpass_port.x = 0;
 		shadowpass_port.y = 0;
 		shadowpass_port.width = (float)shadowmap_width;
-        shadowpass_port.height = (float)shadowmap_height;
+		shadowpass_port.height = (float)shadowmap_height;
 		shadowpass_port.minDepth = 0.0;
 		shadowpass_port.maxDepth = 1.0;
 		vkCmdSetViewport(command_buffers[i], 0, 1, &shadowpass_port);
@@ -1364,15 +1373,15 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		VkRect2D shadowpass_scissor{};
 		shadowpass_scissor.offset = { 0, 0 };
 		shadowpass_scissor.extent.width = shadowmap_width;
-        shadowpass_scissor.extent.height = shadowmap_height;
+		shadowpass_scissor.extent.height = shadowmap_height;
 		vkCmdSetScissor(command_buffers[i], 0, 1, &shadowpass_scissor);
 
 		//time for the draw calls
 		const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offsets);
-        vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-        vkCmdSetDepthBias(command_buffers[i], 5.0f, 0.0f, 1.75f);
+		vkCmdSetDepthBias(command_buffers[i], 5.0f, 0.0f, 1.75f);
 
 		//universal to every object so i can push the light constants before the for loop
 		//vkCmdPushConstants(shadowpass_render, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
@@ -1400,74 +1409,86 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		}
 		vkCmdEndRenderPass(command_buffers[i]);
 
-        //now the hope is that the image attached to the frame buffer has data in it (hopefully)
-        //copy the data from the texture onto the atlas
+		//first lets try to map one of the images generated onto our atlas
+		//copy image onto one of our buffers 
+        
+        //TODO: the validation error occurs here, on the very first pass through the image remains in the undefined state,
+        //this is cause by the render pass not running on the very run of the loop causing the image to remain
+        //undefined as it passes through here.
+        //
+        //in order to fix this i'll most likely have to first figure out why the render pass is failing to run on the very
+        //first loop.
+    transfer_image_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, shadow_pass_texture.image);
+    copy_image_to_buffer(shadowmap_buffers[0].buffer, shadow_pass_texture, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0);
+    transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, shadow_pass_texture.image);
+    //now the hope is that the image attached to the frame buffer has data in it (hopefully)
+		//copy the data from the texture onto the atlas
 
-        //allocate descriptor set with image attached to render?
-        //transfer_image_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, &shadow_pass_texture);
-
-        transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, shadowmap_atlas.image);
-        //begin a render pass so that we can draw to the appropriate framebuffer
-        VkRenderPassBeginInfo renderInfo{};
-        renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderInfo.renderPass = render_pass;
-        renderInfo.framebuffer = swapchain_framebuffers[i];
+		//allocate descriptor set with image attached to render?
+    
+		transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, shadowmap_atlas.image);
+		
+    //begin a render pass so that we can draw to the appropriate framebuffer
+		VkRenderPassBeginInfo renderInfo{};
+		renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderInfo.renderPass = render_pass;
+		renderInfo.framebuffer = swapchain_framebuffers[i];
 		renderArea.offset = VkOffset2D{ 0, 0 };
 		renderArea.extent = swapchain_extent;
-        renderInfo.renderArea = renderArea;
+		renderInfo.renderArea = renderArea;
 
-        const size_t size_of_array = 3;
-        std::vector<VkClearValue> clear_values;
+		const size_t size_of_array = 3;
+		std::vector<VkClearValue> clear_values;
 
-        VkClearValue color_clear;
-        color_clear.color = { 0.0f, 0.0f, 0.0f, 1.0 }; 
+		VkClearValue color_clear;
+		color_clear.color = { 0.0f, 0.0f, 0.0f, 1.0 }; 
 
-        VkClearValue depth_clear;
-        depth_clear.depthStencil = {1.0, 0};
+		VkClearValue depth_clear;
+		depth_clear.depthStencil = {1.0, 0};
 
-        clear_values.push_back(color_clear);
-        clear_values.push_back(depth_clear);
-        
-        renderInfo.clearValueCount = static_cast<uint32_t>(clear_values.size());
-        renderInfo.pClearValues = clear_values.data();
+		clear_values.push_back(color_clear);
+		clear_values.push_back(depth_clear);
+		
+		renderInfo.clearValueCount = static_cast<uint32_t>(clear_values.size());
+		renderInfo.pClearValues = clear_values.data();
 
-        vkCmdBeginRenderPass(command_buffers[i], &renderInfo, VK_SUBPASS_CONTENTS_INLINE);
-        //run first subpass here?
-        //the question is what does the first subpass do?
+		vkCmdBeginRenderPass(command_buffers[i], &renderInfo, VK_SUBPASS_CONTENTS_INLINE);
+		//run first subpass here?
+		//the question is what does the first subpass do?
 
-        //now after the first pass is complete we move on to the next subpass
-        //vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);
+		//now after the first pass is complete we move on to the next subpass
+		//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);
 
-        //add commands to command buffer
-        vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+		//add commands to command buffer
+		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
 
-        VkViewport newViewport = {};
-        newViewport.x = 0;
-        newViewport.y = 0;
-        newViewport.width = (float)swapchain_extent.width;
-        newViewport.height = (float)swapchain_extent.height;
-        newViewport.minDepth = 0.0;
-        newViewport.maxDepth = 1.0;
-        vkCmdSetViewport(command_buffers[i], 0, 1, &newViewport);
+		VkViewport newViewport = {};
+		newViewport.x = 0;
+		newViewport.y = 0;
+		newViewport.width = (float)swapchain_extent.width;
+		newViewport.height = (float)swapchain_extent.height;
+		newViewport.minDepth = 0.0;
+		newViewport.maxDepth = 1.0;
+		vkCmdSetViewport(command_buffers[i], 0, 1, &newViewport);
 
-        VkRect2D newScissor{};
-        newScissor.offset = { 0, 0 };
-        newScissor.extent = swapchain_extent;
-        vkCmdSetScissor(command_buffers[i], 0, 1, &newScissor);
+		VkRect2D newScissor{};
+		newScissor.offset = { 0, 0 };
+		newScissor.extent = swapchain_extent;
+		vkCmdSetScissor(command_buffers[i], 0, 1, &newScissor);
 
-        //time for the draw calls
-        const VkDeviceSize offset[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
-        vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offset);
-        vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+		//time for the draw calls
+		const VkDeviceSize offset[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
+		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offset);
+		vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-        //universal to every object so i can push the light constants before the for loop
-        //convert to light_object;
-        LightObject light{};
-        light.position = light_data[0]->position;
-        light.direction = light_data[0]->target;
-        light.color = light_data[0]->color;
-        vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(light), &light);
-        //draw first object (cube)
+		//universal to every object so i can push the light constants before the for loop
+		//convert to light_object;
+		LightObject light{};
+		light.position = light_data[0]->position;
+		light.direction = light_data[0]->target;
+		light.color = light_data[0]->color;
+		vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(light), &light);
+		//draw first object (cube)
 	    total_indexes = 0;
 	    total_vertices = 0;
 
@@ -1497,7 +1518,6 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         vkCmdEndRenderPass(command_buffers[i]);
 
         //switch image back to depth stencil layout for the next render pass
-        //transfer_image_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, &shadow_pass_texture);
 
         //end commands to go to execute stage
         if (vkEndCommandBuffer(command_buffers[i]) != VK_SUCCESS) {
@@ -1850,6 +1870,42 @@ void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLa
         sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     }
+    else if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+        imageTransfer.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+        imageTransfer.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    }
+    else if (output_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+        imageTransfer.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        imageTransfer.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+        imageTransfer.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    }
+    else if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL) {
+        imageTransfer.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+        imageTransfer.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    }
+    else if (output_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {  
+        imageTransfer.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        imageTransfer.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+        imageTransfer.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    }
 
     vkCmdPipelineBarrier(
         commandBuffer,
@@ -1874,9 +1930,8 @@ void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLa
 /// <param name="image_layout"> the layout of the iamge </param>
 /// <param name="image_aspect"> the aspect of the image </param>
 /// <param name="dst_offset"> the offset of the buffer</param>
-void GraphicsImpl::copy_image_to_buffer(mem::Memory buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset)  {
+void GraphicsImpl::copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset)  {
     VkCommandBuffer transfer_buffer = begin_command_buffer();
-
 
     //we won't be dealing with mipmap levels for a while i think so i can change this then
     VkImageSubresourceLayers image_layers{};
@@ -1895,7 +1950,7 @@ void GraphicsImpl::copy_image_to_buffer(mem::Memory buffer, mem::Memory image, V
 
     //copy image to buffer
     //TODO: contain this various image data within the memory object so the user doesnt have to keep track of it
-    vkCmdCopyImageToBuffer(transfer_buffer, image.image, image_layout, buffer.buffer, 1, &copy_data);
+    vkCmdCopyImageToBuffer(transfer_buffer, image.image, image_layout, buffer, 1, &copy_data);
 
     end_command_buffer(transfer_buffer);
 }
@@ -1943,23 +1998,21 @@ void GraphicsImpl::copy_buffer_to_image(mem::Memory buffer, mem::Memory image, V
 }
 
 void GraphicsImpl::write_to_shadowmap_set() {
-    //transfer_image_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, &shadow_pass_texture);
     VkDescriptorImageInfo imageInfo;
     imageInfo.sampler = shadowmap_sampler;
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imageInfo.imageView = shadowmap_atlas.imageView;
 
-	VkWriteDescriptorSet writeInfo{};
-	writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writeInfo.dstBinding = 1;
-	writeInfo.dstSet = shadowmap_set;
-	writeInfo.descriptorCount = 1;
-	writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	writeInfo.pImageInfo = &imageInfo;
-	writeInfo.dstArrayElement = 0;
+    VkWriteDescriptorSet writeInfo{};
+    writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeInfo.dstBinding = 1;
+    writeInfo.dstSet = shadowmap_set;
+    writeInfo.descriptorCount = 1;
+    writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeInfo.pImageInfo = &imageInfo;
+    writeInfo.dstArrayElement = 0;
 
-	vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
-    //transfer_image_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, &shadow_pass_texture);
+    vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
 }
 
 void GraphicsImpl::write_to_texture_set(std::vector<VkDescriptorSet> texture_sets, mem::Memory* image) {

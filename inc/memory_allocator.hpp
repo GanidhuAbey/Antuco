@@ -66,10 +66,13 @@ private:
     VkDeviceSize buffer_size;
     VkDeviceSize offset;
     VkDeviceMemory buffer_memory;
-    VkBuffer buffer;
     VkDevice* p_device; //hopefully this doesn't just disappear...
     //offset = i * allocations[i]   
     std::vector<VkDeviceSize> allocations;
+
+public:
+    VkBuffer buffer;
+
 public:
     StackBuffer();
     ~StackBuffer();

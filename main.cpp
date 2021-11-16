@@ -38,6 +38,7 @@ glm::vec2 rotate_around_point(glm::vec2 rotation_item, glm::vec2 rotation_point,
 int main() {
 	//when beginning a new game, one must first create the window, but user should only ever interact with the library wrapper "Antuco_lib"
 	tuco::Antuco& antuco = tuco::Antuco::get_engine();
+	
 	//create window
 	tuco::Window* window = antuco.init_window(WIDTH, HEIGHT, "SOME COOL TITLE");
 
@@ -56,7 +57,6 @@ int main() {
 	glm::vec3 camera_face = glm::vec3(0.0, 0.0, -1.0);
 	glm::vec3 camera_orientation = glm::vec3(0.0, -1.0, 0.0);
 
-	//0.4032
 
 	tuco::Camera* main_camera = antuco.create_camera(camera_pos, camera_face, camera_orientation, glm::radians(45.0f), 0.1f, 150.0f);
 		
@@ -78,6 +78,8 @@ int main() {
 	//light_mesh->translate(glm::vec3(0.0f, 4.0f, 0.0f));
 	//light_mesh->scale(glm::vec3(0.1, 0.1, 0.1));
 
+	printf("just something else randome  here as at est \n");
+
 	auto t1 = TIME_IT;
 	printf("hellow \n");
 	another->add_mesh(OBJECT_PATH + "objects/test_object/with_texture.obj");
@@ -86,14 +88,13 @@ int main() {
 	
 	some_object->add_mesh(OBJECT_PATH + "objects/test_object/white.obj"); //will hope texture data is located within model data.
 	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
-	printf("hi there again \n");
 
 	another->translate(glm::vec3(0, -1, 0));	
 	auto t2 = TIME_IT;
 
 	std::chrono::duration<double, std::milli> final_count = t2 - t1;
 	printf("time to load model: %f \n", final_count.count());
-	
+
 	//basic game loop
 	bool game_loop = true;
 
