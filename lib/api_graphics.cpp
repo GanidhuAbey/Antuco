@@ -17,6 +17,8 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 
 	//graphics draw
 	create_swapchain();
+	create_shadowmap_atlas();
+	create_shadowmap_transfer_buffer();
 	create_depth_resources();
 	create_shadowpass_resources();
 	create_colour_image_views();
@@ -117,6 +119,18 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		//update light data (used for generating shadow map)	
 		update_uniform_buffer(light_offsets[i], lbo);
 	}
+
+	if (!update_command_buffers) {
+		for (size_t i = 0; i < MAX_SHADOW_CASTERS; i++) {
+			//TODO: could apply some sort of sorting to light_data to add an order of importance or let the user choose what sources
+			//		could be possibly cast lights, etc.
+			if (light_data[i]->generate_shadows) {
+				update_command_buffers = true;
+				break;
+			}
+		}
+	}
+
 
 	if (update_command_buffers) {
 		create_command_buffers(game_objects);

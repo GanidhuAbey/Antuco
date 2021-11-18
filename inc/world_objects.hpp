@@ -18,9 +18,13 @@ private:
 	glm::vec4 position;
 	glm::vec4 target;
 	glm::vec4 color;
+	glm::vec3 orientation;
 
 	glm::mat4 world_to_light;
 	glm::mat4 perspective;
+
+	bool generate_shadows = true;
+
 private:
 	Light(glm::vec3 light_pos, glm::vec3 light_target, glm::vec3 light_color, glm::vec3 up=glm::vec3(0.0,1.0,0.0));
 public:

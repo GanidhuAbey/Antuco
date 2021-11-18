@@ -20,7 +20,7 @@ Window* Antuco::init_window(int w, int h, const char* title) {
 	Window* window = new Window(w, h, title);
 
 	pWindow = window;
-
+	
 	return window;
 }
 
@@ -57,7 +57,8 @@ GameObject* Antuco::create_object() {
 }
 
 void Antuco::render() {
-	printf("light position is now: < %f | %f | %f > \n", lights[0]->position.x, lights[0]->position.y, lights[0]->position.z);
+	//printf("size: %zu \n", lights.size());
+	
 	//check and update the camera information
 	//printf("camera position: <%f, %f, %f>", cameras[0]->construct_world_to_camera())
 	/*

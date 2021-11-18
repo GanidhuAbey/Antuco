@@ -66,10 +66,13 @@ private:
     VkDeviceSize buffer_size;
     VkDeviceSize offset;
     VkDeviceMemory buffer_memory;
-    VkBuffer buffer;
     VkDevice* p_device; //hopefully this doesn't just disappear...
     //offset = i * allocations[i]   
     std::vector<VkDeviceSize> allocations;
+
+public:
+    VkBuffer buffer;
+
 public:
     StackBuffer();
     ~StackBuffer();
@@ -78,6 +81,7 @@ public:
     void init(VkPhysicalDevice physical_device, VkDevice device, BufferCreateInfo* p_buffer_info);
     VkDeviceSize allocate(VkDeviceSize allocation_size);
     void free(VkDeviceSize delete_offset);
+    void sort();
 };
 
 struct PoolCreateInfo {

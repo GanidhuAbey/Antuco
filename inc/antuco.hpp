@@ -1,10 +1,10 @@
 /* LIGHT WRAPPER OVER THE MAIN FUNCTIONALITY OF THE ENGINE FOR THE USER TO INTERACT WITH */
 #pragma once
 
-#include "antuco_enums.hpp"
 #include "window.hpp"
 #include "world_objects.hpp"
 #include "graphics.hpp"
+#include "antuco_enums.hpp"
 
 #include <vector>
 

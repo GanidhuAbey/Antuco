@@ -1,12 +1,11 @@
 /* A light wrapper that abstracts from the API-dependent window implementation. Essentialy makes the window functionality API agnostic */
 #pragma once
 
+#include "antuco_enums.hpp"
 #include <stdint.h>
 
 namespace tuco {
 
-enum WindowInput;
-enum class WindowStatus;
 
 class WindowImpl;
 

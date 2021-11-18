@@ -4,11 +4,14 @@
 #try writing out the path of your vulkan location fully instead of using VULKAN_SDK and see if that fixes it
 
 cmake_minimum_required(VERSION 3.16.3)
+
+set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
+set(CMAKE_CXX_STANDARD 20)
+
 project(Antuco VERSION 1.0.0)
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
-
-set(CMAKE_CXX_STANDARD 20)
 
 include_directories(inc/)
 

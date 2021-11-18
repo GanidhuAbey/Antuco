@@ -2,8 +2,8 @@
 
 #pragma once
 
+#include "antuco.hpp"
 #include "window.hpp"
-#include "antuco_enums.hpp"
 
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>

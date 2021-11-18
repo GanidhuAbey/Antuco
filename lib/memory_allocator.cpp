@@ -125,6 +125,13 @@ void StackBuffer::init(VkPhysicalDevice physical_device, VkDevice device, Buffer
     p_device = &device;
 }
 
+///
+/// This function will sort the stack buffer so that data is compacted and memory efficient,
+/// in terms of complexity this functions runs at O(n) but the actual constant time moves are going to be a somewhat
+/// expensive process so it would recommended to use during downtime in the application (perhaps tracking CPU/GPU usage?)\
+/// 
+void StackBuffer::sort() {}
+
 VkDeviceSize StackBuffer::allocate(VkDeviceSize allocation_size) {
     if (allocation_size > buffer_size) {
         //not sure how to handle this case right now
@@ -323,6 +330,9 @@ void mem::createImage(VkPhysicalDevice physicalDevice, VkDevice device, ImageCre
 
     memoryAlloc.memoryTypeIndex = findMemoryType(physicalDevice, memoryReq.memoryTypeBits, imageInfo->memoryProperties);
 
+    //save image dimensions we may need depth in the future but it won't be hard to add
+    pMemory->imageDimensions.width = imageInfo->extent.width;
+    pMemory->imageDimensions.height = imageInfo->extent.height;
 
     VkResult allocResult = vkAllocateMemory(device, &memoryAlloc, nullptr, &pMemory->memoryHandle);
 

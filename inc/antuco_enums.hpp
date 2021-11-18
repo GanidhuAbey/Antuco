@@ -1,6 +1,8 @@
+
 #pragma once
 
 namespace tuco {
+
 enum class WindowStatus {
 	CLOSE_REQUEST, //status of the close button
 };
@@ -13,4 +15,6 @@ enum WindowInput {
 	D = 68,
 	X = 88,
 };
+
 }
+
