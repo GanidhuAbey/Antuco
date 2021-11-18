@@ -81,6 +81,7 @@ public:
     void init(VkPhysicalDevice physical_device, VkDevice device, BufferCreateInfo* p_buffer_info);
     VkDeviceSize allocate(VkDeviceSize allocation_size);
     void free(VkDeviceSize delete_offset);
+    void sort();
 };
 
 struct PoolCreateInfo {

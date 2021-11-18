@@ -389,7 +389,7 @@ void GraphicsImpl::create_shadowpass() {
     subpass.colorAttachmentCount = 0;
     subpass.pDepthStencilAttachment = &shadowpass_ref;
 
-    std::vector<VkSubpassDependency> dependencies(3);
+    std::vector<VkSubpassDependency> dependencies(2);
 
     dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
     dependencies[0].dstSubpass = 0;
@@ -405,15 +405,7 @@ void GraphicsImpl::create_shadowpass() {
     dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
- 
-    dependencies[1].srcSubpass = 0;
-    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    dependencies[1].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT; 
     
     VkRenderPassCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -1324,11 +1316,6 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         throw std::runtime_error("could not allocate memory for command buffers");
     }
 
-    //push all my command buffers into an exectute stage.
-    //TODO: multithread this process
-    //[HOLD] - not going to do this probably, if I implement it now, when deffered shading is implemented i'd have to scrap
-    //         it anyways
-
     for (size_t i = 0; i < command_buffers.size(); i++) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1341,7 +1328,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
 		VkRenderPassBeginInfo shadowpass_info{};
 
-    shadowpass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        shadowpass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		shadowpass_info.renderPass = shadowpass;
 		shadowpass_info.framebuffer = shadowpass_buffer;
 		VkRect2D renderArea{};
@@ -1388,9 +1375,10 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		//draw first object (cube)
 		uint32_t total_indexes = 0;
 		uint32_t total_vertices = 0;
-
+  
+        uint32_t* number;
 		for (size_t j = 0; j < game_objects.size(); j++) {
-			if (!game_objects[j]->update) {
+            if (!game_objects[j]->update) {
 				for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
 					Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
 					uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
@@ -1409,26 +1397,60 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		}
 		vkCmdEndRenderPass(command_buffers[i]);
 
-		//first lets try to map one of the images generated onto our atlas
-		//copy image onto one of our buffers 
+        //first lets try to map one of the images generated onto our atlas
+        //copy image onto one of our buffers 
         
-        //TODO: the validation error occurs here, on the very first pass through the image remains in the undefined state,
-        //this is cause by the render pass not running on the very run of the loop causing the image to remain
-        //undefined as it passes through here.
-        //
-        //in order to fix this i'll most likely have to first figure out why the render pass is failing to run on the very
-        //first loop.
-    transfer_image_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, shadow_pass_texture.image);
-    copy_image_to_buffer(shadowmap_buffers[0].buffer, shadow_pass_texture, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0);
-    transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, shadow_pass_texture.image);
-    //now the hope is that the image attached to the frame buffer has data in it (hopefully)
-		//copy the data from the texture onto the atlas
+        //this could potentially be due to a synchronization issue.
+        //transfer_image_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, shadow_pass_texture.image);
 
-		//allocate descriptor set with image attached to render?
-    
-		transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, shadowmap_atlas.image);
+
+        //take depth texture calculated in first render pass from DEPTH_STENCIL_READ_ONLY -> TRANSFER_SRC       
+          
+        VkImageMemoryBarrier imageTransfer{};
+        imageTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        imageTransfer.pNext = nullptr;
+        imageTransfer.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        imageTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        imageTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageTransfer.image = shadow_pass_texture.image;
+        imageTransfer.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageTransfer.subresourceRange.baseMipLevel = 0;
+        imageTransfer.subresourceRange.levelCount = 1;
+        imageTransfer.subresourceRange.baseArrayLayer = 0;
+        imageTransfer.subresourceRange.layerCount = 1;
+
+
+        VkPipelineStageFlags sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        VkPipelineStageFlags destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT; 
+        
+        imageTransfer.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+        imageTransfer.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+
+        vkCmdPipelineBarrier(
+            command_buffers[i],
+            sourceStage,
+            destinationStage,
+            0,
+            0, nullptr,
+            0, nullptr,
+            1, &imageTransfer
+        );
+
+
+        copy_image_to_buffer(shadowmap_buffers[0].buffer, shadow_pass_texture, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, command_buffers[i]);
+        //transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, shadow_pass_texture.image);
+        //now the hope is that the image attached to the frame buffer has data in it (hopefully)
+        //copy the data from the texture onto the atlas
+
+        //allocate descriptor set with image attached to render?
+        
+        transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, shadowmap_atlas.image);
 		
-    //begin a render pass so that we can draw to the appropriate framebuffer
+        //begin a render pass so that we can draw to the appropriate framebuffer
 		VkRenderPassBeginInfo renderInfo{};
 		renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderInfo.renderPass = render_pass;
@@ -1789,9 +1811,18 @@ void GraphicsImpl::draw_frame() {
     current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, VkImage image) {
+//TODO: a bug is causing vulkan to spit validation errors because i'm checking whether the 'command_buffer' parameter has a value...
+//      but 'command_buffer' is unused so it never has a value and therefore the functions should behave as if 'command_buffer' doesn't exist
+//      but clearly that isn't happening.
+//
+//      need to figure it out
+void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, VkImage image, std::optional<VkCommandBuffer> command_buffer) {
     //begin command buffer
-    VkCommandBuffer commandBuffer = begin_command_buffer();
+    bool delete_buffer = false;
+    if (!command_buffer.has_value()) {
+        command_buffer = begin_command_buffer();
+        delete_buffer = true;
+    }
 
 
     //transfer image layout
@@ -1908,7 +1939,7 @@ void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLa
     }
 
     vkCmdPipelineBarrier(
-        commandBuffer,
+        command_buffer.value(),
         sourceStage,
         destinationStage,
         0,
@@ -1918,8 +1949,9 @@ void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLa
     );
 
     //end command buffer
-
-    end_command_buffer(commandBuffer);
+    if (delete_buffer) {
+        end_command_buffer(command_buffer.value());
+    }
 }
 
 /// <summary>
@@ -1930,8 +1962,12 @@ void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLa
 /// <param name="image_layout"> the layout of the iamge </param>
 /// <param name="image_aspect"> the aspect of the image </param>
 /// <param name="dst_offset"> the offset of the buffer</param>
-void GraphicsImpl::copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset)  {
-    VkCommandBuffer transfer_buffer = begin_command_buffer();
+void GraphicsImpl::copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset, std::optional<VkCommandBuffer> command_buffer)  {
+    bool delete_buffer = false; 
+    if (!command_buffer.has_value()) { 
+        command_buffer = begin_command_buffer();
+        delete_buffer = true;
+    }
 
     //we won't be dealing with mipmap levels for a while i think so i can change this then
     VkImageSubresourceLayers image_layers{};
@@ -1950,9 +1986,11 @@ void GraphicsImpl::copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkIm
 
     //copy image to buffer
     //TODO: contain this various image data within the memory object so the user doesnt have to keep track of it
-    vkCmdCopyImageToBuffer(transfer_buffer, image.image, image_layout, buffer, 1, &copy_data);
+    vkCmdCopyImageToBuffer(command_buffer.value(), image.image, image_layout, buffer, 1, &copy_data);
 
-    end_command_buffer(transfer_buffer);
+    if (delete_buffer) { 
+        end_command_buffer(command_buffer.value());
+    }
 }
 
 void GraphicsImpl::copy_buffer_to_image(mem::Memory buffer, mem::Memory image, VkDeviceSize dst_offset, uint32_t image_width, uint32_t image_height) {
