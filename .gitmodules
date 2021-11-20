@@ -1,0 +1,14 @@
+[submodule "external/include/assimp"]
+	path = external/include/assimp
+	url = https://github.com/assimp/assimp.git
+	branch = assimp_5.0_release
+[submodule "external/include/glm"]
+	path = external/include/glm
+	url = https://github.com/g-truc/glm
+[submodule "external/include/glfw"]
+	path = external/include/glfw
+	url = https://github.com/glfw/glfw.git
+	branch = 3.3-stable
+[submodule "external/include/stb"]
+	path = external/include/stb
+	url = https://github.com/nothings/stb

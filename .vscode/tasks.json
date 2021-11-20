@@ -1,0 +1,50 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "cmake",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                ".."
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "group": "build"
+        },
+        {
+            "label": "make",
+            "type": "shell",
+            "command": "mingw32-make.exe",
+            "args": [
+                ".",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "group": "build"
+        },
+        {
+            "label": "vbuild",
+            "type": "shell",
+            "command": "msbuild",
+            "args": [
+                "build/Antuco.sln" //no idea how to do this, so we'll just hardcode it
+            ],
+            "dependsOrder": "sequence",
+            "group": "build"
+        },
+        {
+            "label": "run",
+            "type": "shell",
+            "command": "build/Debug/main.exe",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "cmake",
+                "vbuild"
+            ],
+            "group": "build"
+        }
+    ]
+}
