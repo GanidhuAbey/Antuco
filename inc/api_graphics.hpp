@@ -14,6 +14,7 @@
 #include "world_objects.hpp"
 
 #include <vector>
+#include <math.h>
 
 #ifdef NDEBUG 
 const bool enableValidationLayers = false;
@@ -22,8 +23,10 @@ const bool enableValidationLayers = true;
 #endif
 
 //TODO: would be nice if we had a config file/page implemented to add some tweakable values
-//acceptable values are a multiple of 4
+//ONLY ACCEPTABLE VALUES ARE PERFECT SQUARES
 const uint32_t MAX_SHADOW_CASTERS = 4;
+
+const uint32_t SHADOWMAP_SIZE=2048;
 
 const std::vector<const char*> validation_layers = {"VK_LAYER_KHRONOS_validation"};
 const std::vector<const char*> device_extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
@@ -83,13 +86,14 @@ private:
 //shadow map data
 private:
 	mem::Memory shadowmap_atlas;
-	uint32_t shadowmap_atlas_width = 8192;
-	uint32_t shadowmap_atlas_height = 8192;
+	//this is way to large...
+	uint32_t shadowmap_atlas_width = SHADOWMAP_SIZE*sqrt(MAX_SHADOW_CASTERS);
+	uint32_t shadowmap_atlas_height = SHADOWMAP_SIZE*sqrt(MAX_SHADOW_CASTERS);
 
 	mem::StackBuffer shadowmap_buffers[MAX_SHADOW_CASTERS];
 	
-	uint32_t shadowmap_width = shadowmap_atlas_width / MAX_SHADOW_CASTERS;
-	uint32_t shadowmap_height = shadowmap_atlas_height / MAX_SHADOW_CASTERS;
+	uint32_t shadowmap_width = SHADOWMAP_SIZE;
+	uint32_t shadowmap_height = SHADOWMAP_SIZE;
 
 	VkSampler shadowmap_sampler;	
 	VkDescriptorSetLayout shadowmap_layout;
@@ -192,7 +196,7 @@ private:
 	VkPipelineShaderStageCreateInfo fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
 	void write_to_ubo();	
 	void update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo);
-	void copy_buffer_to_image(VkBuffer buffer, mem::Memory image, VkOffset3D image_offset, VkImageAspectFlagBits aspect_mask, std::optional<VkCommandBuffer> command_buffer = std::nullopt);	
+	void copy_buffer_to_image(VkBuffer buffer, mem::Memory image, VkOffset3D image_offset, VkImageAspectFlagBits aspect_mask, uint32_t image_width, uint32_t image_height, std::optional<VkCommandBuffer> command_buffer = std::nullopt);	
 	void copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset, std::optional<VkCommandBuffer> command_buffer=std::nullopt);
 	void transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, VkImage image, VkImageAspectFlagBits aspect_mask, std::optional<VkCommandBuffer> command_buffer=std::nullopt);
 	void create_shadowmap_transfer_buffer();

@@ -40,7 +40,7 @@ void GraphicsImpl::create_shadowmap_transfer_buffer() {
 
     //maximum size stored is : region->bufferOffset + (((z * imageHeight) + y) * rowLength + x) * texelBlockSize
     //imageHeight*rowLength + imageHeight*rowLength + rowLength
-    buffer_info.size = (4*shadowmap_height*shadowmap_width) * 128;
+    buffer_info.size = (2*shadowmap_height*shadowmap_width) * 128;
     buffer_info.queueFamilyIndexCount = 1;
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -1411,7 +1411,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         //transfer the image data from the intermediary buffer into the shadow map
         transfer_image_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, shadowmap_atlas.image, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
         VkOffset3D image_offset = {0, 0, 0}; 
-        copy_buffer_to_image(shadowmap_buffers[0].buffer, shadowmap_atlas, image_offset, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
+        copy_buffer_to_image(shadowmap_buffers[0].buffer, shadowmap_atlas, image_offset, VK_IMAGE_ASPECT_DEPTH_BIT, SHADOWMAP_SIZE, SHADOWMAP_SIZE, command_buffers[i]);
         transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, shadowmap_atlas.image, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
         //now the hope is that the image attached to the frame buffer has data in it (hopefully)
         //copy the data from the texture onto the atlas
@@ -1962,7 +1962,7 @@ void GraphicsImpl::copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkIm
 ///     - uint32_t image_width : width of the image
 ///     - uint32_t image_height : height of the image
 /// RETURNS - VOID
-void GraphicsImpl::copy_buffer_to_image(VkBuffer buffer, mem::Memory image, VkOffset3D image_offset, VkImageAspectFlagBits aspect_mask, std::optional<VkCommandBuffer> command_buffer) {
+void GraphicsImpl::copy_buffer_to_image(VkBuffer buffer, mem::Memory image, VkOffset3D image_offset, VkImageAspectFlagBits aspect_mask, uint32_t image_width, uint32_t image_height, std::optional<VkCommandBuffer> command_buffer) {
     //create command buffer
     bool delete_buffer = false;
     if (!command_buffer.has_value()) {
@@ -1976,9 +1976,10 @@ void GraphicsImpl::copy_buffer_to_image(VkBuffer buffer, mem::Memory image, VkOf
     imageSub.baseArrayLayer = 0;
     imageSub.layerCount = 1;
 
+    //note for future me: this isn't about the size of destination image, its about the size of image in the buffer that your copying over. 
     VkExtent3D imageExtent = {
-        image.imageDimensions.width,
-        image.imageDimensions.height,
+        image_width,
+        image_height,
         1,
     };
 
@@ -2095,7 +2096,7 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
     //transfer the image to appropriate layout for copying
     transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, new_texture_image->image, VK_IMAGE_ASPECT_COLOR_BIT);
     VkOffset3D image_offset = {0, 0, 0};
-    copy_buffer_to_image(newBuffer.buffer, *new_texture_image, image_offset, VK_IMAGE_ASPECT_COLOR_BIT);
+    copy_buffer_to_image(newBuffer.buffer, *new_texture_image, image_offset, VK_IMAGE_ASPECT_COLOR_BIT, new_texture_image->imageDimensions.width, new_texture_image->imageDimensions.height);
     //transfer the image again to a more optimal layout for texture sampling?
     transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, new_texture_image->image, VK_IMAGE_ASPECT_COLOR_BIT);
 
