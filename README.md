@@ -22,6 +22,22 @@ This project is built with CMake and Clang so ideally it should work on most ope
 
 These are various screenshots I took through different stages of development in the engine:
 
+
+#### Implementation of 3D Perspective:
+
 ![First Month Of Development](antuco_screenshots/august_11_progress_shot.PNG?raw=true "3D Perspective Rendering")
+
+#### Rendering Multiple Objects (With Depth Testing)
+
+![Depth Testing](antuco_screenshots/august_12_progress_shot.PNG?raw=true "Multiple Objects")
+
+#### Basic Diffuse Lighting
+
+![Lighting](antuco_screenshots/august_23_progress_shot.PNG?raw=true "Diffuse Lighting")
+
+#### Shadows
+
+![Shadows](antuco_screenshots/shadow_mapping_1_light.png?raw=true "Shadows")
+
 
 ## Road Map
