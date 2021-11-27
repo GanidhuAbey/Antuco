@@ -20,4 +20,8 @@ This project is built with CMake and Clang so ideally it should work on most ope
 
 ## Screenshots
 
+These are various screenshots I took through different stages of development in the engine:
+
+![First Month Of Development](https::github.com/GanidhuAbey/Antuco/blob/main/antuco_screenshots/august_11_progress_shot.PNG?raw=true)
+
 ## Road Map
