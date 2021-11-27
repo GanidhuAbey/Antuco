@@ -29,7 +29,7 @@ These are various screenshots I took through different stages of development in 
 
 #### Rendering Multiple Objects (With Depth Testing)
 
-![Depth Testing](antuco_screenshots/august_12_progress_shot.PNG?raw=true "Multiple Objects")
+![Depth Testing](antuco_screenshots/lighting.PNG?raw=true "Multiple Objects")
 
 #### Basic Diffuse Lighting
 
