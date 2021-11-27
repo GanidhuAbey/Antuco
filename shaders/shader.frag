@@ -18,6 +18,7 @@ in vec4 gl_FragCoord;
 //going to hard code this values to check for now but will edit them once the effect
 //is working as intended
 
+
 //returns 0 if in shadow, otherwise 1
 float check_shadow(vec3 light_view) {
   float pixel_depth = light_view.z;

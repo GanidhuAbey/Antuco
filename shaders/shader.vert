@@ -28,6 +28,9 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
 
+//TODO: actually bring these in, probably through a push constant if we can
+
+
 layout(location = 3) out vec3 surfaceNormal;
 layout(location = 4) out vec4 vPos;
 layout(location = 5) out vec2 texCoord;
@@ -37,24 +40,24 @@ layout(location = 6) out vec4 light_perspective;
 layout(location = 7) out vec3 light_position;
 layout(location = 8) out vec3 light_color;
 
+//now i know the size length
+float mapping_value = 0.25;
 
-mat4 mapping_matrix = mat4(
-    0.5, 0, 0, 0.5,
-    0, 0.5, 0, 0.5,
-    0, 0, 0.5, 0.5,
-    0, 0, 0, 1
-);
-
+//TODO: we have to change our light_view vector so that we sample from a quarter of the shadow map.
+//      biasMat maps the vector from light space to texture space so we need to change matrix to account for the corner
 
 //NOTE: MATRICES IN GLSL ARE READ AS ROW MAJOR, AND NOT COLUMN MAJOR!!!!!
-const mat4 biasMat = mat4( 
-	0.5, 0.0, 0.0, 0.0,
-	0.0, 0.5, 0.0, 0.0,
-	0.0, 0.0, 1.0, 0.0,
-	0.5, 0.5, 0.0, 1.0 );
 
 void main() {
 
+    mat4 biasMat = mat4( 
+        mapping_value, 0.0, 0.0, 0.0,
+        0.0, mapping_value, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        mapping_value, mapping_value, 0.0, 1.0 
+    );
+   
+   
     gl_Position = ubo.projection * ubo.worldToCamera * ubo.modelToWorld * vec4(inPosition, 1.0); //opengl automatically divids the components of the vector by 'w'
 
     surfaceNormal = vec3(ubo.modelToWorld * vec4(inNormal, 1.0));

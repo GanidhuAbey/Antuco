@@ -26,6 +26,9 @@ const bool enableValidationLayers = true;
 //ONLY ACCEPTABLE VALUES ARE PERFECT SQUARES
 const uint32_t MAX_SHADOW_CASTERS = 4;
 
+//In case use wants many buffers it wouldn't be a good idea to create as many buffers as shadow casters
+const uint32_t SHADOW_TRANSFER_BUFFERS = MAX_SHADOW_CASTERS;
+
 const uint32_t SHADOWMAP_SIZE=2048;
 
 const std::vector<const char*> validation_layers = {"VK_LAYER_KHRONOS_validation"};

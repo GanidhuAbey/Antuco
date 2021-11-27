@@ -46,10 +46,11 @@ void GraphicsImpl::create_shadowmap_transfer_buffer() {
     buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     buffer_info.pNext = nullptr;
 
-    for (size_t i = 0; i < 1; i++) {
+    for (size_t i = 0; i < SHADOW_TRANSFER_BUFFERS; i++) {
         //create all required buffers
         shadowmap_buffers[i].init(physical_device, device, &buffer_info);
     }
+    
 }
 
 /// <summary>
@@ -1479,6 +1480,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		light.position = light_data[0]->position;
 		light.direction = light_data[0]->target;
 		light.color = light_data[0]->color;
+
 		vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(light), &light);
 		//draw first object (cube)
 	    total_indexes = 0;
