@@ -23,7 +23,7 @@ struct LightObject {
 	glm::vec4 color;
 	glm::vec4 direction;
 	glm::vec4 position;
-	float light_count;
+	glm::vec4 light_count;
 };
 
 struct LightUniformBuffer {

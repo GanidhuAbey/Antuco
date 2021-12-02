@@ -22,6 +22,7 @@ layout(push_constant) uniform PushFragConstant {
   vec3 lightColor;
   vec3 lightDirection;
   vec3 lightPosition;
+  vec3 light_count;
 } pfc;
 
 layout(location = 0) in vec3 inPosition;
@@ -41,7 +42,7 @@ layout(location = 7) out vec3 light_position;
 layout(location = 8) out vec3 light_color;
 
 //now i know the size length
-float mapping_value = 0.25;
+float mapping_value = (1/sqrt(pfc.light_count.x))*0.5;
 
 //TODO: we have to change our light_view vector so that we sample from a quarter of the shadow map.
 //      biasMat maps the vector from light space to texture space so we need to change matrix to account for the corner

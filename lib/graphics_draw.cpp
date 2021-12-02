@@ -1480,6 +1480,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		light.position = light_data[0]->position;
 		light.direction = light_data[0]->target;
 		light.color = light_data[0]->color;
+        light.light_count = glm::vec4(MAX_SHADOW_CASTERS, 1, 1, 1); //NOTE: will only pass into the shader with a vec4, don't ask me why it seems glsl really really values constant spacing
 
 		vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(light), &light);
 		//draw first object (cube)

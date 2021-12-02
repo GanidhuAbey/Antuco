@@ -1,7 +1,6 @@
 #include "api_graphics.hpp"
 #include "queue.hpp"
 
-
 #include <stdint.h>
 #include <vector>
 #include <stdexcept>
@@ -72,6 +71,8 @@ void GraphicsImpl::create_instance(const char* appName) {
 
 	//determine layer count (we only really care about the debug validation layers)
 	if (enableValidationLayers && validation_layer_supported(validation_layers)) {
+		printf("[DEBUG] - VALIDATION LAYERS ENABLED \n");
+		
 		instanceInfo.enabledLayerCount = validation_layers.size();
 		instanceInfo.ppEnabledLayerNames = validation_layers.data();
 
@@ -159,6 +160,15 @@ void GraphicsImpl::pick_physical_device() {
 	if (current_best_device == nullptr) {
 		printf("[ERROR] - could not find suitable GPU from this device");
 		throw std::runtime_error("");
+	}
+	
+	if (enableValidationLayers) {
+		VkPhysicalDeviceProperties device_properties;
+		vkGetPhysicalDeviceProperties(current_best_device, &device_properties);
+		
+		printf("[DEBUG] - CHOSEN GPU: %s \n", device_properties.deviceName);
+		printf("[DEBUG] - MAXIMUM PUSH CONSTANT RANGE: %u \n", device_properties.limits.maxPushConstantsSize);
+
 	}
 
 	//make the best physical device the one we'll use for the program
