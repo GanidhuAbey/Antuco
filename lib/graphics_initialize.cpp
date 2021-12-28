@@ -55,7 +55,7 @@ void GraphicsImpl::create_instance(const char* appName) {
 	appInfo.applicationVersion = VK_VERSION_1_0;
 	appInfo.pEngineName = "Antuco";
 	appInfo.engineVersion = VK_VERSION_1_0;
-	appInfo.apiVersion = VK_VERSION_1_0;
+	appInfo.apiVersion = VK_VERSION_1_2;
 
 	//create debug messenger
 	VkDebugUtilsMessengerCreateInfoEXT debugInfo{};

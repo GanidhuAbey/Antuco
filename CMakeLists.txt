@@ -25,7 +25,7 @@ file(GLOB SOURCES lib/*.cpp)
 add_library(
     REQUIRED_LIBRARIES
     ${SOURCES}
-)
+    )
 
 find_package(Vulkan)
 

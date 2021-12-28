@@ -20,6 +20,8 @@ private:
 	glm::vec4 color;
 	glm::vec3 orientation;
 
+	int light_index = 0;
+
 	glm::mat4 world_to_light;
 	glm::mat4 perspective;
 

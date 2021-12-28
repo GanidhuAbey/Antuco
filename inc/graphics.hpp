@@ -23,7 +23,7 @@ public:
 
 public:
 	void update_camera(glm::mat4 world_to_camera, glm::mat4 projection);
-	void update_light(std::vector<tuco::Light*> lights);
+	void update_light(std::vector<tuco::Light*> lights, std::vector<int> shadow_indices);
 	void update_draw(std::vector<GameObject*> game_objects);
 
 };

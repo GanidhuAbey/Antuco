@@ -12,6 +12,7 @@
 #include "data_structures.hpp"
 #include "mesh.hpp"
 #include "world_objects.hpp"
+#include "config.hpp"
 
 #include <vector>
 #include <math.h>
@@ -23,12 +24,12 @@ const bool enableValidationLayers = true;
 #endif
 
 //TODO: would be nice if we had a config file/page implemented to add some tweakable values
-//ONLY ACCEPTABLE VALUES ARE PERFECT SQUARES
-const uint32_t MAX_SHADOW_CASTERS = 4;
-
 //In case use wants many buffers it wouldn't be a good idea to create as many buffers as shadow casters
 const uint32_t SHADOW_TRANSFER_BUFFERS = MAX_SHADOW_CASTERS;
 
+//CHANGING THIS IS NOT RECOMMENDED
+//shader assumes that shadowmap size is 2048, i could pass in the shadowmap size into the shader but thats a waste of 
+//performance for something that realistically will never need to change
 const uint32_t SHADOWMAP_SIZE=2048;
 
 const std::vector<const char*> validation_layers = {"VK_LAYER_KHRONOS_validation"};
@@ -43,7 +44,7 @@ public:
 	~GraphicsImpl();
 
 	void update_camera(glm::mat4 world_to_camera, glm::mat4 projection);
-	void update_light(std::vector<Light*> lights);
+	void update_light(std::vector<Light*> lights, std::vector<int> shadow_casters);
 	void update_draw(std::vector<GameObject*> game_objects);
 
 private:
@@ -51,6 +52,7 @@ private:
 	glm::mat4 camera_projection;
 
 	std::vector<Light*> light_data; //a reference to all the light data we need.
+	std::vector<int> shadow_caster_indices;
 
 //initialize data
 private:
@@ -211,7 +213,7 @@ private:
 	void create_shadowmap_sampler();
 	void create_shadowmap_atlas();
 	void write_to_shadowmap_set();
-	void create_light_set(UniformBufferObject ubo);
+	void create_light_set(UniformBufferObject lbo);
 	void create_light_layout();
 	void cleanup_swapchain();
 	void recreate_swapchain();

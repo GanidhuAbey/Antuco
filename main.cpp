@@ -65,7 +65,7 @@ int main() {
 	//its kinda hard to determine a direction for a user, much easier for them to give a location to light
 	glm::vec3 light_position = glm::vec3(5.0f, 10.0f, 3.0f);
 	glm::vec3 light_look_at = glm::vec3(0.0f, 0.0f, 0.0f);
-	tuco::Light* light = antuco.create_light(light_position, light_look_at, glm::vec3(1.0, 1.0, 1.0));
+	tuco::Light* light = antuco.create_light(light_position, light_look_at, glm::vec3(1.0, 1.0, 1.0), glm::vec3(0.0, 1.0, 0.0), true);
 
 	//tuco::Light* another_light = antuco.create_light(glm::vec3(0.0, 8.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
 
@@ -82,7 +82,7 @@ int main() {
 
 	auto t1 = TIME_IT;
 	printf("hellow \n");
-	another->add_mesh(OBJECT_PATH + "objects/test_object/with_texture.obj");
+	another->add_mesh(OBJECT_PATH + "objects/test_object/high_res.obj");
 	printf("hey there \n");
 	another->scale(glm::vec3(5, 0.1, 5));
 	
@@ -93,6 +93,8 @@ int main() {
 	auto t2 = TIME_IT;
 
 	std::chrono::duration<double, std::milli> final_count = t2 - t1;
+
+	std::chrono::duration<double, std::milli> frame_time;
 	printf("time to load model: %f \n", final_count.count());
 
 	//basic game loop
@@ -117,6 +119,7 @@ int main() {
 	light->update(glm::vec3(3.0f, 0.0f, 0.0f));
 
 	while (game_loop) {
+		auto t1 = TIME_IT;
 		timer += 0.0001f;
 		//query mouse position
 		double offset_x = (x_pos - p_xpos) * MOUSE_SENSITIVITY;
@@ -136,7 +139,7 @@ int main() {
 
 		//take some input
 		if (window->get_key_state(tuco::WindowInput::X)) {
-			printf("the x button has been pressed \n");
+			std::cout << "frame time : " << frame_time.count() << std::endl;
 		}
 		//handle movement
 		if (window->get_key_state(tuco::WindowInput::W)) {
@@ -179,6 +182,11 @@ int main() {
 		window->get_mouse_pos(&x_pos, &y_pos);
 
 		//check if user has closed the window
+		auto t2 = TIME_IT;
+		//frame time
+		frame_time = t2 - t1;
+			
+
 		game_loop = !window->check_window_status(tuco::WindowStatus::CLOSE_REQUEST);
 	}
 }

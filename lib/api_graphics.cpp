@@ -1,6 +1,7 @@
 #include "api_graphics.hpp"
 #include "window.hpp"
 #include "api_window.hpp"
+#include "logger/interface.hpp"
 
 #include <glm/ext.hpp>
 
@@ -60,8 +61,9 @@ void GraphicsImpl::update_camera(glm::mat4 world_to_camera, glm::mat4 projection
 	camera_projection = projection;
 }
 
-void GraphicsImpl::update_light(std::vector<Light*> lights) {
+void GraphicsImpl::update_light(std::vector<Light*> lights, std::vector<int> shadow_casters) {
 	light_data = lights;
+	shadow_caster_indices = shadow_casters;
 }
 
 //TODO: with that most of the rendering segments are in place all thats actually left is to implement texturing, and we can begin
@@ -84,9 +86,10 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		ubo.worldToCamera = camera_view;
 		ubo.projection = camera_projection;
 
+		//TODO: make light buffer object a ubo with only 2 matricies for the respective light data.
+		//		it will make the whole thing more elegant once we have more light data to deal with
 		UniformBufferObject lbo;
-
-		lbo.modelToWorld = ubo.modelToWorld;
+		lbo.modelToWorld = game_objects[i]->transform;
 		lbo.worldToCamera = light_data[0]->world_to_light;
 		lbo.projection = light_data[0]->perspective;
 
@@ -124,7 +127,7 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		for (size_t i = 0; i < MAX_SHADOW_CASTERS; i++) {
 			//TODO: could apply some sort of sorting to light_data to add an order of importance or let the user choose what sources
 			//		could be possibly cast lights, etc.
-			if (light_data[i]->generate_shadows) {
+			if (light_data[shadow_caster_indices[i]]->generate_shadows) {
 				update_command_buffers = true;
 				break;
 			}

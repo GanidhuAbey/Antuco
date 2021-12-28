@@ -5,6 +5,7 @@
 #include "world_objects.hpp"
 #include "graphics.hpp"
 #include "antuco_enums.hpp"
+#include "config.hpp"
 
 #include <vector>
 
@@ -18,10 +19,10 @@ public:
 private:
 	Window* pWindow;
 	Graphics* p_graphics;
-
+	
 	/* World Objects */
 public:
-	Light* create_light(glm::vec3 light_pos, glm::vec3 light_direction, glm::vec3 light_color, glm::vec3 up=glm::vec3(0.0, 1.0, 0.0));
+	Light* create_light(glm::vec3 light_pos, glm::vec3 light_target, glm::vec3 light_color,  glm::vec3 up, bool cast_shadows=false);
 	Camera* create_camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up, float yfov, float near, float far);
 	GameObject* create_object();
 
@@ -36,8 +37,8 @@ private:
 	//the camera at the zeroth index will always be the "main camera"
 	std::vector<Camera*> cameras;
 
-	std::vector<Light*> lights;
-
+	std::vector<Light*> lights; //lights unable to cast shadows
+	std::vector<int> shadow_casters;
 	/* Antuco Initalization */
 public:
 	//delete copy trait

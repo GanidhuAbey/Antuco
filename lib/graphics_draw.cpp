@@ -1250,7 +1250,7 @@ void GraphicsImpl::create_swapchain() {
 
 
 
-void GraphicsImpl::create_light_set(UniformBufferObject ubo) { 
+void GraphicsImpl::create_light_set(UniformBufferObject lbo) { 
     std::vector<VkDescriptorSetLayout> ubo_layouts(swapchain_images.size(), light_layout);
 
     VkDescriptorSetAllocateInfo allocateInfo{};
@@ -1298,8 +1298,15 @@ void GraphicsImpl::create_light_set(UniformBufferObject ubo) {
         vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
     }
 
-    update_uniform_buffer(offset, ubo);
+    update_uniform_buffer(offset, lbo);
 }
+
+// runs a single render pass to generate a texture
+/*
+void GraphicsImpl::run_shadow_pass(VkCommandBuffer command_buffer) {
+	//TODO: move shadow map generating code onto here to simplify create_command_buffers()
+}
+*/
 
 void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects) {
     //allocate memory for command buffer, you have to create a draw command for each image
@@ -1327,93 +1334,105 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
             throw std::runtime_error("one of the command buffers failed to begin");
         }
 
-		VkRenderPassBeginInfo shadowpass_info{};
+		//run shadow pass for every light in the scene
+
+        VkRenderPassBeginInfo shadowpass_info{};
 
         shadowpass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		shadowpass_info.renderPass = shadowpass;
-		shadowpass_info.framebuffer = shadowpass_buffer;
-		VkRect2D renderArea{};
-		renderArea.offset = VkOffset2D{ 0, 0 };
-		renderArea.extent = VkExtent2D{ shadowmap_width, shadowmap_height };
-		shadowpass_info.renderArea = renderArea;
+        shadowpass_info.renderPass = shadowpass;
+        shadowpass_info.framebuffer = shadowpass_buffer;
+        VkRect2D renderArea{};
+        renderArea.offset = VkOffset2D{ 0, 0 };
+        renderArea.extent = VkExtent2D{ shadowmap_width, shadowmap_height };
+        shadowpass_info.renderArea = renderArea;
 
-		VkClearValue shadowpass_clear;
-		shadowpass_clear.depthStencil = { 1.0, 0 };
+        VkClearValue shadowpass_clear;
+        shadowpass_clear.depthStencil = { 1.0, 0 };
 
-		shadowpass_info.clearValueCount = 1;
-		shadowpass_info.pClearValues = &shadowpass_clear;
+        shadowpass_info.clearValueCount = 1;
+        shadowpass_info.pClearValues = &shadowpass_clear;
+    
+        int current_shadow = 0;
+        for (size_t y = 0; y < glm::sqrt(MAX_SHADOW_CASTERS); y++) {
+            for (size_t x = 0; x < glm::sqrt(MAX_SHADOW_CASTERS); x++) {
+                if (shadow_caster_indices.size() > current_shadow) { 
+                    //there is at least one light that is casting a shadow here
+                    vkCmdBeginRenderPass(command_buffers[i], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
+                    //do stuff...
+                    vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_pipeline);
 
-		
-		//gonna have to run the render pass 4 times...
-		vkCmdBeginRenderPass(command_buffers[i], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
-		//do stuff...
-		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_pipeline);
+                    VkViewport shadowpass_port = {};
+                    shadowpass_port.x = 0;
+                    shadowpass_port.y = 0;
+                    shadowpass_port.width = (float)shadowmap_width;
+                    shadowpass_port.height = (float)shadowmap_height;
+                    shadowpass_port.minDepth = 0.0;
+                    shadowpass_port.maxDepth = 1.0;
+                    vkCmdSetViewport(command_buffers[i], 0, 1, &shadowpass_port);
 
-		VkViewport shadowpass_port = {};
-		shadowpass_port.x = 0;
-		shadowpass_port.y = 0;
-		shadowpass_port.width = (float)shadowmap_width;
-		shadowpass_port.height = (float)shadowmap_height;
-		shadowpass_port.minDepth = 0.0;
-		shadowpass_port.maxDepth = 1.0;
-		vkCmdSetViewport(command_buffers[i], 0, 1, &shadowpass_port);
+                    VkRect2D shadowpass_scissor{};
+                    shadowpass_scissor.offset = { 0, 0 };
+                    shadowpass_scissor.extent.width = shadowmap_width;
+                    shadowpass_scissor.extent.height = shadowmap_height;
+                    vkCmdSetScissor(command_buffers[i], 0, 1, &shadowpass_scissor);
 
-		VkRect2D shadowpass_scissor{};
-		shadowpass_scissor.offset = { 0, 0 };
-		shadowpass_scissor.extent.width = shadowmap_width;
-		shadowpass_scissor.extent.height = shadowmap_height;
-		vkCmdSetScissor(command_buffers[i], 0, 1, &shadowpass_scissor);
+                    //time for the draw calls
+                    const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
+                    vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offsets);
+                    vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-		//time for the draw calls
-		const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
-		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offsets);
-		vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+                    vkCmdSetDepthBias(command_buffers[i], 5.0f, 0.0f, 1.75f);
 
-		vkCmdSetDepthBias(command_buffers[i], 5.0f, 0.0f, 1.75f);
+                    //universal to every object so i can push the light constants before the for loop
+                    //vkCmdPushConstants(shadowpass_render, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
+                    //draw first object (cube)
+                    uint32_t total_indexes = 0;
+                    uint32_t total_vertices = 0;
 
-		//universal to every object so i can push the light constants before the for loop
-		//vkCmdPushConstants(shadowpass_render, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
-		//draw first object (cube)
-		uint32_t total_indexes = 0;
-		uint32_t total_vertices = 0;
-  
-        uint32_t* number;
-		for (size_t j = 0; j < game_objects.size(); j++) {
-            if (!game_objects[j]->update) {
-				for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
-					Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
-					uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
-					uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
+                    uint32_t* number;
+                    
+                    for (size_t j = 0; j < game_objects.size(); j++) {
+                        if (!game_objects[j]->update) {
+                            for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
+                                Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
+                                uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
+                                uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 
-					//we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
-					//vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
-					VkDescriptorSet descriptors[1] = { light_ubo[j][i] };
-					vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_layout, 0, 1, descriptors, 0, nullptr);
-					vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
+                                //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
+                                //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
 
-					total_indexes += index_count;
-					total_vertices += vertex_count;
-				}
-			}
+                                VkDescriptorSet descriptors[1] = { light_ubo[j][i] };
+                                vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_layout, 0, 1, descriptors, 0, nullptr);
+                                vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
+
+                                total_indexes += index_count;
+                                total_vertices += vertex_count;
+                            }
+                        }
+                    }
+                    vkCmdEndRenderPass(command_buffers[i]);
+
+                    transfer_image_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, shadow_pass_texture.image, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
+
+
+                    //take depth texture calculated in first render pass from DEPTH_STENCIL_READ_ONLY -> TRANSFER_SRC       
+                    copy_image_to_buffer(shadowmap_buffers[0].buffer, shadow_pass_texture, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, command_buffers[i]);
+                    transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, shadow_pass_texture.image, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
+
+                    //transfer the image data from the intermediary buffer into the shadow map
+                    transfer_image_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, shadowmap_atlas.image, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
+                    VkOffset3D image_offset = {static_cast<int32_t>(x*SHADOWMAP_SIZE), static_cast<int32_t>(y*SHADOWMAP_SIZE), 0}; 
+                    copy_buffer_to_image(shadowmap_buffers[0].buffer, shadowmap_atlas, image_offset, VK_IMAGE_ASPECT_DEPTH_BIT, SHADOWMAP_SIZE, SHADOWMAP_SIZE, command_buffers[i]);
+                    transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, shadowmap_atlas.image, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
+                }
+                current_shadow++;
+            }			
 		}
-		vkCmdEndRenderPass(command_buffers[i]);
 
         //first lets try to map one of the images generated onto our atlas
         //copy image onto one of our buffers 
         
         //this could potentially be due to a synchronization issue.
-        transfer_image_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, shadow_pass_texture.image, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
-
-
-        //take depth texture calculated in first render pass from DEPTH_STENCIL_READ_ONLY -> TRANSFER_SRC       
-        copy_image_to_buffer(shadowmap_buffers[0].buffer, shadow_pass_texture, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, command_buffers[i]);
-        transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, shadow_pass_texture.image, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
-
-        //transfer the image data from the intermediary buffer into the shadow map
-        transfer_image_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, shadowmap_atlas.image, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
-        VkOffset3D image_offset = {0, 0, 0}; 
-        copy_buffer_to_image(shadowmap_buffers[0].buffer, shadowmap_atlas, image_offset, VK_IMAGE_ASPECT_DEPTH_BIT, SHADOWMAP_SIZE, SHADOWMAP_SIZE, command_buffers[i]);
-        transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, shadowmap_atlas.image, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
         //now the hope is that the image attached to the frame buffer has data in it (hopefully)
         //copy the data from the texture onto the atlas
 
@@ -1484,8 +1503,8 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
 		vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(light), &light);
 		//draw first object (cube)
-	    total_indexes = 0;
-	    total_vertices = 0;
+		uint32_t total_indexes = 0;
+		uint32_t total_vertices = 0;
 
         for (size_t j = 0; j < game_objects.size(); j++) {
             if (!game_objects[j]->update) {
@@ -1979,7 +1998,7 @@ void GraphicsImpl::copy_buffer_to_image(VkBuffer buffer, mem::Memory image, VkOf
     imageSub.baseArrayLayer = 0;
     imageSub.layerCount = 1;
 
-    //note for future me: this isn't about the size of destination image, its about the size of image in the buffer that your copying over. 
+    //note for future me: this isn't about the size of destination image, its about the size of image in the buffer that your copying over.
     VkExtent3D imageExtent = {
         image_width,
         image_height,

@@ -1,5 +1,7 @@
 #include "antuco.hpp"
 
+#include "logger/interface.hpp"
+
 #include <iostream>
 
 using namespace tuco;
@@ -29,9 +31,18 @@ void Antuco::init_graphics() {
 }
 
 /* World Object Initalization */
-Light* Antuco::create_light(glm::vec3 light_pos, glm::vec3 light_target, glm::vec3 light_color, glm::vec3 up) {
-	Light* light = new Light(light_pos, light_target, light_color, up);
+Light* Antuco::create_light(glm::vec3 light_pos, glm::vec3 light_target, glm::vec3 light_color, glm::vec3 up, bool cast_shadows) {
 
+	Light* light = new Light(light_pos, light_target, light_color, up);
+	light->light_index = lights.size();
+
+	if (cast_shadows && shadow_casters.size() < MAX_SHADOW_CASTERS) {
+		shadow_casters.push_back(lights.size());
+	}
+	else if (shadow_casters.size() >= MAX_SHADOW_CASTERS) {
+		//log error here
+		ERR_V_MSG("too many shadow casters");
+	}
 	lights.push_back(light);
 
 	return light;
@@ -52,7 +63,6 @@ GameObject* Antuco::create_object() {
 
 	objects.push_back(game_object);
 
-
 	return game_object;
 }
 
@@ -71,7 +81,7 @@ void Antuco::render() {
 	p_graphics->update_camera(cameras[0]->modelToCamera, cameras[0]->cameraToScreen);
 	//check and update the light information
 	//the engine can't handle multiple light sources right now, so we will only use the first light created
-	p_graphics->update_light(lights);
+	p_graphics->update_light(lights, shadow_casters);
 
 	//check and update the game object information, this would be where we update the command buffers as neccesary
 	p_graphics->update_draw(objects);
