@@ -165,6 +165,7 @@ private:
 
 
 	size_t current_frame = 0;
+	size_t submitted_frame = 0;
 
 	VkDescriptorSetLayout light_layout;
 
@@ -207,6 +208,7 @@ private:
 	void create_shadowmap_transfer_buffer();
 	void create_texture_image(aiString texturePath, size_t object, size_t texture_set);
 	void write_to_texture_set(std::vector<VkDescriptorSet> texture_sets, mem::Memory* image);
+	void update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo);
 	void create_shadowmap_set();
 	void create_shadowmap_layout();
 	void create_shadowmap_pool();
@@ -217,6 +219,7 @@ private:
 	void create_light_layout();
 	void cleanup_swapchain();
 	void recreate_swapchain();
+	void free_command_buffers();
 private:
 	void destroy_draw();
 

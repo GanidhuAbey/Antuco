@@ -13,7 +13,7 @@ layout(set=0, binding = 0) uniform UniformBufferObject  {
 } ubo;
 
 layout(set=1, binding = 1) uniform LightBufferObject {
-    mat4 model_to_world;
+	mat4 model_to_world;
     mat4 world_to_light;
     mat4 projection;
 } lbo;

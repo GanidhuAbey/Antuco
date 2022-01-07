@@ -5,6 +5,8 @@
 #include "memory_allocator.hpp"
 #include "data_structures.hpp"
 
+#include "logger/interface.hpp"
+
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
@@ -513,7 +515,7 @@ void GraphicsImpl::create_light_layout() {
     layout_info.pBindings = &ubo_layout_binding;
 
     if (vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &light_layout) != VK_SUCCESS) {
-        throw std::runtime_error("could not create ubo layout");
+        ERR_V_MSG("COULD NOT CREATE DESCRIPTOR SET");
     }
 }
 
@@ -1135,10 +1137,18 @@ void GraphicsImpl::destroy_draw() {
 
     for (size_t i = 0; i < texture_images.size(); i++) {
         for (size_t j = 0; j < texture_images[i].size(); j++) {
-            printf("hey \n");
             mem::destroyImage(device, *texture_images[i][j]);
         }
     }
+
+    mem::destroyImage(device, shadowmap_atlas);
+ 
+    for (auto& buffer_data : shadowmap_buffers) {
+        buffer_data.destroy(device);
+    }
+    
+
+    mem::destroyImage(device, shadow_pass_texture);
 
     ubo_pool->destroyPool(device);
     shadowmap_pool->destroyPool(device);
@@ -1175,8 +1185,6 @@ void GraphicsImpl::destroy_draw() {
 
     mem::destroyImage(device, depth_memory);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
-    //will need to destroy multiple later
-    mem::destroyImage(device, shadow_pass_texture);
 }
 
 VkSurfaceFormatKHR choose_best_format(std::vector<VkSurfaceFormatKHR> formats) {
@@ -1307,6 +1315,14 @@ void GraphicsImpl::run_shadow_pass(VkCommandBuffer command_buffer) {
 	//TODO: move shadow map generating code onto here to simplify create_command_buffers()
 }
 */
+
+void GraphicsImpl::free_command_buffers() {
+    if (command_buffers.size() == 0) return;
+
+    vkWaitForFences(device, 1, &in_flight_fences[submitted_frame], VK_TRUE, UINT64_MAX);
+
+    vkFreeCommandBuffers(device, command_pool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
+}
 
 void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects) {
     //allocate memory for command buffer, you have to create a draw command for each image
@@ -1702,6 +1718,10 @@ void GraphicsImpl::end_command_buffer(VkCommandBuffer commandBuffer) {
     vkFreeCommandBuffers(device, command_pool, 1, &commandBuffer);
 }
 
+void GraphicsImpl::update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo) {
+    uniform_buffer.write(device, memory_offset, sizeof(lbo), &lbo);
+}
+
 void GraphicsImpl::update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo) {
     //overwrite memory
     uniform_buffer.write(device, memory_offset, sizeof(ubo), &ubo);
@@ -1799,7 +1819,8 @@ void GraphicsImpl::draw_frame() {
         cleanup_swapchain();
         recreate_swapchain();
     }
-
+    
+    submitted_frame = current_frame;
     current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 

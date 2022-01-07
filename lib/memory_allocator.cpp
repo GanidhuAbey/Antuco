@@ -79,9 +79,16 @@ void SearchBuffer::free(VkDeviceSize offset) {
 
 StackBuffer::StackBuffer() {}
 
-StackBuffer::~StackBuffer() {}
+StackBuffer::~StackBuffer() {
+    //destroy the buffer
+}
 
-void StackBuffer::init(VkPhysicalDevice physical_device, VkDevice device, BufferCreateInfo* p_buffer_info) { 
+void StackBuffer::destroy(VkDevice device) {
+    vkFreeMemory(device, buffer_memory, nullptr);
+    vkDestroyBuffer(device, buffer, nullptr);
+}
+
+void StackBuffer::init(VkPhysicalDevice physical_device, VkDevice device, BufferCreateInfo* p_buffer_info) {
     //create buffer 
     VkBufferCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -121,8 +128,6 @@ void StackBuffer::init(VkPhysicalDevice physical_device, VkDevice device, Buffer
     buffer_size = p_buffer_info->size;
     offset = 0;
 
-    //store device as a pointer for destruction
-    p_device = &device;
 }
 
 ///

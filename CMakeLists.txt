@@ -25,7 +25,7 @@ file(GLOB SOURCES lib/*.cpp)
 add_library(
     REQUIRED_LIBRARIES
     ${SOURCES}
-    )
+     "render_examples/bmw.hpp")
 
 find_package(Vulkan)
 
@@ -45,7 +45,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/build/assimp/include")
 
 #compile assimp
 #add_library(assimp_dll "${CMAKE_CURRENT_SOURCE_DIR}/external/libraries/assimp-vc142-mtd.dll")
-add_executable(main main.cpp)
+add_executable(main main.cpp "render_examples/bmw.hpp")
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/external/libraries/assimp-vc142-mtd.dll" "${CMAKE_CURRENT_BINARY_DIR}/assimp-vc142-mtd.dll" COPYONLY)
 

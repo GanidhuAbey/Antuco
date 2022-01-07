@@ -94,6 +94,7 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		lbo.projection = light_data[0]->perspective;
 
 		if (game_objects[i]->update) {
+			printf("hello \n");
 			update_command_buffers = true;
 			game_objects[i]->update = false;
 			create_ubo_set();	
@@ -136,6 +137,8 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 
 
 	if (update_command_buffers) {
+		//free command buffers first?
+		free_command_buffers();
 		create_command_buffers(game_objects);
 		update_command_buffers = false;
 	}
