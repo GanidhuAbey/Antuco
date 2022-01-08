@@ -14,6 +14,8 @@ layout(set=3, binding=1) uniform sampler2D shadowmap;
 
 in vec4 gl_FragCoord;
 
+float bias = 5e-3;
+
 //light perspective is now clamped from between the specified near plane and far plane
 //going to hard code this values to check for now but will edit them once the effect
 //is working as intended
@@ -21,13 +23,15 @@ in vec4 gl_FragCoord;
 
 //returns 0 if in shadow, otherwise 1
 float check_shadow(vec3 light_view) {
-  float pixel_depth = light_view.z;
-  //check if pixel_depth can sample closest depth
-  //then closest depth must be a valid value, so now we need to clamp to 0 or 1
-  float closest_depth = texture(shadowmap, light_view.st).r; 
+	//light_view -= surfaceNormal * bias;
+	float pixel_depth = light_view.z - bias;
+  	//check if pixel_depth can sample closest depth
+  	//then closest depth must be a valid value, so now we need to clamp to 0 or 1
 
-  float in_shadow = ceil(closest_depth - pixel_depth);
-  return in_shadow;
+  	float closest_depth = texture(shadowmap, light_view.st).r; 
+  	
+	float in_shadow = ceil(closest_depth - pixel_depth);
+  	return in_shadow;
 }
 
 void main() {

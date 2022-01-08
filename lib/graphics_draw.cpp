@@ -861,7 +861,6 @@ void GraphicsImpl::create_shadowpass_pipeline() {
     VkDynamicState dynamicStates[] = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR,
-        VK_DYNAMIC_STATE_DEPTH_BIAS,
     };
 
     VkPipelineDynamicStateCreateInfo dynamicInfo{};
@@ -1043,12 +1042,13 @@ void GraphicsImpl::create_graphics_pipeline() {
 
     VkDynamicState dynamicStates[] = {
         VK_DYNAMIC_STATE_VIEWPORT,
-        VK_DYNAMIC_STATE_SCISSOR
+        VK_DYNAMIC_STATE_SCISSOR,
+        VK_DYNAMIC_STATE_DEPTH_BIAS
     };
 
     VkPipelineDynamicStateCreateInfo dynamicInfo{};
     dynamicInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicInfo.dynamicStateCount = 2;
+    dynamicInfo.dynamicStateCount = 3;
     dynamicInfo.pDynamicStates = dynamicStates;
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -1397,7 +1397,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                     vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offsets);
                     vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-                    vkCmdSetDepthBias(command_buffers[i], 5.0f, 0.0f, 1.75f);
+                    //vkCmdSetDepthBias(command_buffers[i], 5.0f, 0.0f, 1.75f);
 
                     //universal to every object so i can push the light constants before the for loop
                     //vkCmdPushConstants(shadowpass_render, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
@@ -1410,7 +1410,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                     for (size_t j = 0; j < game_objects.size(); j++) {
                         if (!game_objects[j]->update) {
                             for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
-                                Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
+                                const Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
                                 uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
                                 uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 
@@ -1558,7 +1558,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
 void GraphicsImpl::create_uniform_buffer() {
     mem::BufferCreateInfo buffer_info{};
-    buffer_info.size = (VkDeviceSize)5e8;
+    buffer_info.size = (VkDeviceSize)BUFFER_SIZE;
     buffer_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     buffer_info.queueFamilyIndexCount = 1;
@@ -1570,7 +1570,7 @@ void GraphicsImpl::create_uniform_buffer() {
 
 void GraphicsImpl::create_vertex_buffer() {
     mem::BufferCreateInfo buffer_info{};
-    buffer_info.size = (VkDeviceSize)5e8;
+    buffer_info.size = (VkDeviceSize)BUFFER_SIZE;
     buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     buffer_info.queueFamilyIndexCount = 1;
@@ -1582,7 +1582,7 @@ void GraphicsImpl::create_vertex_buffer() {
 
 void GraphicsImpl::create_index_buffer() {
     mem::BufferCreateInfo buffer_info{};
-    buffer_info.size = (VkDeviceSize)5e8;
+    buffer_info.size = (VkDeviceSize)BUFFER_SIZE;
     buffer_info.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     buffer_info.queueFamilyIndexCount = 1;

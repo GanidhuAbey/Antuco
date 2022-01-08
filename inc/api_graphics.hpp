@@ -27,6 +27,8 @@ const bool enableValidationLayers = true;
 //In case use wants many buffers it wouldn't be a good idea to create as many buffers as shadow casters
 const uint32_t SHADOW_TRANSFER_BUFFERS = MAX_SHADOW_CASTERS;
 
+const uint32_t BUFFER_SIZE = 2e7;
+
 //CHANGING THIS IS NOT RECOMMENDED
 //shader assumes that shadowmap size is 2048, i could pass in the shadowmap size into the shader but thats a waste of 
 //performance for something that realistically will never need to change
@@ -190,7 +192,6 @@ private:
 	void create_depth_resources();
 	void create_frame_buffers();
 	void create_shadowpass_buffer();
-	void create_depth_buffer();
 	void create_colour_image_views();
 	void create_texture_sampler();
 	void create_render_pass();
@@ -244,8 +245,6 @@ private:
 public:
 	void update_vertex_buffer(std::vector<Vertex> vertex_data);
 	void update_index_buffer(std::vector<uint32_t> indices_data);
-
-	void some_function(std::vector<Vertex> vertex);
 
 //draw commands
 
