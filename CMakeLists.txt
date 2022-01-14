@@ -3,11 +3,11 @@
 #If you are getting an error with vulkan not linking properly, its most likely to do with VULKAN_SDK failing to find the path to your vulkan sdk
 #try writing out the path of your vulkan location fully instead of using VULKAN_SDK and see if that fixes it
 
-cmake_minimum_required(VERSION 3.16.3)
+cmake_minimum_required(VERSION 3.1)
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 
 project(Antuco VERSION 1.0.0)
 
@@ -30,7 +30,7 @@ add_library(
 find_package(Vulkan)
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/assimp" "${CMAKE_CURRENT_SOURCE_DIR}/external/build/assimp")
-
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw")
 #these handle the include directores for all my external dependencies, in case one these don't link properly, you can use set
 #an absolute path from your root folder here
 include_directories("${Vulkan_INCLUDE_DIR}")
@@ -47,9 +47,4 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/build/assimp/include")
 #add_library(assimp_dll "${CMAKE_CURRENT_SOURCE_DIR}/external/libraries/assimp-vc142-mtd.dll")
 add_executable(main main.cpp "render_examples/bmw.hpp" "render_examples/bmw.cpp")
 
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/external/libraries/assimp-vc142-mtd.dll" "${CMAKE_CURRENT_BINARY_DIR}/assimp-vc142-mtd.dll" COPYONLY)
-
-target_link_libraries(main PRIVATE REQUIRED_LIBRARIES)
-target_link_libraries(main PRIVATE "${Vulkan_LIBRARIES}")
-target_link_libraries(main PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/external/libraries/glfw3.lib")
-target_link_libraries(main PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/external/libraries/assimp-vc142-mtd.lib")
+target_link_libraries(main PRIVATE REQUIRED_LIBRARIES "${Vulkan_LIBRARIES}" assimp::assimp glfw)

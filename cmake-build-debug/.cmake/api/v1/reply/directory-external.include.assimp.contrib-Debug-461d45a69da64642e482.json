@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "/Users/ganidhu/Antuco/external/build/assimp/contrib",
+		"source" : "external/include/assimp/contrib"
+	}
+}

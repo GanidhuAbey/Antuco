@@ -15,6 +15,7 @@
 #include "config.hpp"
 
 #include <vector>
+#include <optional>
 #include <math.h>
 
 #ifdef NDEBUG 
@@ -22,6 +23,10 @@ const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;
 #endif
+
+
+
+const uint32_t API_VERSION_1_0 = 0;
 
 //TODO: would be nice if we had a config file/page implemented to add some tweakable values
 //In case use wants many buffers it wouldn't be a good idea to create as many buffers as shadow casters
@@ -35,7 +40,6 @@ const uint32_t BUFFER_SIZE = 2e7;
 const uint32_t SHADOWMAP_SIZE=2048;
 
 const std::vector<const char*> validation_layers = {"VK_LAYER_KHRONOS_validation"};
-const std::vector<const char*> device_extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 namespace tuco {
 
@@ -175,6 +179,12 @@ private:
 
 	//not sure why these numbers are the best
 	std::vector<GameObject*>* recent_objects;
+
+private:
+    bool enable_portability = false;
+    std::vector<const char*> device_extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+
+
 
 private:
 	void create_graphics_pipeline();

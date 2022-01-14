@@ -11,7 +11,9 @@ const double MOUSE_SENSITIVITY = 0.1f;
 
 #define TIME_IT std::chrono::high_resolution_clock::now();
 
-const std::string OBJECT_PATH = "../../../";
+
+const std::string CURRENT_FILE = __FILE__;
+const std::string SOURCE_PATH = CURRENT_FILE.substr(0, CURRENT_FILE.rfind("\\"));
 
 /// <summary>
 ///  rotates point (rotation_item) with respect to a given point (rotation_point) by a given angle (rotation_angle)
@@ -68,6 +70,7 @@ int main() {
 	tuco::Light* light = antuco.create_light(light_position, light_look_at, glm::vec3(1.0, 1.0, 1.0), glm::vec3(0.0, 1.0, 0.0), true);
 
 	//tuco::Light* another_light = antuco.create_light(glm::vec3(0.0, 8.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
+  
 
 	//create a simple game object
 	tuco::GameObject* another = antuco.create_object();
@@ -78,15 +81,14 @@ int main() {
 	//light_mesh->translate(glm::vec3(0.0f, 4.0f, 0.0f));
 	//light_mesh->scale(glm::vec3(0.1, 0.1, 0.1));
 
-	printf("just something else randome  here as at est \n");
-
 	auto t1 = TIME_IT;
-	printf("hellow \n");
-	another->add_mesh(OBJECT_PATH + "objects/test_object/high_res.obj");
-	printf("hey there \n");
+
+  printf("%s \n", SOURCE_PATH.c_str());
+
+	another->add_mesh("../objects/test_object/surface.obj");
 	another->scale(glm::vec3(5, 0.1, 5));
 	
-	some_object->add_mesh(OBJECT_PATH + "objects/test_object/white.obj"); //will hope texture data is located within model data.
+	some_object->add_mesh("../objects/test_object/surface.obj"); //will hope texture data is located within model data.
 	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
 
 	another->translate(glm::vec3(0, -1, 0));	

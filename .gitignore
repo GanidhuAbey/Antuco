@@ -19,6 +19,9 @@ mono_crash.*
 # Bat Files
 *.bat
 
+# Mac Build Files
+build/
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/

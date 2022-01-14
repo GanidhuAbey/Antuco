@@ -74,7 +74,7 @@ bool WindowImpl::get_key_state(WindowInput windowInput) {
 void WindowImpl::create_vulkan_surface(VkInstance instance, VkSurfaceKHR* surface) {
 	VkResult surface_result = glfwCreateWindowSurface(instance, apiWindow, nullptr, surface);
 	if (surface_result != VK_SUCCESS) {
-		printf("[ERROR CORE: %u] - could not create vulkan surface on window", surface_result);
+		printf("[ERROR CODE: %d] - could not create vulkan surface on window", surface_result);
 		throw std::runtime_error("");
 	}
 }

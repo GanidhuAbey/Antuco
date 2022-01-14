@@ -52,11 +52,10 @@ void GraphicsImpl::create_instance(const char* appName) {
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pNext = nullptr;
 	appInfo.pApplicationName = appName;
-	appInfo.applicationVersion = VK_VERSION_1_0;
+	appInfo.applicationVersion = API_VERSION_1_0;
 	appInfo.pEngineName = "Antuco";
-	appInfo.engineVersion = VK_VERSION_1_0;
-	appInfo.apiVersion = VK_VERSION_1_2;
-
+	appInfo.engineVersion = API_VERSION_1_0;
+	appInfo.apiVersion = VK_API_VERSION_1_1;
 	//create debug messenger
 	VkDebugUtilsMessengerCreateInfoEXT debugInfo{};
 	debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -91,7 +90,13 @@ void GraphicsImpl::create_instance(const char* appName) {
 	uint32_t glfw_extension_count;
 	const char** glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
 	std::vector<const char*> extensions(glfw_extensions, glfw_extensions + glfw_extension_count);
+  printf("size of glfw extensions: %u \n", extensions.size());
 	extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
+#ifdef APPLE_M1
+    extensions.push_back("VK_KHR_get_physical_device_properties2");
+    //extensions.push_back("VK_EXT_metal_surface");
+#endif
 
 	if (check_extensions_supported(extensions.data(), static_cast<uint32_t>(extensions.size()))) {
 		instanceInfo.enabledExtensionCount = extensions.size();
@@ -102,8 +107,9 @@ void GraphicsImpl::create_instance(const char* appName) {
 		throw std::runtime_error("");
 	}
 
-	if (vkCreateInstance(&instanceInfo, nullptr, &instance) != VK_SUCCESS) {
-		printf("[ERROR] - create_instance() : could not create instance");
+  VkResult instance_response = vkCreateInstance(&instanceInfo, nullptr, &instance);
+	if (instance_response != VK_SUCCESS) {
+		printf("[ERROR CODE: %d] - create_instance() : could not create instance \n", instance_response);
 		throw std::runtime_error("");
 	}
 
@@ -156,7 +162,6 @@ void GraphicsImpl::pick_physical_device() {
 			current_best_device = i->second;
 		}
 	}
-
 	if (current_best_device == nullptr) {
 		printf("[ERROR] - could not find suitable GPU from this device");
 		throw std::runtime_error("");
@@ -176,7 +181,8 @@ void GraphicsImpl::pick_physical_device() {
 }
 
 uint32_t GraphicsImpl::score_physical_device(VkPhysicalDevice physical_device) {
-	uint32_t score = 0;
+	uint32_t score = 1; //if the device exist, its already better than nothing...
+
 	//retrieve the features/properties of the physical device
 	VkPhysicalDeviceProperties device_properties;
 	VkPhysicalDeviceFeatures device_features;
@@ -229,8 +235,13 @@ void GraphicsImpl::create_logical_device() {
 	}
 
 	deviceInfo.pQueueCreateInfos = queue_data.data();
-	
-	//check if device extension needed is supported
+
+#ifdef APPLE_M1
+    device_extensions.push_back("VK_KHR_portability_subset");
+#endif
+
+
+    //check if device extension needed is supported
 	if (!check_device_extensions(device_extensions, device_extensions.size())) {
 		printf("[ERROR] - create_logical_device: could not find support for neccessary device extensions");
 		throw std::runtime_error("");
@@ -300,9 +311,9 @@ bool GraphicsImpl::check_device_extensions(std::vector<const char*> extensions, 
 	vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &all_extensions_count, all_extensions.data());
 
 	//check if required extensions are supported
-	bool extension_found = false;
 	for (uint32_t i = 0; i < extensions_count; i++) {
-		extension_found = false;
+		bool extension_found = false;
+        printf("device extensions: %s \n", extensions[i]);
 		for (uint32_t j = 0; j < all_extensions_count; j++) {
 			if (strcmp(extensions[i], all_extensions[j].extensionName)) {
 				extension_found = true;
@@ -326,9 +337,9 @@ bool GraphicsImpl::check_extensions_supported(const char** extensions, uint32_t 
 	vkEnumerateInstanceExtensionProperties(nullptr, &all_extensions_count, all_extensions.data());
 
 	//check if required extensions are supported
-	bool extension_found = false;
 	for (uint32_t i = 0; i < extensions_count; i++) {
-		extension_found = false;
+		bool extension_found = false;
+        printf("instance extensions: %s \n", extensions[i]);
 		for (uint32_t j = 0; j < all_extensions_count; j++) {
 			if (strcmp(extensions[i], all_extensions[j].extensionName)) {
 				extension_found = true;
