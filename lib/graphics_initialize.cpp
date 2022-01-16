@@ -30,7 +30,6 @@ void GraphicsImpl::destroy_initialize() {
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	
-	printf("are validation layers on? %u \n", enableValidationLayers);
 	if (enableValidationLayers) {
 		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
 
@@ -90,7 +89,6 @@ void GraphicsImpl::create_instance(const char* appName) {
 	uint32_t glfw_extension_count;
 	const char** glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
 	std::vector<const char*> extensions(glfw_extensions, glfw_extensions + glfw_extension_count);
-  printf("size of glfw extensions: %u \n", extensions.size());
 	extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 #ifdef APPLE_M1
@@ -313,7 +311,6 @@ bool GraphicsImpl::check_device_extensions(std::vector<const char*> extensions, 
 	//check if required extensions are supported
 	for (uint32_t i = 0; i < extensions_count; i++) {
 		bool extension_found = false;
-        printf("device extensions: %s \n", extensions[i]);
 		for (uint32_t j = 0; j < all_extensions_count; j++) {
 			if (strcmp(extensions[i], all_extensions[j].extensionName)) {
 				extension_found = true;
@@ -339,7 +336,6 @@ bool GraphicsImpl::check_extensions_supported(const char** extensions, uint32_t 
 	//check if required extensions are supported
 	for (uint32_t i = 0; i < extensions_count; i++) {
 		bool extension_found = false;
-        printf("instance extensions: %s \n", extensions[i]);
 		for (uint32_t j = 0; j < all_extensions_count; j++) {
 			if (strcmp(extensions[i], all_extensions[j].extensionName)) {
 				extension_found = true;

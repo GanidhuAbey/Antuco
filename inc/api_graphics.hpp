@@ -92,33 +92,7 @@ private:
 	void destroy_initialize();
 
 
-//draw
-
-//shadow map data
-private:
-	mem::Memory shadowmap_atlas;
-	//this is way to large...
-	uint32_t shadowmap_atlas_width = SHADOWMAP_SIZE*sqrt(MAX_SHADOW_CASTERS);
-	uint32_t shadowmap_atlas_height = SHADOWMAP_SIZE*sqrt(MAX_SHADOW_CASTERS);
-
-	mem::StackBuffer shadowmap_buffers[MAX_SHADOW_CASTERS];
-	
-	uint32_t shadowmap_width = SHADOWMAP_SIZE;
-	uint32_t shadowmap_height = SHADOWMAP_SIZE;
-
-	VkSampler shadowmap_sampler;	
-	VkDescriptorSetLayout shadowmap_layout;
-
-	VkRenderPass shadowpass;
-
-	VkPipeline shadowpass_pipeline;
-
-	VkPipelineLayout shadowpass_layout;
-	
-	VkFramebuffer shadowpass_buffer;
-
-	mem::Memory shadow_pass_texture;
-	
+//draw	
 
 private:
 	VkDescriptorSetLayout ubo_layout;
@@ -155,7 +129,6 @@ private:
 
 	std::unique_ptr<mem::Pool> ubo_pool;
 	std::unique_ptr<mem::Pool> texture_pool;
-	std::unique_ptr<mem::Pool> shadowmap_pool;
 
 	std::vector<std::vector<VkDescriptorSet>> ubo_sets;
 	
@@ -184,7 +157,57 @@ private:
     bool enable_portability = false;
     std::vector<const char*> device_extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
+    
+//shadow map -------------------------------------------------------------------------
+private:
+	mem::Memory shadowmap_atlas;
+	//this is way to large...
+	uint32_t shadowmap_atlas_width = SHADOWMAP_SIZE*sqrt(MAX_SHADOW_CASTERS);
+	uint32_t shadowmap_atlas_height = SHADOWMAP_SIZE*sqrt(MAX_SHADOW_CASTERS);
 
+	mem::StackBuffer shadowmap_buffers[MAX_SHADOW_CASTERS];
+	
+	uint32_t shadowmap_width = SHADOWMAP_SIZE;
+	uint32_t shadowmap_height = SHADOWMAP_SIZE;
+
+	VkSampler shadowmap_sampler;	
+	VkDescriptorSetLayout shadowmap_layout;
+
+	VkRenderPass shadowpass;
+
+	VkPipeline shadowpass_pipeline;
+
+	VkPipelineLayout shadowpass_layout;
+	
+	VkFramebuffer shadowpass_buffer;
+
+	mem::Memory shadow_pass_texture;
+ 
+	std::unique_ptr<mem::Pool> shadowmap_pool;
+
+private:
+	void create_shadowpass_buffer();
+	void create_shadowpass();
+	void create_shadowpass_resources();
+	void create_shadowpass_pipeline();
+	void create_shadowmap_transfer_buffer();
+	void create_shadowmap_set();
+	void create_shadowmap_layout();
+	void create_shadowmap_pool();
+	void create_shadowmap_sampler();
+	void create_shadowmap_atlas();
+	void write_to_shadowmap_set();
+//------------------------------------------------------------------------------------
+//deferred shading -------------------------------------------------------------------
+private: 
+    VkRenderPass geometry_pass;
+    VkFramebuffer g_buffer;
+
+private:
+    void create_geometry_pass();
+    void create_geometry_buffer();
+
+//------------------------------
 
 private:
 	void create_graphics_pipeline();
@@ -200,14 +223,11 @@ private:
 	void create_fences();
 	void create_swapchain();
 	void create_depth_resources();
-	void create_frame_buffers();
-	void create_shadowpass_buffer();
+	void create_frame_buffer(VkRenderPass pass, uint32_t attachment_count, VkImageView* p_attachments, uint32_t width, uint32_t height, VkFramebuffer* frame_buffer);
+    void create_swapchain_buffers();
 	void create_colour_image_views();
 	void create_texture_sampler();
 	void create_render_pass();
-	void create_shadowpass();
-	void create_shadowpass_resources();
-	void create_shadowpass_pipeline();
 	VkShaderModule create_shader_module(std::vector<char> shaderCode);
 	std::vector<char> read_file(const std::string& filename);
 	VkPipelineShaderStageCreateInfo fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
@@ -216,16 +236,9 @@ private:
 	void copy_buffer_to_image(VkBuffer buffer, mem::Memory image, VkOffset3D image_offset, VkImageAspectFlagBits aspect_mask, uint32_t image_width, uint32_t image_height, std::optional<VkCommandBuffer> command_buffer = std::nullopt);	
 	void copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset, std::optional<VkCommandBuffer> command_buffer=std::nullopt);
 	void transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, VkImage image, VkImageAspectFlagBits aspect_mask, std::optional<VkCommandBuffer> command_buffer=std::nullopt);
-	void create_shadowmap_transfer_buffer();
 	void create_texture_image(aiString texturePath, size_t object, size_t texture_set);
 	void write_to_texture_set(std::vector<VkDescriptorSet> texture_sets, mem::Memory* image);
 	void update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo);
-	void create_shadowmap_set();
-	void create_shadowmap_layout();
-	void create_shadowmap_pool();
-	void create_shadowmap_sampler();
-	void create_shadowmap_atlas();
-	void write_to_shadowmap_set();
 	void create_light_set(UniformBufferObject lbo);
 	void create_light_layout();
 	void cleanup_swapchain();

@@ -24,6 +24,7 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	create_shadowpass_resources();
 	create_colour_image_views();
 	create_render_pass();
+    create_geometry_pass();
 	create_shadowpass();
 	create_ubo_layout();
 	create_light_layout();
@@ -34,7 +35,7 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	create_shadowpass_pipeline();
 	create_texture_sampler();
 	create_shadowmap_sampler();
-	create_frame_buffers();
+	create_swapchain_buffers();
 	create_shadowpass_buffer();
 	create_shadowmap_set();
 	write_to_shadowmap_set();
@@ -94,7 +95,6 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		lbo.projection = light_data[0]->perspective;
 
 		if (game_objects[i]->update) {
-			printf("hello \n");
 			update_command_buffers = true;
 			game_objects[i]->update = false;
 			create_ubo_set();	

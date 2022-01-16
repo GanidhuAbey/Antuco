@@ -6,7 +6,7 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
-const float PLAYER_SPEED = 0.01f;
+const float PLAYER_SPEED = 10.0f;
 const double MOUSE_SENSITIVITY = 0.1f;
 
 #define TIME_IT std::chrono::high_resolution_clock::now();
@@ -59,7 +59,6 @@ int main() {
 	glm::vec3 camera_face = glm::vec3(0.0, 0.0, -1.0);
 	glm::vec3 camera_orientation = glm::vec3(0.0, -1.0, 0.0);
 
-
 	tuco::Camera* main_camera = antuco.create_camera(camera_pos, camera_face, camera_orientation, glm::radians(45.0f), 0.1f, 150.0f);
 		
 	//create some light for the scene
@@ -83,8 +82,6 @@ int main() {
 
 	auto t1 = TIME_IT;
 
-  printf("%s \n", SOURCE_PATH.c_str());
-
 	another->add_mesh("../objects/test_object/surface.obj");
 	another->scale(glm::vec3(5, 0.1, 5));
 	
@@ -94,10 +91,8 @@ int main() {
 	another->translate(glm::vec3(0, -1, 0));	
 	auto t2 = TIME_IT;
 
-	std::chrono::duration<double, std::milli> final_count = t2 - t1;
-
-	std::chrono::duration<double, std::milli> frame_time;
-	printf("time to load model: %f \n", final_count.count());
+	std::chrono::duration<double, std::milli> delta_time = t2 - t1;
+    double delta = delta_time.count();
 
 	//basic game loop
 	bool game_loop = true;
@@ -136,32 +131,29 @@ int main() {
 
 		camera_face = glm::normalize(camera_face);
 
-		//printf("yaw: %f | pitch: %f \n", yaw, pitch);
-
-
 		//take some input
 		if (window->get_key_state(tuco::WindowInput::X)) {
-			std::cout << "frame time : " << frame_time.count() << std::endl;
+			std::cout << "frame time : " << delta << std::endl;
 		}
 		//handle movement
 		if (window->get_key_state(tuco::WindowInput::W)) {
-			camera_pos += PLAYER_SPEED * camera_face;
+			camera_pos += PLAYER_SPEED * camera_face * (float)delta;
 		}	
 		else if (window->get_key_state(tuco::WindowInput::A)) {
-			camera_pos -= glm::normalize(glm::cross(camera_face, camera_orientation)) * PLAYER_SPEED;
+			camera_pos -= glm::normalize(glm::cross(camera_face, camera_orientation)) * PLAYER_SPEED * (float)delta;
 		}	
 		else if (window->get_key_state(tuco::WindowInput::D)) {	
-			camera_pos += glm::normalize(glm::cross(camera_face, camera_orientation)) * PLAYER_SPEED;
+			camera_pos += glm::normalize(glm::cross(camera_face, camera_orientation)) * PLAYER_SPEED * (float)delta;
 		}
 		else if (window->get_key_state(tuco::WindowInput::S)) {
-			camera_pos -= PLAYER_SPEED * camera_face;
+			camera_pos -= PLAYER_SPEED * camera_face * (float)delta;
 		}
 
 		//cut the y axis to analze the rotation from two dimensions.
 		glm::vec2 rotate_item = glm::vec2(light_position.x, light_position.z);
 		glm::vec2 rotate_point = glm::vec2(light_look_at.x, light_look_at.z);
 
-		glm::vec2 step_rotation = rotate_around_point(rotate_item, rotate_point, 0.1f);
+		glm::vec2 step_rotation = rotate_around_point(rotate_item, rotate_point, 0.2f);
 
 		//update light_position
 		light_position = glm::vec3(step_rotation.x, light_position.y, step_rotation.y);
@@ -185,8 +177,9 @@ int main() {
 
 		//check if user has closed the window
 		auto t2 = TIME_IT;
-		//frame time
-		frame_time = t2 - t1;
+		//frame time 
+	    delta_time = t2 - t1;
+		delta = delta_time.count() * 0.001;
 			
 
 		game_loop = !window->check_window_status(tuco::WindowStatus::CLOSE_REQUEST);

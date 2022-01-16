@@ -129,7 +129,7 @@ void GraphicsImpl::create_texture_sampler() {
     samplerInfo.unnormalizedCoordinates = VK_FALSE;
 
     if (vkCreateSampler(device, &samplerInfo, nullptr, &texture_sampler) != VK_SUCCESS) {
-        printf("[ERROR] - createTextureSampler() : failed to create sampler object");
+        LOG("[ERROR] - createTextureSampler() : failed to create sampler object");
     }
 }
 
@@ -154,52 +154,37 @@ void GraphicsImpl::create_shadowmap_sampler() {
     samplerInfo.unnormalizedCoordinates = VK_FALSE;
 
     if (vkCreateSampler(device, &samplerInfo, nullptr, &shadowmap_sampler) != VK_SUCCESS) {
-        printf("[ERROR] - createTextureSampler() : failed to create sampler object");
+        LOG("[ERROR] - createTextureSampler() : failed to create sampler object");
     }
 }
 
-void GraphicsImpl::create_shadowpass_buffer() { 
+void GraphicsImpl::create_shadowpass_buffer() {  
+    VkImageView image_views[1] = { shadow_pass_texture.imageView };
+    create_frame_buffer(shadowpass, 1, image_views, shadowmap_width, shadowmap_height, &shadowpass_buffer);
+}
+
+void GraphicsImpl::create_swapchain_buffers() {
+    size_t image_num = swapchain_images.size();
+    swapchain_framebuffers.resize(image_num); 
+    
+    for (size_t i = 0; i < image_num; i++) {
+        VkImageView image_views[2] = { swapchain_image_views[i], depth_memory.imageView };
+        create_frame_buffer(render_pass, 2, image_views, swapchain_extent.width, swapchain_extent.height, &swapchain_framebuffers[i]);
+    }
+}
+
+void GraphicsImpl::create_frame_buffer(VkRenderPass pass, uint32_t attachment_count, VkImageView* p_attachments, uint32_t width, uint32_t height, VkFramebuffer* frame_buffer) {
     VkFramebufferCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    createInfo.renderPass = shadowpass;
-    //we only want one image per frame buffer
-    createInfo.attachmentCount = 1;
-    //they put the image view in a separate array for some reason
-    VkImageView imageViews[1] = { shadow_pass_texture.imageView };
-    createInfo.pAttachments = imageViews;
-    createInfo.width = shadowmap_width;
-    createInfo.height = shadowmap_height;
-	  createInfo.layers = 1;
+    createInfo.renderPass = pass;
+    createInfo.attachmentCount = attachment_count;
+    createInfo.pAttachments = p_attachments;
+    createInfo.width = width;
+    createInfo.height = height;
+    createInfo.layers = 1;
 
-    if (vkCreateFramebuffer(device, &createInfo, nullptr, &shadowpass_buffer) != VK_SUCCESS) {
+    if (vkCreateFramebuffer(device, &createInfo, nullptr, frame_buffer) != VK_SUCCESS) {
         throw std::runtime_error("could not create a frame buffer");
-    }
-}
-
-void GraphicsImpl::create_frame_buffers() {
-    //get the number of images we need to create framebuffers for
-    size_t imageNum = swapchain_images.size();
-    //resize framebuffer vector to fit as many frame buffers as images
-    swapchain_framebuffers.resize(imageNum);
-
-    //iterate through all the frame buffers
-    for (int i = 0; i < imageNum; i++) {
-        //create a frame buffer
-        VkFramebufferCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        createInfo.renderPass = render_pass;
-        //we only want one image per frame buffer
-        createInfo.attachmentCount = 2;
-        //they put the image view in a separate array for some reason
-        VkImageView imageViews[2] = { swapchain_image_views[i], depth_memory.imageView };
-        createInfo.pAttachments = imageViews;
-        createInfo.width = swapchain_extent.width;
-        createInfo.height = swapchain_extent.height;
-        createInfo.layers = 1;
-
-        if (vkCreateFramebuffer(device, &createInfo, nullptr, &swapchain_framebuffers[i]) != VK_SUCCESS) {
-            throw std::runtime_error("could not create a frame buffer");
-        }
     }
 }
 
@@ -427,6 +412,86 @@ void GraphicsImpl::create_shadowpass() {
     if (vkCreateRenderPass(device, &createInfo, nullptr, &shadowpass) != VK_SUCCESS) {
         throw std::runtime_error("could not create render pass");
     }
+}
+
+void GraphicsImpl::create_geometry_buffer() {
+   //create_frame_buffer(&g_buffer);
+}
+
+//for deferred shading, psas which will render required information for shader computation to multiple textures
+void GraphicsImpl::create_geometry_pass() {
+    VkAttachmentDescription depthAttachment{};
+    depthAttachment.format = VK_FORMAT_D16_UNORM;//format must be a depth/stencil format
+    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    //do not need colour attachment, instead need attachment to hold image
+    VkAttachmentDescription position{};
+    position.format = VK_FORMAT_B8G8R8A8_SRGB;
+    position.samples = VK_SAMPLE_COUNT_1_BIT;
+    position.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    position.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+
+    position.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    position.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+    position.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    position.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkAttachmentReference positionRef{};
+    positionRef.attachment = 0;
+    positionRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentDescription normal{};
+
+    normal.format = VK_FORMAT_B8G8R8A8_SRGB;
+    normal.samples = VK_SAMPLE_COUNT_1_BIT;
+    normal.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    normal.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+    normal.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    normal.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+    normal.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    normal.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkAttachmentReference normalRef{};
+    normalRef.attachment = 1;
+    normalRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription positionPass{};
+    positionPass.flags = 0;
+    positionPass.colorAttachmentCount = 1;
+    positionPass.pColorAttachments = &positionRef;
+
+    VkSubpassDescription normalPass{};
+    normalPass.flags = 0;
+    normalPass.colorAttachmentCount = 1;
+    normalPass.pColorAttachments = &normalRef;
+
+    VkSubpassDescription subpasses[2] = {positionPass, normalPass};
+    VkAttachmentDescription attachments[2] = { position, normal };
+
+    VkRenderPassCreateInfo passCreate{};
+    passCreate.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    passCreate.pNext = nullptr;
+    passCreate.flags = 0;
+    passCreate.subpassCount = 2;
+    passCreate.attachmentCount = 2;
+    passCreate.pSubpasses = subpasses;
+    passCreate.pAttachments = attachments;
+
+    if (vkCreateRenderPass(device, &passCreate, nullptr, &geometry_pass) != VK_SUCCESS) {
+        LOG("could not create geometry pass");
+    }
+ 
 }
 
 void GraphicsImpl::create_render_pass() {
@@ -1207,7 +1272,7 @@ void GraphicsImpl::create_swapchain() {
     //query the surface capabilities
     VkSurfaceCapabilitiesKHR capabilities;
     if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &capabilities) != VK_SUCCESS) {
-        printf("[ERROR] - create_swapchain : could not query the surface capabilities");
+        LOG("[ERROR] - create_swapchain : could not query the surface capabilities");
         throw std::runtime_error("");
     }
 
@@ -1228,6 +1293,7 @@ void GraphicsImpl::create_swapchain() {
 
     swapchain_format = best_format.format;
 
+
     VkSwapchainCreateInfoKHR swapInfo{};
     swapInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     swapInfo.pNext = nullptr;
@@ -1247,7 +1313,7 @@ void GraphicsImpl::create_swapchain() {
     swapInfo.oldSwapchain = VK_NULL_HANDLE;
 
     if (vkCreateSwapchainKHR(device, &swapInfo, nullptr, &swapchain) != VK_SUCCESS) {
-        printf("[ERROR] - create_swapchain : could not create swapchain \n");
+        LOG("[ERROR] - create_swapchain : could not create swapchain \n");
         throw std::runtime_error("");
     }
 
@@ -1446,19 +1512,16 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                 current_shadow++;
             }			
 		}
-
-        //first lets try to map one of the images generated onto our atlas
-        //copy image onto one of our buffers 
         
-        //this could potentially be due to a synchronization issue.
-        //now the hope is that the image attached to the frame buffer has data in it (hopefully)
-        //copy the data from the texture onto the atlas
+        /*
+        {
+            VkRenderPassBeginInfo g_pass{};
+            g_pass.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            g_pass.renderPass = geometry_pass;
 
-        //allocate descriptor set with image attached to render?
-        
-        //transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, shadowmap_atlas.image);
-		
-        //begin a render pass so that we can draw to the appropriate framebuffer
+        }
+        */
+    
 		VkRenderPassBeginInfo renderInfo{};
 		renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderInfo.renderPass = render_pass;
@@ -1548,7 +1611,6 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         //vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(6), 1, 36, 0, 0);
         //vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);
         vkCmdEndRenderPass(command_buffers[i]);
-
         //switch image back to depth stencil layout for the next render pass
 
         //end commands to go to execute stage
@@ -1756,14 +1818,12 @@ void GraphicsImpl::recreate_swapchain() {
     create_depth_resources();
     create_colour_image_views();
     create_render_pass();
-    create_frame_buffers();
+    create_swapchain_buffers();
         
-    //this part is the kinda annoying part...
-    //we basically have to store a copy of the game_objects in the scene which doesn't seem that great
-    //il try storing a pointer instead i guess?
     create_command_buffers(*recent_objects);
 }
 
+//TODO: need to make better use of cpu-cores
 void GraphicsImpl::draw_frame() {
     //make sure that the current frame thats being drawn in parallel is available
     vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);

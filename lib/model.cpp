@@ -19,7 +19,6 @@ void Model::add_mesh(const std::string& fileName) {
 	auto t2 = std::chrono::high_resolution_clock::now();
 
 	std::chrono::duration<double, std::milli> final_count = t2 - t1;
-	printf("assimp time: %f \n", final_count.count());
 	
 	if (!scene) {
 		printf("[ERROR] - Mode::add_mesh() : given model data could not be read");
@@ -118,7 +117,6 @@ std::vector<aiString> Model::processTextures(uint32_t materialIndex, aiMaterial*
 	for (unsigned int i = 0; i < texCount; i++) {
 		mat->GetTexture(aiTextureType_DIFFUSE, i, &texturePath);
 		texturePaths.push_back(texturePath);
-		//printf("the image path: %s \n", &imagePath);
 	}
 
 	return texturePaths;

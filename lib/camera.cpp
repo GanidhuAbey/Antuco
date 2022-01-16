@@ -59,8 +59,6 @@ glm::mat4 Camera::construct_world_to_camera(glm::vec3 eye, glm::vec3 target, glm
 glm::mat4 Camera::perspective_projection(float angle, float aspect, float n, float f) {
 	double c = 1.0 / (glm::tan(angle / 2));
 
-	printf("the value of the first input is: %f \n", aspect);
-
 	glm::mat4 projection = {
 		c / aspect, 0, 0, 0,
 		0, c, 0, 0,

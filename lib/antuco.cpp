@@ -66,18 +66,8 @@ GameObject* Antuco::create_object() {
 	return game_object;
 }
 
-void Antuco::render() {
-	//printf("size: %zu \n", lights.size());
-	
+void Antuco::render() {	
 	//check and update the camera information
-	//printf("camera position: <%f, %f, %f>", cameras[0]->construct_world_to_camera())
-	/*
-	printf("====================================================================== \n");
-	for (size_t i = 0; i < 4; i++) {
-		printf("| %f | %f | %f | %f | \n", cameras[0]->modelToCamera[i][0], cameras[0]->modelToCamera[i][1], cameras[0]->modelToCamera[i][2], cameras[0]->modelToCamera[i][3]);
-	}
-	printf("====================================================================== \n");
-	*/
 	p_graphics->update_camera(cameras[0]->modelToCamera, cameras[0]->cameraToScreen);
 	//check and update the light information
 	//the engine can't handle multiple light sources right now, so we will only use the first light created
@@ -85,6 +75,4 @@ void Antuco::render() {
 
 	//check and update the game object information, this would be where we update the command buffers as neccesary
 	p_graphics->update_draw(objects);
-
-	//send command to draw
 }
