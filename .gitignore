@@ -22,6 +22,10 @@ mono_crash.*
 # Mac Build Files
 build/
 
+# VS and CLion files
+.vscode/
+.idea/
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/

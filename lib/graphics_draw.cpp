@@ -414,8 +414,13 @@ void GraphicsImpl::create_shadowpass() {
     }
 }
 
+void GraphicsImpl::create_deffered_textures() {
+
+}
+
 void GraphicsImpl::create_geometry_buffer() {
-   //create_frame_buffer(&g_buffer);
+
+    //create_frame_buffer(&g_buffer);
 }
 
 //for deferred shading, psas which will render required information for shader computation to multiple textures
