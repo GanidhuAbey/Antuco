@@ -197,8 +197,8 @@ private:
 	void create_shadowmap_sampler();
 	void create_shadowmap_atlas();
 	void write_to_shadowmap_set();
-//------------------------------------------------------------------------------------
-//deferred shading -------------------------------------------------------------------
+//-------------------------------------------------------------------------------------
+//deferred shading --------------------------------------------------------------------
 private: 
     VkRenderPass geometry_pass;
     VkFramebuffer g_buffer;
@@ -206,8 +206,15 @@ private:
 private:
     void create_geometry_pass();
     void create_geometry_buffer();
+    void create_deffered_textures();
 
-//------------------------------
+//-------------------------------------------------------------------------------------
+
+//generic functions -------------------------------------------------------------------
+private:
+    void create_pipeline(VkExtent2D screen_extent, std::optional<std::string> vert_shader_path, std::optional<std::string> frag_shader_path, std::vector<VkDynamicState> dynamic_states, std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkRenderPass pass, uint32_t subpass_count, VkPipelineLayout* layout, VkPipeline* pipeline);
+	void create_frame_buffer(VkRenderPass pass, uint32_t attachment_count, VkImageView* p_attachments, uint32_t width, uint32_t height, VkFramebuffer* frame_buffer);
+//-------------------------------------------------------------------------------------
 
 private:
 	void create_graphics_pipeline();
@@ -223,7 +230,6 @@ private:
 	void create_fences();
 	void create_swapchain();
 	void create_depth_resources();
-	void create_frame_buffer(VkRenderPass pass, uint32_t attachment_count, VkImageView* p_attachments, uint32_t width, uint32_t height, VkFramebuffer* frame_buffer);
     void create_swapchain_buffers();
 	void create_colour_image_views();
 	void create_texture_sampler();
