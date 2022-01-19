@@ -212,7 +212,7 @@ private:
 
 //generic functions -------------------------------------------------------------------
 private:
-    void create_pipeline(VkExtent2D screen_extent, std::optional<std::string> vert_shader_path, std::optional<std::string> frag_shader_path, std::vector<VkDynamicState> dynamic_states, std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkRenderPass pass, uint32_t subpass_count, VkPipelineLayout* layout, VkPipeline* pipeline);
+    void create_pipeline(VkExtent2D screen_extent, std::optional<std::string> vert_shader_path, std::optional<std::string> frag_shader_path, std::vector<VkDynamicState> dynamic_states, std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkRenderPass pass, uint32_t subpass_index, VkPipelineLayout* layout, VkPipeline* pipeline);
 	void create_frame_buffer(VkRenderPass pass, uint32_t attachment_count, VkImageView* p_attachments, uint32_t width, uint32_t height, VkFramebuffer* frame_buffer);
 //-------------------------------------------------------------------------------------
 

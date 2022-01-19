@@ -823,12 +823,11 @@ void GraphicsImpl::create_shadowpass_pipeline() {
             &shadowpass_layout,
             &shadowpass_pipeline
             );
-
 }
 
 void GraphicsImpl::create_pipeline(VkExtent2D screen_extent, std::optional<std::string> vert_shader_path, std::optional<std::string> frag_shader_path, 
         std::vector<VkDynamicState> dynamic_states, std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges,
-        VkRenderPass pass, uint32_t subpass_count, VkPipelineLayout* layout, VkPipeline* pipeline) {
+        VkRenderPass pass, uint32_t subpass_index, VkPipelineLayout* layout, VkPipeline* pipeline) {
     //might have two might have one
     VkShaderModule vert_shader;
     VkShaderModule frag_shader;
@@ -990,7 +989,7 @@ void GraphicsImpl::create_pipeline(VkExtent2D screen_extent, std::optional<std::
     create_pipeline_info.pDynamicState = &dynamic_info;
     create_pipeline_info.layout = *layout;
     create_pipeline_info.renderPass = pass;
-    create_pipeline_info.subpass = subpass_count;
+    create_pipeline_info.subpass = subpass_index;
 
     if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &create_pipeline_info, nullptr, pipeline) != VK_SUCCESS) {
         throw std::runtime_error("could not create graphics pipeline");
