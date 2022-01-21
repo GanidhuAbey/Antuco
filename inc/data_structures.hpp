@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vulkan/vulkan.h>
 #include <glm/glm.hpp>
 
 namespace tuco {
@@ -29,6 +30,13 @@ struct LightObject {
 struct LightBufferObject {
 	glm::mat4 world_to_light;
 	glm::mat4 projection;
+};
+
+
+
+enum class IMAGE_FORMAT {
+    DEPTH = VK_FORMAT_D16_UNORM,
+    COLOR = VK_FORMAT_R8G8B8A8_SRGB,
 };
 
 }

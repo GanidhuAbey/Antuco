@@ -417,7 +417,7 @@ void GraphicsImpl::create_shadowpass() {
 }
 
 void GraphicsImpl::create_deffered_textures() {
-
+    VkImageCreateInfo image_info{};
 }
 
 void GraphicsImpl::create_geometry_buffer() {
