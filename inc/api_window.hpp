@@ -1,3 +1,8 @@
+/* ----------------- api_window.hpp ---------------
+ * handles the api-dependent window functionality.
+ * ------------------------------------------------
+*/
+
 /* Uses an API to implement window functionality */
 
 #pragma once

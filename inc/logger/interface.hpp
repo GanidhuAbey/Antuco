@@ -1,3 +1,9 @@
+/* --------------------- interface.hpp ------------------------
+ * handles some basic logging, abstracts printf so its easier to
+ * write to terminal
+ * ------------------------------------------------------------
+*/ 
+
 #pragma once
 
 #define FUNCTION_NAME '__FUNCTION__'

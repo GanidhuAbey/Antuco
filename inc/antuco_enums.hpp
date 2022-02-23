@@ -1,3 +1,8 @@
+/* ----------------- antuco_enums.hpp ------------------
+ * Creates some relevant definitions to handle specific
+ * engine settings.
+ * -----------------------------------------------------
+*/
 
 #pragma once
 

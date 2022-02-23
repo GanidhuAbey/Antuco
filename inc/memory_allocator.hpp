@@ -1,3 +1,7 @@
+/* ----------------------- memory_allocator.hpp ----------------------
+ * Handles memory allocations of vulkan objects (images, buffers, etc)
+ * -------------------------------------------------------------------
+*/
 #pragma once
 
 #include <vulkan/vulkan.h>

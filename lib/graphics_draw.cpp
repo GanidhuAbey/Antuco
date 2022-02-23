@@ -25,7 +25,7 @@
 #define TIME_IT std::chrono::high_resolution_clock::now();
 
 //TODO: this isn't a great method considering if we move around our files the whole thing will break...
-const std::string SHADER_PATH = goto_previous_directory(goto_previous_directory(__FILE__)) + "/shaders/";
+const std::string SHADER_PATH = get_project_root(__FILE__) + "/shaders/";
 
 const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
 

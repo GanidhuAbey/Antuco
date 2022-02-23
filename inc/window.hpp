@@ -1,4 +1,8 @@
-/* A light wrapper that abstracts from the API-dependent window implementation. Essentialy makes the window functionality API agnostic */
+/* ----------------------- api_window.hpp -------------------------
+ * A light wrapper that abstracts from the API-dependent window 
+ * implementation
+ * ----------------------------------------------------------------
+*/
 #pragma once
 
 #include "antuco_enums.hpp"

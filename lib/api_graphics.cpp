@@ -24,7 +24,7 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	create_shadowpass_resources();
 	create_colour_image_views();
 	create_render_pass();
-    create_geometry_pass();
+    //create_geometry_pass();
 	create_shadowpass();
 	create_ubo_layout();
 	create_light_layout();

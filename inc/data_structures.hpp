@@ -1,3 +1,8 @@
+/* ------------------------ data_structures.hpp -------------------------
+ * Various data structures, used to structure data being passed to
+ * the shader.
+ * ----------------------------------------------------------------------
+*/
 #pragma once
 
 #include <vulkan/vulkan.h>
@@ -33,10 +38,11 @@ struct LightBufferObject {
 };
 
 
-
+/*
 enum class IMAGE_FORMAT {
     DEPTH = VK_FORMAT_D16_UNORM,
     COLOR = VK_FORMAT_R8G8B8A8_SRGB,
 };
+*/
 
 }

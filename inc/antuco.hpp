@@ -1,4 +1,8 @@
-/* LIGHT WRAPPER OVER THE MAIN FUNCTIONALITY OF THE ENGINE FOR THE USER TO INTERACT WITH */
+/* ----------------- antuco.hpp -------------------
+ * wrapper for user-level interaction with engine.
+ * ------------------------------------------------
+*/
+
 #pragma once
 
 #include "window.hpp"

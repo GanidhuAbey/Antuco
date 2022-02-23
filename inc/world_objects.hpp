@@ -1,6 +1,9 @@
-/* HANDLES ALL OBJECTS THAT WILL EXIST WITHIN THE RENDER WORLD */
-//it would actually be pretty easy to seperate these into their own header files but right now they aren't big enough to warrant it
-//having to navigate this file, i can say it will probably be easier to just seperate this into different files
+/* ---------------------- world_objects.hpp -----------------------
+ * creates user-level game objects which abstract the api functions
+ * away
+ * ----------------------------------------------------------------
+*/ 
+
 #pragma once
 
 #include "model.hpp"

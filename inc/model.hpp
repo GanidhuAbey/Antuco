@@ -1,3 +1,8 @@
+/* ----------------- model.hpp -----------------
+ * Handle loading and parsing of assimp model
+ * data.
+ * --------------------------------------------
+*/
 #pragma once
 
 

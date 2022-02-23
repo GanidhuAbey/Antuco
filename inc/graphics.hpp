@@ -1,3 +1,7 @@
+/* --------------------- graphics.hpp -------------------------
+ * Abstracts away the api level function required for rendering
+ * ------------------------------------------------------------
+*/
 #pragma once
 
 #pragma once

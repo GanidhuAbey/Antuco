@@ -1,4 +1,9 @@
-//TODO: change all iterations of vec3 to vec4 in lightobject and see if it works
+/* ------------------------ api_graphics.hpp ----------------------
+ * Handles all vulkan related functionality, its important that any
+ * calls made by the engine are made through the "graphics.hpp"
+ * abstraction.
+ * ----------------------------------------------------------------
+*/
 
 #pragma once
 
@@ -79,6 +84,7 @@ private:
 		const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
 		const VkAllocationCallbacks* pAllocator,
 		VkDebugUtilsMessengerEXT* pDebugMessenger);
+
 	bool validation_layer_supported(std::vector<const char*> names);
 	bool check_extensions_supported(const char** extensions, uint32_t extensions_count);
 	bool check_device_extensions(std::vector<const char*> extensions, uint32_t extensions_count);
@@ -212,7 +218,27 @@ private:
 
 //generic functions -------------------------------------------------------------------
 private:
+    /* ---- creates a vulkan render pipeline based on the specified parameters --------
+     *  screen_extent : dimensions of the screen being rendered to
+     *  vert_shader_path : optional path to the vertex shader
+     *  frag_shader_path : optional path to the fragment shader
+     *  dynamic_states : list of pipeline states that the user would like to control
+     *      from the command buffers (read doc on VkDynamicState for more info)
+     *  descriptor_layouts : descriptor sets specify how data is read into the shader, the layouts
+     *      the layouts will control what descriptor sets the pipeline is able to use.
+     *  push_ranges : a list which contains the relavent data for all push constants being
+     *      used in the pipeline
+     *  pass : render passes can use multiple pipelines, but pipelines must state which renderpass
+     *      it can be used be, this parameter will set that.
+     *  subpass_index : similiar to the above this will control which subpass within the renderpass
+     *      the pipeline will be used by.
+     *  
+     *  VkPipelineLayout* : a pointer which will save the created pipeline layout 
+     *  VkPipeline* : a pointer which will save the created pipeline
+     * --------------------------------------------------------------------------------
+    */
     void create_pipeline(VkExtent2D screen_extent, std::optional<std::string> vert_shader_path, std::optional<std::string> frag_shader_path, std::vector<VkDynamicState> dynamic_states, std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkRenderPass pass, uint32_t subpass_index, VkPipelineLayout* layout, VkPipeline* pipeline);
+
 	void create_frame_buffer(VkRenderPass pass, uint32_t attachment_count, VkImageView* p_attachments, uint32_t width, uint32_t height, VkFramebuffer* frame_buffer);
 //-------------------------------------------------------------------------------------
 
