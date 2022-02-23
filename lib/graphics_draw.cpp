@@ -55,8 +55,7 @@ void GraphicsImpl::create_shadowmap_transfer_buffer() {
     for (size_t i = 0; i < SHADOW_TRANSFER_BUFFERS; i++) {
         //create all required buffers
         shadowmap_buffers[i].init(physical_device, device, &buffer_info);
-    }
-    
+    } 
 }
 
 /// <summary>
@@ -811,7 +810,7 @@ void GraphicsImpl::create_shadowpass_pipeline() {
 
     std::vector<VkDescriptorSetLayout> layouts = { light_layout };
 
-    create_pipeline(
+    create_render_pipeline(
             shadowmap_extent, 
             SHADER_PATH + "shadow.spv", 
             std::nullopt,
@@ -825,7 +824,7 @@ void GraphicsImpl::create_shadowpass_pipeline() {
             );
 }
 
-void GraphicsImpl::create_pipeline(VkExtent2D screen_extent, std::optional<std::string> vert_shader_path, std::optional<std::string> frag_shader_path, 
+void GraphicsImpl::create_render_pipeline(VkExtent2D screen_extent, std::optional<std::string> vert_shader_path, std::optional<std::string> frag_shader_path, 
         std::vector<VkDynamicState> dynamic_states, std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges,
         VkRenderPass pass, uint32_t subpass_index, VkPipelineLayout* layout, VkPipeline* pipeline) {
     //might have two might have one
@@ -961,19 +960,8 @@ void GraphicsImpl::create_pipeline(VkExtent2D screen_extent, std::optional<std::
     dynamic_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamic_info.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
     dynamic_info.pDynamicStates = dynamic_states.data();
-
-    VkPipelineLayoutCreateInfo pipeline_layout_info{};
-    pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipeline_layout_info.setLayoutCount = static_cast<uint32_t>(descriptor_layouts.size());
-    pipeline_layout_info.pSetLayouts = descriptor_layouts.data();
-
-    //as long as this is zero the pointer data sent in will be ignored, so the user can send an empty vector and it wont matter
-    pipeline_layout_info.pushConstantRangeCount = static_cast<uint32_t>(push_ranges.size());
-    pipeline_layout_info.pPushConstantRanges = push_ranges.data();
-
-    if (vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, layout) != VK_SUCCESS) {
-        throw std::runtime_error("could not create pipeline layout");
-    }
+    
+    create_pipeline_layout(descriptor_layouts, push_ranges, layout);
 
     VkGraphicsPipelineCreateInfo create_pipeline_info{};
     create_pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1001,6 +989,47 @@ void GraphicsImpl::create_pipeline(VkExtent2D screen_extent, std::optional<std::
 
 }
 
+void GraphicsImpl::create_pipeline_layout(std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkPipelineLayout* layout) {
+    VkPipelineLayoutCreateInfo pipeline_layout_info{};
+    pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipeline_layout_info.setLayoutCount = static_cast<uint32_t>(descriptor_layouts.size());
+    pipeline_layout_info.pSetLayouts = descriptor_layouts.data();
+
+    //as long as this is zero the pointer data sent in will be ignored, so the user can send an empty vector and it wont matter
+    pipeline_layout_info.pushConstantRangeCount = static_cast<uint32_t>(push_ranges.size());
+    pipeline_layout_info.pPushConstantRanges = push_ranges.data();
+
+    if (vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, layout) != VK_SUCCESS) {
+        throw std::runtime_error("could not create pipeline layout");
+    }
+}
+
+void GraphicsImpl::create_compute_pipeline(std::string computer_shader_path, std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkPipelineLayout* layout, VkPipeline* pipeline) {
+    VkShaderModule compute_shader;
+    VkPipelineShaderStageCreateInfo shader_info;
+
+    auto code = read_file(computer_shader_path);  
+    compute_shader = create_shader_module(code);
+    shader_info = fill_shader_stage_struct(VK_SHADER_STAGE_COMPUTE_BIT, compute_shader);
+
+    create_pipeline_layout(descriptor_layouts, push_ranges, layout);
+
+    VkComputePipelineCreateInfo pipeline_info{};
+    pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipeline_info.pNext = nullptr;
+    pipeline_info.flags = 0;
+    pipeline_info.stage = shader_info;
+    pipeline_info.layout = *layout;
+    pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+    pipeline_info.basePipelineIndex = -1;
+
+
+    if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, pipeline) != VK_SUCCESS) {
+        LOG("could not create compute shader");
+    }
+
+}
+
 void GraphicsImpl::create_graphics_pipeline() {
     std::vector<VkDynamicState> dynamic_states = {
         VK_DYNAMIC_STATE_VIEWPORT,
@@ -1023,7 +1052,7 @@ void GraphicsImpl::create_graphics_pipeline() {
 
     push_ranges.push_back(pushRange);
 
-    create_pipeline(
+    create_render_pipeline(
             swapchain_extent, 
             SHADER_PATH + "vert.spv", 
             SHADER_PATH + "frag.spv", 
