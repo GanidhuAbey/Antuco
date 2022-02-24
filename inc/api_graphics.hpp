@@ -285,7 +285,6 @@ private:
 	void create_texture_sampler();
 	void create_render_pass();
 	VkShaderModule create_shader_module(std::vector<char> shaderCode);
-	std::vector<char> read_file(const std::string& filename);
 	VkPipelineShaderStageCreateInfo fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
 	void write_to_ubo();	
 	void update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo);

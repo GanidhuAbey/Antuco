@@ -36,3 +36,9 @@ extern std::string get_current_dir_name(std::string);
 //EFFECTS: returns the absolute path to root project folder
 //ex "Users/user1/{PROJECT_ROOT}/some_dir/file.cpp" -> "Users/user1/{PROJECT_ROOT}"
 extern std::string get_project_root(std::string);
+
+
+
+//REQUIRES: filename must refer to text file within PROJECT_ROOT
+//EFFECTS: returns the contents within file
+extern std::vector<char> read_file(const std::string& filename);

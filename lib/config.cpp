@@ -1,5 +1,12 @@
 #include "config.hpp"
 
+#include <iostream>
+
+#include <fstream>
+
+#include <filesystem>
+
+#include <vector>
 
 std::string goto_previous_directory(std::string file_path) {
 #ifdef _WIN32
@@ -44,6 +51,24 @@ std::string get_project_root(std::string file_path) {
 }
 
 
+std::vector<char> read_file(const std::string& filename) {
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+    if (!file.is_open()) { 
+        std::cout << "could not find file at " << filename << std::endl; 
+        throw std::runtime_error("could not open file \n");
+    }
+
+    size_t fileSize = (size_t)file.tellg();
+
+    std::vector<char> buffer(fileSize);
+
+    file.seekg(0);
+    file.read(buffer.data(), fileSize);
+    file.close();
+
+    return buffer;
+}
 
 
 

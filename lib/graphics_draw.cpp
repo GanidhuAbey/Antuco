@@ -14,10 +14,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <fstream>
-
-#include <filesystem>
-
 #include <stdexcept>
 
 #include <glm/ext.hpp>
@@ -745,27 +741,6 @@ void GraphicsImpl::create_texture_layout() {
     }
 }
 
-
-
-
-std::vector<char> GraphicsImpl::read_file(const std::string& filename) {
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
-    if (!file.is_open()) { 
-        std::cout << "could not find file at " << filename << std::endl; 
-        throw std::runtime_error("could not open file \n");
-    }
-
-    size_t fileSize = (size_t)file.tellg();
-
-    std::vector<char> buffer(fileSize);
-
-    file.seekg(0);
-    file.read(buffer.data(), fileSize);
-    file.close();
-
-    return buffer;
-}
 
 VkShaderModule GraphicsImpl::create_shader_module(std::vector<char> shaderCode) {
     VkShaderModule shaderModule;
