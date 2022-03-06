@@ -40,6 +40,8 @@ glm::vec2 rotate_around_point(glm::vec2 rotation_item, glm::vec2 rotation_point,
 int main() {
 	//when beginning a new game, one must first create the window, but user should only ever interact with the library wrapper "Antuco_lib"
 	tuco::Antuco& antuco = tuco::Antuco::get_engine();
+
+    std::string root_project = get_project_root(__FILE__);
 	
 	//create window
 	tuco::Window* window = antuco.init_window(WIDTH, HEIGHT, "SOME COOL TITLE");
@@ -82,10 +84,10 @@ int main() {
 
 	auto t1 = TIME_IT;
 
-	another->add_mesh("../objects/test_object/surface.obj");
+	another->add_mesh(root_project + "/objects/test_object/surface.obj");
 	another->scale(glm::vec3(5, 0.1, 5));
 	
-	some_object->add_mesh("../objects/test_object/surface.obj"); //will hope texture data is located within model data.
+	some_object->add_mesh(root_project + "/objects/test_object/surface.obj"); //will hope texture data is located within model data.
 	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
 
 	another->translate(glm::vec3(0, -1, 0));	

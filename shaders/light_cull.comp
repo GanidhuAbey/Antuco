@@ -1,0 +1,42 @@
+
+uint tilePxSize;
+float near;
+float far;
+float aspect;
+float angle;
+
+//we have 16x9x24 threads dispatched (16 in the x, 9 in the y, and 24 in the z)
+void main() {
+    //need to calculate the max and min of the screen space
+    
+    //calculate the absolute box of this cluster
+    vec4 abs_min = vec4(gl_WorkGroupID.xy * tilePxSize, -1.0, -1.0);
+    vec4 abs_max = vec4(vec2(gl_WorkGroupID.x + 1, gl_WorkGroupID.y + 1) * tilePxSize, -1.0, 1.0);
+
+    vec4 sp_min = screen_space(abs_min);
+    vec4 sp_max = screen_space(abs_max);
+
+    //calculate the min and max depth slices where this cluster lives
+    float min_depth = near*pow(far/near, gl_WorkGroupID.z/gl_NumWorkGroups.z);
+    float max_depth = near*pow(far/near, (gl_WorkGroupID.z + 1)/gl_NumWorkGroups.z);
+ 
+    eye = vec3(0.0);
+
+    //knowing where the camera is, the min and max depth where the cluster, is and its absolute max/min values we can
+    //calculate 4 points that bounc the cluster.
+}
+
+
+//takes a value and maps it to the screen space;
+float to_screen_space(vec4 value) {
+	double c = 1.0 / (glm::tan(angle / 2));
+    
+    mat4 projection = {
+		c / aspect, 0, 0, 0,
+		0, c, 0, 0,
+		0, 0, -(f + n) / (f - n), -(2 * f * n) / (f - n),
+		0, 0, -1, 0,
+	};
+
+    return projection*value;
+}

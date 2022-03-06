@@ -35,6 +35,10 @@ ShaderText::~ShaderText() {
 
 }
 
+std::string ShaderText::get_code() {
+    return compiled_code;
+}
+
 std::string ShaderText::compile_file_to_assembly(const std::string& source_name,
                                      shaderc_shader_kind kind,
                                      const std::string& source,

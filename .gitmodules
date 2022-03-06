@@ -12,3 +12,12 @@
 [submodule "external/include/stb"]
 	path = external/include/stb
 	url = https://github.com/nothings/stb
+[submodule "external/include/--recursive"]
+	path = external/include/--recursive
+	url = https://github.com/google/shaderc
+[submodule "external/include/shaderc"]
+	path = external/include/shaderc
+	url = https://github.com/google/shaderc
+[submodule "external/include/googletest"]
+	path = external/include/googletest
+	url = https://github.com/google/googletest

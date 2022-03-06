@@ -8,6 +8,8 @@
 #include "logger/interface.hpp"
 #include "vulkan/vulkan_core.h"
 
+#include "shader_text.hpp"
+
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
@@ -742,7 +744,7 @@ void GraphicsImpl::create_texture_layout() {
 }
 
 
-VkShaderModule GraphicsImpl::create_shader_module(std::vector<char> shaderCode) {
+VkShaderModule GraphicsImpl::create_shader_module(std::string shaderCode) {
     VkShaderModule shaderModule;
 
     VkShaderModuleCreateInfo createInfo{};
@@ -811,14 +813,14 @@ void GraphicsImpl::create_render_pipeline(VkExtent2D screen_extent, std::optiona
     std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
 
     if (vert_shader_path.has_value()) {
-        auto vert_shader_code = read_file(vert_shader_path.value());  
-        vert_shader = create_shader_module(vert_shader_code);
+        ShaderText vert_code(vert_shader_path.value(), ShaderKind::VERTEX_SHADER);
+        vert_shader = create_shader_module(vert_code.get_code());
         vert_shader_info = fill_shader_stage_struct(VK_SHADER_STAGE_VERTEX_BIT, vert_shader);
         shader_stages.push_back(vert_shader_info);
     }
     if (frag_shader_path.has_value()) {
-        auto frag_shader_code = read_file(frag_shader_path.value());
-        frag_shader = create_shader_module(frag_shader_code);
+        ShaderText frag_code(frag_shader_path.value(), ShaderKind::FRAGMENT_SHADER);
+        frag_shader = create_shader_module(frag_code.get_code());
         frag_shader_info = fill_shader_stage_struct(VK_SHADER_STAGE_FRAGMENT_BIT, frag_shader);
         shader_stages.push_back(frag_shader_info);
     }
@@ -979,12 +981,12 @@ void GraphicsImpl::create_pipeline_layout(std::vector<VkDescriptorSetLayout> des
     }
 }
 
-void GraphicsImpl::create_compute_pipeline(std::string computer_shader_path, std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkPipelineLayout* layout, VkPipeline* pipeline) {
+void GraphicsImpl::create_compute_pipeline(std::string compute_shader_path, std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkPipelineLayout* layout, VkPipeline* pipeline) {
     VkShaderModule compute_shader;
     VkPipelineShaderStageCreateInfo shader_info;
 
-    auto code = read_file(computer_shader_path);  
-    compute_shader = create_shader_module(code);
+    ShaderText compute_code(compute_shader_path, ShaderKind::COMPUTE_SHADER);
+    compute_shader = create_shader_module(compute_code.get_code());
     shader_info = fill_shader_stage_struct(VK_SHADER_STAGE_COMPUTE_BIT, compute_shader);
 
     create_pipeline_layout(descriptor_layouts, push_ranges, layout);

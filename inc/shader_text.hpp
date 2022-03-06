@@ -20,6 +20,9 @@ public:
     ShaderText(std::string shader_code_path, ShaderKind kind);
     ~ShaderText();
 
+    //returns compiled code as string
+    std::string get_code();
+
 private:
     // Compiles a shader to SPIR-V assembly. Returns the assembly text
     // as a string.
