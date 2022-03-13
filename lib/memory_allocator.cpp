@@ -1,4 +1,7 @@
 #include "memory_allocator.hpp"
+#include "vulkan/vulkan_core.h"
+#include "queue.hpp"
+#include "logger/interface.hpp"
 
 #include <bitset>
 #include <cstring>
@@ -88,46 +91,90 @@ void StackBuffer::destroy(VkDevice device) {
     vkDestroyBuffer(device, buffer, nullptr);
 }
 
-void StackBuffer::init(VkPhysicalDevice physical_device, VkDevice device, BufferCreateInfo* p_buffer_info) {
+void StackBuffer::init(VkPhysicalDevice* physical_device, VkDevice* device, VkCommandPool* command_pool, BufferCreateInfo* p_buffer_info) {
+    p_device = std::shared_ptr<VkDevice>(device);
+    p_phys_device = std::shared_ptr<VkPhysicalDevice>(physical_device);
+    p_command_pool = std::shared_ptr<VkCommandPool>(command_pool);
     //create buffer 
     VkBufferCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     createInfo.pNext = p_buffer_info->pNext;
     createInfo.flags = p_buffer_info->flags;
-    createInfo.usage = p_buffer_info->usage;
+    createInfo.usage = p_buffer_info->usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     createInfo.size = p_buffer_info->size;
     createInfo.sharingMode = p_buffer_info->sharingMode;
     createInfo.queueFamilyIndexCount = p_buffer_info->queueFamilyIndexCount;
     createInfo.pQueueFamilyIndices = p_buffer_info->pQueueFamilyIndices;
 
-    if (vkCreateBuffer(device, &createInfo, nullptr, &buffer) != VK_SUCCESS) {
+    if (vkCreateBuffer(*device, &createInfo, nullptr, &buffer) != VK_SUCCESS) {
         throw std::runtime_error("could not create buffer");
     };
 
     //allocate desired memory to buffer
     VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+    vkGetBufferMemoryRequirements(*device, buffer, &memRequirements);
 
     //allocate memory for buffer
     VkMemoryAllocateInfo memoryInfo{};
     memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memoryInfo.allocationSize = memRequirements.size;
     //too lazy to even check if this exists will do later TODO
-    memoryInfo.memoryTypeIndex = findMemoryType(physical_device, memRequirements.memoryTypeBits, p_buffer_info->memoryProperties);
+    memoryInfo.memoryTypeIndex = findMemoryType(*physical_device, memRequirements.memoryTypeBits, p_buffer_info->memoryProperties);
 
-    VkResult allocResult = vkAllocateMemory(device, &memoryInfo, nullptr, &buffer_memory);
+    VkResult allocResult = vkAllocateMemory(*device, &memoryInfo, nullptr, &buffer_memory);
 
     if (allocResult != VK_SUCCESS) {
         throw std::runtime_error("could not allocate memory for memory pool");
     }
 
-    if (vkBindBufferMemory(device, buffer, buffer_memory, 0) != VK_SUCCESS) {
+    if (vkBindBufferMemory(*device, buffer, buffer_memory, 0) != VK_SUCCESS) {
         throw std::runtime_error("could not bind allocated memory to buffer");
     }
 
     buffer_size = p_buffer_info->size;
     offset = 0;
 
+    //setup command buffer pool for defragmentation
+    setup_queues();
+    create_inter_buffer();
+}
+
+
+void StackBuffer::setup_queues() {
+    tuco::QueueData indices(*p_phys_device);
+    transfer_family = indices.transferFamily.value();
+
+    vkGetDeviceQueue(*p_device, transfer_family, 0, &transfer_queue);
+}
+
+void StackBuffer::create_inter_buffer() {
+    VkBufferCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    createInfo.pNext = nullptr;
+    createInfo.flags = 0;
+    createInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    createInfo.size = INTER_BUFFER_SIZE;
+    createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    if (vkCreateBuffer(*p_device, &createInfo, nullptr, &inter_buffer) != VK_SUCCESS) {
+        throw std::runtime_error("could not create buffer");
+    };
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(*p_device, inter_buffer, &memRequirements);
+
+    //allocate memory for buffer
+    VkMemoryAllocateInfo memoryInfo{};
+    memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memoryInfo.allocationSize = memRequirements.size;
+    //too lazy to even check if this exists will do later TODO
+    memoryInfo.memoryTypeIndex = findMemoryType(*p_phys_device, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VkResult allocResult = vkAllocateMemory(*p_device, &memoryInfo, nullptr, &buffer_memory);
+
+    if (allocResult != VK_SUCCESS) {
+        LOG("could not create intermediary buffer for StackBuffer");
+    }
 }
 
 ///
@@ -150,6 +197,82 @@ void StackBuffer::sort() {
     //accomplish this with vkCmdCopyBuffer() command. once this data is in the buffer we can make a second vkCmdCopyBuffer() call 
     //that will push our data back into the main buffer at a new offset
 
+    VkCommandBuffer transfer_buffer;
+ 
+    VkCommandBufferAllocateInfo bufferAllocate{};
+    bufferAllocate.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    bufferAllocate.commandPool = *p_command_pool;
+    bufferAllocate.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    bufferAllocate.commandBufferCount = 1;
+    
+    if (vkAllocateCommandBuffers(*p_device, &bufferAllocate, &transfer_buffer) != VK_SUCCESS) {
+        throw std::runtime_error("could not allocate memory for transfer buffer");
+    }
+
+    //begin command buffer
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = 0; // Optional
+    beginInfo.pInheritanceInfo = nullptr;
+
+    if (vkBeginCommandBuffer(transfer_buffer, &beginInfo) != VK_SUCCESS) {
+        throw std::runtime_error("one of the command buffers failed to begin");
+    }
+
+    //copy to buffer
+    
+    while (true) {
+        VkDeviceSize gap = 0;
+        VkDeviceSize current_offset = 0;
+        VkDeviceSize data_size = 0;
+        bool fragmented = false;
+        for (auto it = allocations.begin(); it != allocations.end(); it++) {
+            VkDeviceSize space_between = (it->first + it->second) - (gap + it->second);
+            if (space_between < MINIMUM_SORT_DISTANCE) {
+                gap = it->first + it->second;
+            } else {
+                fragmented = true;
+                current_offset = it->first; 
+                data_size = it->second;
+                break;
+            }
+        }
+        
+        if (!fragmented) {
+            break;
+        }
+
+        //TODO: if buffer is not large enough, make new inter_buffer
+        VkBufferCopy src_info{};
+        src_info.srcOffset = current_offset;
+        src_info.dstOffset = 0;
+        src_info.size = data_size;
+
+        vkCmdCopyBuffer(transfer_buffer, buffer, inter_buffer, 1, &src_info);
+
+        //copy back to src buffer
+        VkBufferCopy dst_info{};
+        dst_info.srcOffset = 0;
+        dst_info.dstOffset = gap;
+        dst_info.size = data_size;
+
+        vkCmdCopyBuffer(transfer_buffer, inter_buffer, buffer, 1, &dst_info);
+    }
+
+    if (vkEndCommandBuffer(transfer_buffer) != VK_SUCCESS) {
+        throw std::runtime_error("could not create succesfully end transfer buffer");
+    };
+
+    //destroy transfer buffer, shouldnt need it after copying the data.
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &transfer_buffer;
+
+    vkQueueSubmit(transfer_queue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(transfer_queue);
+
+    vkFreeCommandBuffers(*p_device, *p_command_pool, 1, &transfer_buffer);
 }
 
 VkDeviceSize StackBuffer::allocate(VkDeviceSize allocation_size) {
@@ -157,13 +280,17 @@ VkDeviceSize StackBuffer::allocate(VkDeviceSize allocation_size) {
         //not sure how to handle this case right now
         //will most likely need to create new vertex buffer, copy all the old data, and 
         //destroy the old buffer.
+        
         printf("COULD NOT ALLOCATE INTO BUFFER, OUT OF SPACE \n");
         return 0;
     }
+
+    //TODO: proper check for whether enough space exists (sort if not enough)
+    
     buffer_size -= allocation_size;
     VkDeviceSize push_to = offset;
     offset += allocation_size;
-    allocations.push_back(offset);
+    allocations.push_back(std::make_pair(push_to, offset));
 
     return push_to;
 }
@@ -175,12 +302,11 @@ void StackBuffer::free(VkDeviceSize delete_offset) {
     //will be overwritten and disappear
     VkDeviceSize current_offset = 0;
     for (auto it = allocations.begin(); it != allocations.end(); it++) {
-        if (delete_offset == current_offset) {
+        if (delete_offset == it->first) {
             //delete at location
             allocations.erase(it);
             break;
         }
-        current_offset += *it;
     }
 }
 

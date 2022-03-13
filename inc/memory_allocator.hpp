@@ -13,8 +13,13 @@
 #include <iostream>
 #include <vector>
 #include <math.h>
+#include <memory>
 #include <algorithm>
 #include <list>
+#include <utility>
+
+const VkDeviceSize INTER_BUFFER_SIZE = 1e8;
+const VkDeviceSize MINIMUM_SORT_DISTANCE = 1e5;
 
 //100 mb of data per allocation
 //TODO: need to create a information struct in the style of vulkan to let user manipulate this data
@@ -55,24 +60,22 @@ public:
     void free(VkDeviceSize offset);
 };
 
-//keep a hash table of data, with a key being the offset, and the data allocated being the item
-//when a allocation is called, check if the allocation can fit, and if it can return offset to the user.
-//add offset to key in hash with copy of data being allocated. and map the data to the buffer
-
-//when the user calls free, they will provide the offset, use offset as key to search hashtable and find data at that location
-//if we store the offsets in an array, and then attach the index of that array to the item, then we can find the location ofthe offset,
-//and then map all the data above the offset till we close the gap.
-
-//at minimum we're at O(n) deallocation time, but we don't really know how costly it its to remap data, in theory since we're aren't dealing the operating
-//system when we do this it should be fast, and since it it doesn't grow with the data given we can consider it as constant time
 class StackBuffer {
 private:
     VkDeviceSize buffer_size;
     VkDeviceSize offset;
     VkDeviceMemory buffer_memory;
-    VkDevice* p_device; //hopefully this doesn't just disappear...
-    //offset = i * allocations[i]   
-    std::vector<VkDeviceSize> allocations;
+    //i need a shared pointer of the device...
+    std::shared_ptr<VkDevice> p_device; //hopefully this doesn't just disappear...
+    std::shared_ptr<VkPhysicalDevice> p_phys_device;
+    std::shared_ptr<VkCommandPool> p_command_pool;
+    //pair with allocation size and offset? 
+    std::vector<std::pair<VkDeviceSize, VkDeviceSize>> allocations;
+
+    VkQueue transfer_queue;
+    uint32_t transfer_family;
+
+    VkBuffer inter_buffer;
 
 public:
     VkBuffer buffer;
@@ -82,11 +85,15 @@ public:
     ~StackBuffer();
 
 public:
-    void init(VkPhysicalDevice physical_device, VkDevice device, BufferCreateInfo* p_buffer_info);
+    void init(VkPhysicalDevice* physical_device, VkDevice* device, VkCommandPool* command_pool, BufferCreateInfo* p_buffer_info);
     VkDeviceSize allocate(VkDeviceSize allocation_size);
     void destroy(VkDevice device);
     void free(VkDeviceSize delete_offset);
     void sort();
+    
+private: 
+    void setup_queues();
+    void create_inter_buffer();
 };
 
 struct PoolCreateInfo {

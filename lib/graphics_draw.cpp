@@ -52,7 +52,7 @@ void GraphicsImpl::create_shadowmap_transfer_buffer() {
 
     for (size_t i = 0; i < SHADOW_TRANSFER_BUFFERS; i++) {
         //create all required buffers
-        shadowmap_buffers[i].init(physical_device, device, &buffer_info);
+        shadowmap_buffers[i].init(&physical_device, &device, &command_pool, &buffer_info);
     } 
 }
 
