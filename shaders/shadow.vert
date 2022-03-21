@@ -1,4 +1,3 @@
-//simple vertex shader to just run the depth test.
 #version 450
 
 

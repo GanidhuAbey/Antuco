@@ -13,7 +13,7 @@ enum class ShaderKind {
 
 class ShaderText {
 private:
-    std::string compiled_code;
+    std::vector<uint32_t> compiled_code;
 
 public:
     //requires: shader_code_path must refer to valid file within project directory
@@ -21,12 +21,12 @@ public:
     ~ShaderText();
 
     //returns compiled code as string
-    std::string get_code();
+    std::vector<uint32_t> get_code();
 
 private:
     // Compiles a shader to SPIR-V assembly. Returns the assembly text
     // as a string.
-    std::string compile_file_to_assembly(const std::string& source_name,
+    std::vector<uint32_t> compile_file_to_spirv(const std::string& source_name,
                                      shaderc_shader_kind kind,
                                      const std::string& source,
                                      bool optimize = false);

@@ -22,9 +22,14 @@ include_directories(inc/)
 #finds all my internal dependencies and adds it to a single variable for linking, if needed you can add the file path of each individual .cpp file being linked here
 file(GLOB SOURCES lib/*.cpp)
 
-add_library(shaderc STATIC IMPORTED GLOBAL)
+set(SHADERC_SKIP_TESTS ON)
 
-find_library(SHADERC_LIBRARY libshaderc_combined.a)
+#add_library(shaderc STATIC IMPORTED GLOBAL)
+
+#find_library(SHADERC_LIBRARY libshaderc_combined.a)
+
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/shaderc")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/SPIRV-Cross")
 
 add_library(
     REQUIRED_LIBRARIES
@@ -54,4 +59,4 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/build/assimp/include")
 #compile assimp
 add_executable(main main.cpp "render_examples/bmw.hpp" "render_examples/bmw.cpp")
 
-target_link_libraries(main PRIVATE REQUIRED_LIBRARIES "${Vulkan_LIBRARIES}" assimp::assimp glfw "${SHADERC_LIBRARY}")
+target_link_libraries(main PRIVATE REQUIRED_LIBRARIES "${Vulkan_LIBRARIES}" assimp::assimp glfw shaderc spirv-cross-core)

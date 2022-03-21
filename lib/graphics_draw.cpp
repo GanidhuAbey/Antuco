@@ -744,16 +744,14 @@ void GraphicsImpl::create_texture_layout() {
 }
 
 
-VkShaderModule GraphicsImpl::create_shader_module(std::string shaderCode) {
+VkShaderModule GraphicsImpl::create_shader_module(std::vector<uint32_t> shaderCode) {
     VkShaderModule shaderModule;
 
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.codeSize = static_cast<uint32_t>(shaderCode.size());
+    createInfo.codeSize = shaderCode.size() * sizeof(uint32_t);
 
-    const uint32_t* shaderFormatted = reinterpret_cast<const uint32_t*>(shaderCode.data());
-
-    createInfo.pCode = shaderFormatted;
+    createInfo.pCode = shaderCode.data();
 
     if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
         throw std::runtime_error("could not create shader module");
@@ -789,7 +787,7 @@ void GraphicsImpl::create_shadowpass_pipeline() {
 
     create_render_pipeline(
             shadowmap_extent, 
-            SHADER_PATH + "shadow.spv", 
+            SHADER_PATH + "shadow.vert", 
             std::nullopt,
             dynamic_states,
             layouts,
@@ -985,7 +983,7 @@ void GraphicsImpl::create_compute_pipeline(std::string compute_shader_path, std:
     VkShaderModule compute_shader;
     VkPipelineShaderStageCreateInfo shader_info;
 
-    ShaderText compute_code(compute_shader_path, ShaderKind::COMPUTE_SHADER);
+    ShaderText compute_code(compute_shader_path, ShaderKind::COMPUTE_SHADER); 
     compute_shader = create_shader_module(compute_code.get_code());
     shader_info = fill_shader_stage_struct(VK_SHADER_STAGE_COMPUTE_BIT, compute_shader);
 
@@ -1031,8 +1029,8 @@ void GraphicsImpl::create_graphics_pipeline() {
 
     create_render_pipeline(
             swapchain_extent, 
-            SHADER_PATH + "vert.spv", 
-            SHADER_PATH + "frag.spv", 
+            SHADER_PATH + "shader.vert", 
+            SHADER_PATH + "shader.frag", 
             dynamic_states, 
             descriptor_layouts, 
             push_ranges, 

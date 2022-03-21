@@ -28,18 +28,18 @@ ShaderText::ShaderText(std::string shader_code_path, ShaderKind kind) {
 
     }
 
-    compiled_code = compile_file_to_assembly("shader", shader_kind, string_code);    
+    compiled_code = compile_file_to_spirv("shader", shader_kind, string_code);    
 }
 
 ShaderText::~ShaderText() {
 
 }
 
-std::string ShaderText::get_code() {
+std::vector<uint32_t> ShaderText::get_code() {
     return compiled_code;
 }
 
-std::string ShaderText::compile_file_to_assembly(const std::string& source_name,
+std::vector<uint32_t> ShaderText::compile_file_to_spirv(const std::string& source_name,
                                      shaderc_shader_kind kind,
                                      const std::string& source,
                                      bool optimize) {
@@ -50,14 +50,13 @@ std::string ShaderText::compile_file_to_assembly(const std::string& source_name,
   options.AddMacroDefinition("MY_DEFINE", "1");
   if (optimize) options.SetOptimizationLevel(shaderc_optimization_level_size);
 
-  shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(
-      source, kind, source_name.c_str(), options);
+  shaderc::SpvCompilationResult module =
+      compiler.CompileGlslToSpv(source, kind, source_name.c_str(), options);
 
-  if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
-    std::cerr << result.GetErrorMessage();
-    return "";
+  if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
+    std::cerr << module.GetErrorMessage();
+    return std::vector<uint32_t>();
   }
 
-  return {result.cbegin(), result.cend()};
-}
+  return {module.cbegin(), module.cend()};}
 
