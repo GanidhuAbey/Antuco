@@ -16,6 +16,8 @@ in vec4 gl_FragCoord;
 
 float bias = 5e-3;
 
+int LIGHT_FACTOR = 10;
+
 //light perspective is now clamped from between the specified near plane and far plane
 //going to hard code this values to check for now but will edit them once the effect
 //is working as intended
@@ -38,10 +40,8 @@ void main() {
     //get vector of light
     vec3 lightToObject = normalize(light_position - vec3(vPos));
 
-    float lightIntensity = max(0.01f, dot(lightToObject, surfaceNormal));
+    float lightIntensity = max(0.01f, dot(lightToObject, surfaceNormal)) * LIGHT_FACTOR;
     //float mapIntensity = (lightIntensity/2) + 0.5;
-
-    vec3 newColor = light_color * lightIntensity;
 
     //now sample the depth at that screen coordinate
 
@@ -56,6 +56,7 @@ void main() {
 
     //just solve it first, and then solve it well
     float shadow_factor = check_shadow(vec3(sample_value));
-
-    outColor = vec4(vec3(texture(texture1, texCoord)) * shadow_factor, 1.0);
+    
+    //lets add diffuse light back into the equation 
+    outColor = vec4(vec3(texture(texture1, texCoord)) * shadow_factor * lightIntensity, 1.0);
 }
