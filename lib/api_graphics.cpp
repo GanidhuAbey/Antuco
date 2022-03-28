@@ -56,10 +56,11 @@ GraphicsImpl::~GraphicsImpl() {
 	destroy_initialize();
 }
 
-void GraphicsImpl::update_camera(glm::mat4 world_to_camera, glm::mat4 projection) {
+void GraphicsImpl::update_camera(glm::mat4 world_to_camera, glm::mat4 projection, glm::vec4 eye) {
 	//construct/update the current universal camera matrices
 	camera_view = world_to_camera;
 	camera_projection = projection;
+    camera_pos = eye;
 }
 
 void GraphicsImpl::update_light(std::vector<Light*> lights, std::vector<int> shadow_casters) {

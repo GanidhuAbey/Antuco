@@ -54,13 +54,14 @@ public:
 	GraphicsImpl(Window* pWindow); //TODO: switch this to GraphicsImpl to hide vulkan and glfw
 	~GraphicsImpl();
 
-	void update_camera(glm::mat4 world_to_camera, glm::mat4 projection);
+	void update_camera(glm::mat4 world_to_camera, glm::mat4 projection, glm::vec4 eye);
 	void update_light(std::vector<Light*> lights, std::vector<int> shadow_casters);
 	void update_draw(std::vector<GameObject*> game_objects);
 
 private:
 	glm::mat4 camera_view;
 	glm::mat4 camera_projection;
+    glm::vec4 camera_pos;
 
 	std::vector<Light*> light_data; //a reference to all the light data we need.
 	std::vector<int> shadow_caster_indices;

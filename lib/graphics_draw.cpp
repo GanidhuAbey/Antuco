@@ -1023,7 +1023,7 @@ void GraphicsImpl::create_graphics_pipeline() {
     VkPushConstantRange pushRange{};
     pushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     pushRange.offset = 0;
-    pushRange.size = sizeof(LightObject);
+    pushRange.size = sizeof(LightObject) + sizeof(glm::vec4);
 
     push_ranges.push_back(pushRange);
 
@@ -1457,8 +1457,9 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		light.direction = light_data[0]->target;
 		light.color = light_data[0]->color;
         light.light_count = glm::vec4(MAX_SHADOW_CASTERS, 1, 1, 1); //NOTE: will only pass into the shader with a vec4, don't ask me why it seems glsl really really values constant spacing
-
+        
 		vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(light), &light);
+        vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(light), sizeof(glm::vec4), &camera_pos); 
 		//draw first object (cube)
 		uint32_t total_indexes = 0;
 		uint32_t total_vertices = 0;

@@ -23,6 +23,7 @@ layout(push_constant) uniform PushFragConstant {
   vec3 lightDirection;
   vec3 lightPosition;
   vec3 light_count;
+  vec3 camera;
 } pfc;
 
 layout(location = 0) in vec3 inPosition;
@@ -40,6 +41,8 @@ layout(location = 6) out vec4 light_perspective;
 //light data into fragment shader
 layout(location = 7) out vec3 light_position;
 layout(location = 8) out vec3 light_color;
+
+layout(location = 9) out vec3 camera_pos;
 
 //now i know the size length
 float mapping_value = (1/sqrt(pfc.light_count.x))*0.5;
@@ -68,4 +71,5 @@ void main() {
 
     light_position = pfc.lightPosition;
     light_color = pfc.lightColor;
+    camera_pos = pfc.camera;
 }

@@ -45,6 +45,7 @@ private:
 	glm::mat4 cameraToScreen;
 
 	glm::vec3 point_of_focus;
+    glm::vec3 pos;
 
 	glm::vec3 orientation;
 private:

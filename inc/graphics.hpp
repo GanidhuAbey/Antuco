@@ -26,7 +26,7 @@ public:
 	~Graphics();
 
 public:
-	void update_camera(glm::mat4 world_to_camera, glm::mat4 projection);
+	void update_camera(glm::mat4 world_to_camera, glm::mat4 projection, glm::vec4 pos);
 	void update_light(std::vector<tuco::Light*> lights, std::vector<int> shadow_indices);
 	void update_draw(std::vector<GameObject*> game_objects);
 

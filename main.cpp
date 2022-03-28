@@ -87,7 +87,7 @@ int main() {
 	another->add_mesh(root_project + "/objects/test_object/surface.obj");
 	another->scale(glm::vec3(5, 0.1, 5));
 	
-	some_object->add_mesh(root_project + "/objects/test_object/surface.obj"); //will hope texture data is located within model data.
+	some_object->add_mesh(root_project + "/objects/test_object/grey_cube.obj"); //will hope texture data is located within model data.
 	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
 
 	another->translate(glm::vec3(0, -1, 0));	
@@ -158,7 +158,7 @@ int main() {
 		glm::vec2 step_rotation = rotate_around_point(rotate_item, rotate_point, 0.2f);
 
 		//update light_position
-		light_position = glm::vec3(step_rotation.x, light_position.y, step_rotation.y);
+		//light_position = glm::vec3(step_rotation.x, light_position.y, step_rotation.y);
 
 		//update light
 		light->update(light_position);

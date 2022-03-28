@@ -68,7 +68,7 @@ GameObject* Antuco::create_object() {
 
 void Antuco::render() {	
 	//check and update the camera information
-	p_graphics->update_camera(cameras[0]->modelToCamera, cameras[0]->cameraToScreen);
+	p_graphics->update_camera(cameras[0]->modelToCamera, cameras[0]->cameraToScreen, glm::vec4(cameras[0]->pos, 0));
 	//check and update the light information
 	//the engine can't handle multiple light sources right now, so we will only use the first light created
 	p_graphics->update_light(lights, shadow_casters);

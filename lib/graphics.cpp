@@ -14,8 +14,8 @@ Graphics::~Graphics() {
 	delete pGraphics;
 }
 
-void Graphics::update_camera(glm::mat4 world_to_camera, glm::mat4 projection) {
-	pGraphics->update_camera(world_to_camera, projection);
+void Graphics::update_camera(glm::mat4 world_to_camera, glm::mat4 projection, glm::vec4 pos) {
+	pGraphics->update_camera(world_to_camera, projection, pos);
 }
 
 void Graphics::update_light(std::vector<Light*> lights, std::vector<int> shadow_indices) {
