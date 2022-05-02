@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 #if defined(__APPLE__)
 #include <TargetConditionals.h>

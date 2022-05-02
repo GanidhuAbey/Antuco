@@ -84,10 +84,10 @@ int main() {
 
 	auto t1 = TIME_IT;
 
-	another->add_mesh(root_project + "/objects/test_object/surface.obj");
+	another->add_mesh(root_project + "\\objects\\antuco-files\\windows\\surface.obj");
 	another->scale(glm::vec3(5, 0.1, 5));
 	
-	some_object->add_mesh(root_project + "/objects/test_object/grey_cube.obj"); //will hope texture data is located within model data.
+	some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\grey_cube.obj"); //will hope texture data is located within model data.
 	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
 
 	another->translate(glm::vec3(0, -1, 0));	

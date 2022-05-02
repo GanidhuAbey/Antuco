@@ -13,6 +13,18 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(PythonInterp 3.9.10 REQUIRED)
 
+set(_change_MSVC_flags FALSE)
+if(WIN32)
+  set(MSVC TRUE)
+  if(CMAKE_VERSION VERSION_LESS 3.15.0)
+    set(_change_MSVC_flags TRUE)
+  else()
+    # Set MSVC runtime to MultiThreaded (/MT)
+    cmake_policy(SET CMP0091 NEW)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  endif()
+endif()
+
 project(Antuco VERSION 1.0.0)
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
