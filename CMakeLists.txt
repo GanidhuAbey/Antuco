@@ -11,6 +11,8 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 
+find_package(PythonInterp 3.9.10 REQUIRED)
+
 project(Antuco VERSION 1.0.0)
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
@@ -28,8 +30,8 @@ set(SHADERC_SKIP_TESTS ON)
 
 #find_library(SHADERC_LIBRARY libshaderc_combined.a)
 
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/shaderc")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/SPIRV-Cross")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/shaderc")
 
 add_library(
     REQUIRED_LIBRARIES

@@ -54,7 +54,7 @@ void GraphicsImpl::create_instance(const char* appName) {
 	appInfo.applicationVersion = API_VERSION_1_0;
 	appInfo.pEngineName = "Antuco";
 	appInfo.engineVersion = API_VERSION_1_0;
-	appInfo.apiVersion = VK_API_VERSION_1_1;
+	appInfo.apiVersion = VK_API_VERSION_1_2;
 	//create debug messenger
 	VkDebugUtilsMessengerCreateInfoEXT debugInfo{};
 	debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -237,6 +237,9 @@ void GraphicsImpl::create_logical_device() {
 #ifdef APPLE_M1
     device_extensions.push_back("VK_KHR_portability_subset");
 #endif
+
+    //enable raytracing support (RT)
+    //device_extensions.push_back("VK_KHR_acceleration_structure");
 
 
     //check if device extension needed is supported

@@ -1027,6 +1027,10 @@ void GraphicsImpl::create_graphics_pipeline() {
 
     push_ranges.push_back(pushRange);
 
+    VkExtent2D overscan_screen;
+    overscan_screen.width = swapchain_extent.width + 100;
+    overscan_screen.height = swapchain_extent.height + 100;
+
     create_render_pipeline(
             swapchain_extent, 
             SHADER_PATH + "shader.vert", 
@@ -1431,11 +1435,11 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		//add commands to command buffer
 		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
 
-		VkViewport newViewport = {};
+		VkViewport newViewport{};
 		newViewport.x = 0;
 		newViewport.y = 0;
-		newViewport.width = (float)swapchain_extent.width;
-		newViewport.height = (float)swapchain_extent.height;
+		newViewport.width = (float)swapchain_extent.width + 500;
+		newViewport.height = (float)swapchain_extent.height + 500;
 		newViewport.minDepth = 0.0;
 		newViewport.maxDepth = 1.0;
 		vkCmdSetViewport(command_buffers[i], 0, 1, &newViewport);
