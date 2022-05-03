@@ -80,6 +80,11 @@ private:
 	VkQueue graphics_queue;
 	VkQueue present_queue;
 
+
+//pre-configuration settings
+private:
+	bool raytracing;
+
 private:
 	VkResult create_debug_utils_messengar_utils(VkInstance instance,
 		const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
@@ -93,6 +98,7 @@ private:
 private:
 	void create_instance(const char* appName);
 	void create_logical_device();
+	void enable_raytracing();
 	void pick_physical_device();
 	void create_command_pool();
 	uint32_t score_physical_device(VkPhysicalDevice physical_device);

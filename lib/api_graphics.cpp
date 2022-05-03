@@ -9,6 +9,7 @@ using namespace tuco;
 
 GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	not_created = true;
+	raytracing = true; //set this as an option in the pre-configuration settings.
 
 	create_instance(pWindow->get_title());
 	pWindow->pWindow->create_vulkan_surface(instance, &surface); //it aint pretty, but it'll get er done.

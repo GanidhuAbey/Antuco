@@ -92,10 +92,13 @@ void GraphicsImpl::create_instance(const char* appName) {
 	extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 #ifdef APPLE_M1
-    extensions.push_back("VK_KHR_get_physical_device_properties2");
-    //extensions.push_back("VK_EXT_metal_surface");
+	extensions.push_back("VK_KHR_get_physical_device_properties2");
+#else
+	if (raytracing) {
+		extensions.push_back("VK_KHR_get_physical_device_properties2");
+	}
 #endif
-
+	
 	if (check_extensions_supported(extensions.data(), static_cast<uint32_t>(extensions.size()))) {
 		instanceInfo.enabledExtensionCount = extensions.size();
 		instanceInfo.ppEnabledExtensionNames = extensions.data();
@@ -239,8 +242,20 @@ void GraphicsImpl::create_logical_device() {
 #endif
 
     //enable raytracing support (RT)
-    //device_extensions.push_back("VK_KHR_acceleration_structure");
+	if (raytracing) {
+		//enable acceleration structure extensions
+		device_extensions.push_back("VK_KHR_acceleration_structure");
 
+		device_extensions.push_back("VK_KHR_deferred_host_operations");
+		device_extensions.push_back("VK_KHR_buffer_device_address");
+		device_extensions.push_back("VK_KHR_maintenance3");
+		device_extensions.push_back("VK_EXT_descriptor_indexing");
+
+		//enable ray tracing pipeline extensions
+		device_extensions.push_back("VK_KHR_ray_tracing_pipeline");
+
+		device_extensions.push_back("VK_KHR_spirv_1_4");
+	}
 
     //check if device extension needed is supported
 	if (!check_device_extensions(device_extensions, device_extensions.size())) {
@@ -262,6 +277,12 @@ void GraphicsImpl::create_logical_device() {
 
 	vkGetDeviceQueue(device, graphics_family, 0, &graphics_queue);
 	vkGetDeviceQueue(device, present_family, 0, &present_queue);
+}
+
+//checks for and enables required raytracing extensions
+//crashes if raytracing is enabled on unsupported GPU.
+void GraphicsImpl::enable_raytracing() {
+
 }
 
 void GraphicsImpl::create_command_pool() {
