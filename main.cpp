@@ -3,6 +3,8 @@
 #include <iostream>
 #include <chrono>
 
+#include "config.hpp"
+
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
@@ -84,11 +86,20 @@ int main() {
 
 	auto t1 = TIME_IT;
 
+	
+#if defined(__APPLE__)
+	another->add_mesh(root_project + "/objects/antuco-files/mac/surface.obj");
+	another->scale(glm::vec3(5, 0.1, 5));
+
+	some_object->add_mesh(root_project + "/objects/antuco-files/mac/grey_cube.obj");
+	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
+#elif defined(_WIN32) || defined(_WIN64)
 	another->add_mesh(root_project + "\\objects\\antuco-files\\windows\\surface.obj");
 	another->scale(glm::vec3(5, 0.1, 5));
-	
-	some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\grey_cube.obj"); 
+
+	some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\grey_cube.obj");
 	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
+#endif
 
 	another->translate(glm::vec3(0, -1, 0));	
 	auto t2 = TIME_IT;

@@ -1436,7 +1436,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		newViewport.y = 0;
 		newViewport.width = (float)swapchain_extent.width;
 		newViewport.height = (float)swapchain_extent.height;
-		newViewport.minDepth = 0.0;
+        newViewport.minDepth = 0.0;
 		newViewport.maxDepth = 1.0;
 		vkCmdSetViewport(command_buffers[i], 0, 1, &newViewport);
 
