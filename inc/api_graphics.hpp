@@ -37,7 +37,7 @@ const uint32_t API_VERSION_1_0 = 0;
 //In case use wants many buffers it wouldn't be a good idea to create as many buffers as shadow casters
 const uint32_t SHADOW_TRANSFER_BUFFERS = MAX_SHADOW_CASTERS;
 
-const uint32_t BUFFER_SIZE = 2e7;
+const uint32_t BUFFER_SIZE = 2e8;
 
 //CHANGING THIS IS NOT RECOMMENDED
 //shader assumes that shadowmap size is 2048, i could pass in the shadowmap size into the shader but thats a waste of 
@@ -146,7 +146,7 @@ private:
 	std::vector<std::vector<VkDescriptorSet>> ubo_sets;
 	
 	//game object -> mesh -> swapchain image
-	std::vector<std::vector<std::vector<VkDescriptorSet>>> texture_sets;
+	std::vector<std::vector<VkDescriptorSet>> texture_sets;
 	VkDescriptorSet shadowmap_set;
 
 	VkCommandPool command_pool;
@@ -299,7 +299,7 @@ private:
 	void copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset, std::optional<VkCommandBuffer> command_buffer=std::nullopt);
 	void transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, VkImage image, VkImageAspectFlagBits aspect_mask, std::optional<VkCommandBuffer> command_buffer=std::nullopt);
 	void create_texture_image(aiString texturePath, size_t object, size_t texture_set);
-	void write_to_texture_set(std::vector<VkDescriptorSet> texture_sets, mem::Memory* image);
+	void write_to_texture_set(VkDescriptorSet texture_set, mem::Memory* image);
 	void update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo);
 	void create_light_set(UniformBufferObject lbo);
 	void create_light_layout();
@@ -316,20 +316,22 @@ private:
 
 //buffer setup
 private:
-	mem::Memory vertex_buffer;
-	mem::Memory index_buffer;
+    mem::StackBuffer vertex_buffer;
+	mem::StackBuffer index_buffer;
 	mem::SearchBuffer uniform_buffer;
 private:
 	void create_uniform_buffer();
 	void create_vertex_buffer();
 	void create_index_buffer();
 
+    bool check_data(size_t data_size);
+
 	void copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer, VkDeviceSize dst_offset, VkDeviceSize data_size);
 	VkCommandBuffer begin_command_buffer();
 	void end_command_buffer(VkCommandBuffer command_buffer);
 public:
-	void update_vertex_buffer(std::vector<Vertex> vertex_data);
-	void update_index_buffer(std::vector<uint32_t> indices_data);
+	int32_t update_vertex_buffer(std::vector<Vertex> vertex_data);
+	int32_t update_index_buffer(std::vector<uint32_t> indices_data);
 
 //draw commands
 

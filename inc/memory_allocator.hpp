@@ -4,6 +4,7 @@
 */
 #pragma once
 
+#include "vulkan/vulkan_core.h"
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
@@ -60,6 +61,7 @@ public:
     void free(VkDeviceSize offset);
 };
 
+//Buffer that sorts itself to maintain constant time allocations.
 class StackBuffer {
 private:
     VkDeviceSize buffer_size;
@@ -76,6 +78,7 @@ private:
     uint32_t transfer_family;
 
     VkBuffer inter_buffer;
+    VkDeviceMemory inter_memory;
 
 public:
     VkBuffer buffer;
@@ -86,14 +89,18 @@ public:
 
 public:
     void init(VkPhysicalDevice* physical_device, VkDevice* device, VkCommandPool* command_pool, BufferCreateInfo* p_buffer_info);
-    VkDeviceSize allocate(VkDeviceSize allocation_size);
+    VkDeviceSize map(VkDeviceSize data_size, void* data);
     void destroy(VkDevice device);
     void free(VkDeviceSize delete_offset);
     void sort();
     
 private: 
     void setup_queues();
-    void create_inter_buffer();
+    void create_inter_buffer(VkDeviceSize buffer_size, VkMemoryPropertyFlags memory_properties, VkBuffer* buffer, VkDeviceMemory* memory);
+    VkDeviceSize allocate(VkDeviceSize allocation_size);
+    VkCommandBuffer begin_command_buffer();
+    void end_command_buffer(VkCommandBuffer command_buffer);
+    void copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize dst_offset, VkDeviceSize data_size);
 };
 
 struct PoolCreateInfo {

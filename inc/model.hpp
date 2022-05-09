@@ -8,6 +8,8 @@
 
 #include "mesh.hpp"
 
+#include "config.hpp"
+
 #include <thread>
 #include <future>
 

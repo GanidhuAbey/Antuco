@@ -671,35 +671,30 @@ void GraphicsImpl::create_shadowmap_set() {
 
     //size_t currentSize = descriptorSets.size();
     //descriptorSets.resize(currentSize + 1);
-    //descriptorSets[currentSize].resize(swapChainImages.size());
+    //descriptorSet[currentSize].resize(swapChainImages.size());
 
 	if (vkAllocateDescriptorSets(device, &allocateInfo, &shadowmap_set) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate texture sets!");
 	}
 }
 
-void GraphicsImpl::create_texture_set(size_t mesh_count) { 
-    std::vector<VkDescriptorSetLayout> texture_layouts(swapchain_images.size(), texture_layout);
+void GraphicsImpl::create_texture_set(size_t mesh_count) {
+    std::vector<VkDescriptorSetLayout> texture_layouts(mesh_count, texture_layout);
 
     VkDescriptorSetAllocateInfo allocateInfo{};
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.descriptorPool = texture_pool->pools[texture_pool->allocate(device, swapchain_images.size() * mesh_count)];
-    allocateInfo.descriptorSetCount = swapchain_images.size();
+    allocateInfo.descriptorPool = texture_pool->pools[texture_pool->allocate(device, mesh_count)];
+    allocateInfo.descriptorSetCount = mesh_count;
     allocateInfo.pSetLayouts = texture_layouts.data();
-
-    //size_t currentSize = descriptorSets.size();
-    //descriptorSets.resize(currentSize + 1);
-    //descriptorSets[currentSize].resize(swapChainImages.size());
 
     size_t current_size = texture_sets.size();
     texture_sets.resize(current_size + 1);
     texture_sets[current_size].resize(mesh_count);
 
-    for (size_t i = 0; i < mesh_count; i++) {
-        texture_sets[current_size][i].resize(swapchain_images.size());
-        if (vkAllocateDescriptorSets(device, &allocateInfo, texture_sets[current_size][i].data()) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate texture sets!");
-        }
+    VkResult result = vkAllocateDescriptorSets(device, &allocateInfo, texture_sets[current_size].data());
+    if (result != VK_SUCCESS) {
+        printf("[ERROR CODE %d] - could not allocate texture sets \n", result);
+        throw new std::runtime_error("");
     }
 }
 
@@ -1097,9 +1092,7 @@ void GraphicsImpl::destroy_draw() {
     shadowmap_pool->destroyPool(device);
     texture_pool->destroyPool(device);
 
-    mem::destroyBuffer(device, vertex_buffer);
     uniform_buffer.destroy(device);
-    mem::destroyBuffer(device, index_buffer);
     
     vkDestroyCommandPool(device, command_pool, nullptr);
     
@@ -1474,7 +1467,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                     //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
                     //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
 
-                    VkDescriptorSet descriptors[4] = { ubo_sets[j][i], light_ubo[j][i], texture_sets[j][k][i], shadowmap_set };
+                    VkDescriptorSet descriptors[4] = { ubo_sets[j][i], light_ubo[j][i], texture_sets[j][k], shadowmap_set };
                     vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 4, descriptors, 0, nullptr); 
                     //vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, set1, 0, nullptr);
                     vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
@@ -1518,7 +1511,7 @@ void GraphicsImpl::create_vertex_buffer() {
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    mem::createBuffer(physical_device, device, &buffer_info, &vertex_buffer);
+    vertex_buffer.init(&physical_device, &device, &command_pool, &buffer_info);
 }
 
 void GraphicsImpl::create_index_buffer() {
@@ -1529,68 +1522,42 @@ void GraphicsImpl::create_index_buffer() {
     buffer_info.queueFamilyIndexCount = 1;
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-    mem::createBuffer(physical_device, device, &buffer_info, &index_buffer);
+    
+    index_buffer.init(&physical_device, &device, &command_pool, &buffer_info);
 }
 
-void GraphicsImpl::update_index_buffer(std::vector<uint32_t> indices_data) {
-    //create temporary cpu readable buffer
-    mem::BufferCreateInfo temp_info{};
-    temp_info.size = sizeof(indices_data[0]) * indices_data.size();
-    temp_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    temp_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    temp_info.queueFamilyIndexCount = 1;
-    temp_info.pQueueFamilyIndices = &graphics_family;
-    temp_info.memoryProperties = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
-    mem::Memory temp_buffer;
-    mem::createBuffer(physical_device, device, &temp_info, &temp_buffer);
-
-    //map data to temp buffer
-    mem::allocateMemory(sizeof(indices_data[0]) * indices_data.size(), &temp_buffer);
-    mem::mapMemory(device, sizeof(indices_data[0]) * indices_data.size(), &temp_buffer, indices_data.data());
-
-    //use command buffers to transfer data to device local buffer
-    mem::allocateMemory(sizeof(indices_data[0]) * indices_data.size(), &index_buffer);
-    copy_buffer(temp_buffer, index_buffer, index_buffer.offset, sizeof(indices_data[0]) * indices_data.size());
-    index_buffer.allocate = false;
-
-    //destroy old temp cpu
-    mem::destroyBuffer(device, temp_buffer);
-
+//REQUIRES: indices_data is a list of indices corresponding to the vertices provided to the vertex buffer
+//MODIFIES: this
+//EFFECTS: allocates memory and maps indices_data to index buffer, returns location in memory as int or '-1' if
+//         new data was mapped.
+int32_t GraphicsImpl::update_index_buffer(std::vector<uint32_t> indices_data) {
+    if (check_data(indices_data.size() * sizeof(uint32_t))) {
+        return -1;
+    }
+    uint32_t mem_location = index_buffer.map(indices_data.size() * sizeof(uint32_t), indices_data.data()); 
+    
+    return mem_location;
 }
 
-void GraphicsImpl::update_vertex_buffer(std::vector<Vertex> vertex_data) {
-    //create temporary cpu readable buffer
-    mem::BufferCreateInfo temp_info{};
-    temp_info.size = sizeof(vertex_data[0]) * vertex_data.size();
-    temp_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    temp_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    temp_info.queueFamilyIndexCount = 1;
-    temp_info.pQueueFamilyIndices = &graphics_family;
-    temp_info.memoryProperties = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+//helper function to check if data exists or print warning if it doesnt
+bool GraphicsImpl::check_data(size_t data_size) {
+    if (data_size == 0) {
+        printf("[WARNING] - attempted to allocate data of size 0, preserving previous state... \n");
+        return true;
+    }
 
-    mem::Memory temp_buffer;
-    mem::createBuffer(physical_device, device, &temp_info, &temp_buffer);
+    return false;
+}
 
-    //map data to temp buffer
-    mem::allocateMemory(sizeof(vertex_data[0]) * vertex_data.size(), &temp_buffer);
-   
-    /* THIS CODE FOR SURE WORKS*/
-    //void* p_data;
-    //vkMapMemory(device, temp_buffer.memoryHandle, 0, sizeof(vertex_data[0]) * vertex_data.size(), 0, &p_data);
-    //memcpy(p_data, vertex_data.data(), sizeof(vertex_data[0]) * vertex_data.size());V
+//MODIFIES: this
+//PURPOSE: adds given vertex_data to vertex buffer
+//RETURNS: memory location of where data was added or '-1' if no new data was mapped
+int32_t GraphicsImpl::update_vertex_buffer(std::vector<Vertex> vertex_data) {
+    if (check_data(vertex_data.size() * sizeof(Vertex))) return -1;
 
-    mem::mapMemory(device, sizeof(vertex_data[0]) * vertex_data.size(), &temp_buffer, vertex_data.data());
-
-    //use command buffers to transfer data to device local buffer 
-    mem::allocateMemory(sizeof(vertex_data[0]) * vertex_data.size(), &vertex_buffer);
-    copy_buffer(temp_buffer, vertex_buffer, vertex_buffer.offset, sizeof(vertex_data[0]) * vertex_data.size());
-    vertex_buffer.allocate = false;
-
-    //destroy old temp cpu
-    mem::destroyBuffer(device, temp_buffer);
-
+    uint32_t mem_location = vertex_buffer.map(vertex_data.size() * sizeof(Vertex), vertex_data.data());
+    return mem_location;
 }
 
 void GraphicsImpl::copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer, VkDeviceSize dst_offset, VkDeviceSize data_size) {
@@ -2009,24 +1976,22 @@ void GraphicsImpl::write_to_shadowmap_set() {
     transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, shadowmap_atlas.image, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
-void GraphicsImpl::write_to_texture_set(std::vector<VkDescriptorSet> texture_sets, mem::Memory* image) {
+void GraphicsImpl::write_to_texture_set(VkDescriptorSet texture_set, mem::Memory* image) {
     VkDescriptorImageInfo imageInfo;
     imageInfo.sampler = texture_sampler;
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imageInfo.imageView = image->imageView;
 
-    for (const auto& texture_set : texture_sets) {
-        VkWriteDescriptorSet writeInfo{};
-        writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeInfo.dstBinding = 0;
-        writeInfo.dstSet = texture_set;
-        writeInfo.descriptorCount = 1;
-        writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        writeInfo.pImageInfo = &imageInfo;
-        writeInfo.dstArrayElement = 0;
+    VkWriteDescriptorSet writeInfo{};
+    writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeInfo.dstBinding = 0;
+    writeInfo.dstSet = texture_set;
+    writeInfo.descriptorCount = 1;
+    writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeInfo.pImageInfo = &imageInfo;
+    writeInfo.dstArrayElement = 0;
 
-        vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
-    }
+    vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
 }
 
 

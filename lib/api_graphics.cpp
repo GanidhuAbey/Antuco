@@ -115,8 +115,11 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 
 			for (size_t j = 0; j < meshes.size(); j++) {
 				//for now lets just assume this works so we can deal with the other errors...
-				update_vertex_buffer(meshes[j]->vertices);
-				update_index_buffer(meshes[j]->indices);
+				uint32_t index_mem = update_vertex_buffer(meshes[j]->vertices);
+				uint32_t vertices_mem = update_index_buffer(meshes[j]->indices);
+
+                meshes[j]->index_mem = index_mem;
+                meshes[j]->vertex_mem = vertices_mem;
 
 				//create vulkan image
 				//why is textures even a vector???

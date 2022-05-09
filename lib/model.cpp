@@ -5,6 +5,9 @@
 
 using namespace tuco;
 
+
+const std::string DEFAULT_TEXTURE_PATH = get_project_root(__FILE__) + "/objects/antuco-files/textures/surface.jpeg";
+
 void Model::add_mesh(const std::string& fileName) {
 	//have assimp read file
 	Assimp::Importer importer;
@@ -118,6 +121,12 @@ std::vector<aiString> Model::processTextures(uint32_t materialIndex, aiMaterial*
 		mat->GetTexture(aiTextureType_DIFFUSE, i, &texturePath);
 		texturePaths.push_back(texturePath);
 	}
+
+    if (texturePaths.size() == 0) {
+        //pass in a default texture
+        aiString path = aiString(DEFAULT_TEXTURE_PATH);
+		texturePaths.push_back(path);
+    } 
 
 	return texturePaths;
 }

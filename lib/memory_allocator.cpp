@@ -84,11 +84,15 @@ StackBuffer::StackBuffer() {}
 
 StackBuffer::~StackBuffer() {
     //destroy the buffer
+    destroy(*p_device);
 }
 
 void StackBuffer::destroy(VkDevice device) {
+    vkFreeMemory(device, inter_memory, nullptr);
     vkFreeMemory(device, buffer_memory, nullptr);
     vkDestroyBuffer(device, buffer, nullptr);
+    vkDestroyBuffer(device, inter_buffer, nullptr);
+
 }
 
 void StackBuffer::init(VkPhysicalDevice* physical_device, VkDevice* device, VkCommandPool* command_pool, BufferCreateInfo* p_buffer_info) {
@@ -136,7 +140,7 @@ void StackBuffer::init(VkPhysicalDevice* physical_device, VkDevice* device, VkCo
 
     //setup command buffer pool for defragmentation
     setup_queues();
-    create_inter_buffer();
+    create_inter_buffer(INTER_BUFFER_SIZE, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &inter_buffer, &inter_memory);
 }
 
 
@@ -147,30 +151,34 @@ void StackBuffer::setup_queues() {
     vkGetDeviceQueue(*p_device, transfer_family, 0, &transfer_queue);
 }
 
-void StackBuffer::create_inter_buffer() {
+void StackBuffer::create_inter_buffer(VkDeviceSize buffer_size, VkMemoryPropertyFlags memory_properties, VkBuffer* buffer, VkDeviceMemory* memory) {
     VkBufferCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     createInfo.pNext = nullptr;
     createInfo.flags = 0;
     createInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    createInfo.size = INTER_BUFFER_SIZE;
+    createInfo.size = buffer_size;
     createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    if (vkCreateBuffer(*p_device, &createInfo, nullptr, &inter_buffer) != VK_SUCCESS) {
+    if (vkCreateBuffer(*p_device, &createInfo, nullptr, buffer) != VK_SUCCESS) {
         throw std::runtime_error("could not create buffer");
     };
 
     VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(*p_device, inter_buffer, &memRequirements);
+    vkGetBufferMemoryRequirements(*p_device, *buffer, &memRequirements);
 
     //allocate memory for buffer
     VkMemoryAllocateInfo memoryInfo{};
     memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memoryInfo.allocationSize = memRequirements.size;
     //too lazy to even check if this exists will do later TODO
-    memoryInfo.memoryTypeIndex = findMemoryType(*p_phys_device, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    memoryInfo.memoryTypeIndex = findMemoryType(*p_phys_device, memRequirements.memoryTypeBits, memory_properties);
 
-    VkResult allocResult = vkAllocateMemory(*p_device, &memoryInfo, nullptr, &buffer_memory);
+    VkResult allocResult = vkAllocateMemory(*p_device, &memoryInfo, nullptr, memory);
+
+    if (vkBindBufferMemory(*p_device, *buffer, *memory, 0) != VK_SUCCESS) {
+        throw std::runtime_error("could not bind allocated memory to buffer");
+    }
 
     if (allocResult != VK_SUCCESS) {
         LOG("could not create intermediary buffer for StackBuffer");
@@ -281,18 +289,110 @@ VkDeviceSize StackBuffer::allocate(VkDeviceSize allocation_size) {
         //will most likely need to create new vertex buffer, copy all the old data, and 
         //destroy the old buffer.
         
-        printf("COULD NOT ALLOCATE INTO BUFFER, OUT OF SPACE \n");
+        printf("[ERROR] - COULD NOT ALLOCATE INTO BUFFER, OUT OF SPACE \n");
         return 0;
     }
 
-    //TODO: proper check for whether enough space exists (sort if not enough)
-    
+    //TODO: proper check for whether enough space exists (sort if not enough) 
     buffer_size -= allocation_size;
     VkDeviceSize push_to = offset;
     offset += allocation_size;
     allocations.push_back(std::make_pair(push_to, offset));
 
     return push_to;
+}
+
+VkCommandBuffer StackBuffer::begin_command_buffer() {
+    //create command buffer
+    VkCommandBuffer transferBuffer;
+
+    VkCommandBufferAllocateInfo bufferAllocate{};
+    bufferAllocate.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    bufferAllocate.commandPool = *p_command_pool;
+    bufferAllocate.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    bufferAllocate.commandBufferCount = 1;
+
+    if (vkAllocateCommandBuffers(*p_device, &bufferAllocate, &transferBuffer) != VK_SUCCESS) {
+        throw std::runtime_error("could not allocate memory for transfer buffer");
+    }
+
+    //begin command buffer
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = 0; // Optional
+    beginInfo.pInheritanceInfo = nullptr;
+
+    if (vkBeginCommandBuffer(transferBuffer, &beginInfo) != VK_SUCCESS) {
+        throw std::runtime_error("one of the command buffers failed to begin");
+    }
+
+    return transferBuffer;
+}
+
+
+void StackBuffer::end_command_buffer(VkCommandBuffer commandBuffer) {
+    //end command buffer
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+        throw std::runtime_error("could not create succesfully end transfer buffer");
+    };
+
+    //destroy transfer buffer, shouldnt need it after copying the data.
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+
+    vkQueueSubmit(transfer_queue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(transfer_queue);
+
+    vkFreeCommandBuffers(*p_device, *p_command_pool, 1, &commandBuffer);
+}
+
+//EFFECTS: maps a given chunk of data to this buffer and returns the memory location of where it was mapped
+VkDeviceSize StackBuffer::map(VkDeviceSize data_size, void* data) {
+    VkDeviceSize memory_loc = allocate(data_size);
+
+    VkBuffer temp_buffer;
+    VkDeviceMemory temp_memory;
+    create_inter_buffer(data_size, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &temp_buffer, &temp_memory);
+
+    void* pData;
+    if (vkMapMemory(*p_device, temp_memory, 0, data_size, 0, &pData) != VK_SUCCESS) {
+        throw std::runtime_error("could not map data to memory");
+    }
+    memcpy(pData, data, data_size);
+    
+    //map memory to buffer
+    copy_buffer(temp_buffer, buffer, memory_loc, data_size);
+    
+
+    vkUnmapMemory(*p_device, temp_memory);
+
+    //TODO: should minimize the amount of temp buffers created, having one at a set size only recreating a new temp buffer if our previous one was too small.
+    vkFreeMemory(*p_device, temp_memory, nullptr);
+    vkDestroyBuffer(*p_device, temp_buffer, nullptr);
+
+    return memory_loc;
+}
+
+void StackBuffer::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize dst_offset, VkDeviceSize data_size) {
+    VkCommandBuffer transferBuffer = begin_command_buffer();
+
+    //transfer between buffers
+    VkBufferCopy copyData{};
+    copyData.srcOffset = 0;
+    copyData.dstOffset = dst_offset;
+    copyData.size = data_size;
+
+    vkCmdCopyBuffer(transferBuffer,
+        src_buffer,
+        dst_buffer,
+        1,
+        &copyData
+    );
+
+    //destroy transfer buffer, shouldnt need it after copying the data.
+    end_command_buffer(transferBuffer);
 }
 
 void StackBuffer::free(VkDeviceSize delete_offset) {
