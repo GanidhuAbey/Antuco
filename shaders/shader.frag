@@ -25,7 +25,7 @@ in vec4 gl_FragCoord;
 float bias = 5e-3;
 
 int LIGHT_FACTOR = 10;
-float SPECULAR_STRENGTH = 5.0f;
+float SPECULAR_STRENGTH = 1.0f;
 
 //light perspective is now clamped from between the specified near plane and far plane
 //going to hard code this values to check for now but will edit them once the effect
@@ -46,11 +46,12 @@ float check_shadow(vec3 light_view) {
 }
 
 void main() {
-    float ambient_light = 0.2f;
+    float dist = length(light_position - vec3(vPos));
 
-    vec3 ambient_final = ambient_light * mat.ambient;
 
     //get vector of light
+    vec3 texture_component = vec3(texture(texture1, texCoord));
+
     vec3 lightToObject = normalize(light_position - vec3(vPos));
     float diffuse_light = max(0.f, dot(lightToObject, surfaceNormal)) * LIGHT_FACTOR;
 
@@ -68,12 +69,12 @@ void main() {
     //need to pass data on the location of the camera
     vec3 object_to_camera = normalize(camera_pos - vec3(vPos));
     float specular_value = pow(max(0.f, dot(reflected_light, object_to_camera)), 32);
-    vec3 specular_light = specular_value * SPECULAR_STRENGTH * light_color;
+    vec3 specular_light = specular_value * SPECULAR_STRENGTH * mat.specular;
 
     //analyze depth at the given coordinate of the object
     float light_dist = length(light_position - vec3(vPos));
 
-    //check z_buffer depth at this pixel location
+    //check z_buffer depth at this pixel locationS
     //the actual problem now is that im not sampling the texture correctly
     
     vec4 sample_value = light_perspective * (1/light_perspective.w);
@@ -86,11 +87,13 @@ void main() {
     //if texture is always 1, then no impact on outcome of img
     
     //TODO: get rid of this if statement once everything works
-    vec3 texture_component = vec3(texture(texture1, texCoord));
+    vec3 result;
     if (!mat.has_texture) {
-        texture_component = vec3(1); 
+        result =  diffuse_final;
+    } else {
+        result = (texture_component * mat.ambient + diffuse_final + specular_light) * shadow_factor;
     }
 
-    vec3 result = (ambient_light + diffuse_light + specular_light) * texture_component * shadow_factor;
+    
     outColor = vec4(result, 0);
 }

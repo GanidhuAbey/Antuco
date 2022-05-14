@@ -270,8 +270,10 @@ void GraphicsImpl::create_logical_device() {
 	VkPhysicalDeviceFeatures device_features{};
 	deviceInfo.pEnabledFeatures = &device_features;
 
-	if (vkCreateDevice(physical_device, &deviceInfo, nullptr, &device) != VK_SUCCESS) {
-		printf("[ERROR] - create_logical_device: could not create vulkan device object");
+
+	VkResult device_result = vkCreateDevice(physical_device, &deviceInfo, nullptr, &device);
+	if (device_result != VK_SUCCESS) {
+		printf("[ERROR %d] - create_logical_device: could not create vulkan device object", device_result);
 		throw std::runtime_error("");
 	}
 

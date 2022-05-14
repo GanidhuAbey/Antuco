@@ -100,7 +100,7 @@ int main() {
 	another->add_mesh(root_project + "\\objects\\antuco-files\\windows\\surface.obj");
 	another->scale(glm::vec3(5, 0.1, 5));
 
-	some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\grey_cube.obj");
+	some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.obj");
 	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
 #endif
 

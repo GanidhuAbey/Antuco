@@ -10,7 +10,7 @@ using namespace tuco;
 
 GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	not_created = true;
-	raytracing = true; //set this as an option in the pre-configuration settings.
+	raytracing = false; //set this as an option in the pre-configuration settings.
 #ifdef APPLE_M1
     raytracing = false;
 #endif
