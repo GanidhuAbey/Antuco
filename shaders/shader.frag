@@ -13,6 +13,13 @@ layout(location=9) in vec3 camera_pos;
 layout(set=2, binding=0) uniform sampler2D texture1;
 layout(set=3, binding=1) uniform sampler2D shadowmap;
 
+layout(set=4, binding=0) uniform Materials {
+    bool has_texture;
+    vec3 ambient; //Ka
+    vec3 diffuse; //Kd
+    vec3 specular; //Ks
+} mat;
+
 in vec4 gl_FragCoord;
 
 float bias = 5e-3;
@@ -41,9 +48,13 @@ float check_shadow(vec3 light_view) {
 void main() {
     float ambient_light = 0.2f;
 
+    vec3 ambient_final = ambient_light * mat.ambient;
+
     //get vector of light
     vec3 lightToObject = normalize(light_position - vec3(vPos));
     float diffuse_light = max(0.f, dot(lightToObject, surfaceNormal)) * LIGHT_FACTOR;
+
+    vec3 diffuse_final = diffuse_light * mat.diffuse;
     //float mapIntensity = (lightIntensity/2) + 0.5;
 
     //now sample the depth at that screen coordinate
@@ -71,7 +82,15 @@ void main() {
     //just solve it first, and then solve it well
     float shadow_factor = check_shadow(vec3(sample_value));
     
-    //lets add diffuse light back into the equation 
-    vec3 result = (ambient_light + diffuse_light + specular_light) * vec3(texture(texture1, texCoord)) * shadow_factor;
+    //lets add diffuse light back into the equation
+    //if texture is always 1, then no impact on outcome of img
+    
+    //TODO: get rid of this if statement once everything works
+    vec3 texture_component = vec3(texture(texture1, texCoord));
+    if (!mat.has_texture) {
+        texture_component = vec3(1); 
+    }
+
+    vec3 result = (ambient_light + diffuse_light + specular_light) * texture_component * shadow_factor;
     outColor = vec4(result, 0);
 }

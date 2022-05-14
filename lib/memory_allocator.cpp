@@ -5,6 +5,9 @@
 
 #include <bitset>
 #include <cstring>
+#include <cmath>
+#include <algorithm>
+
 using namespace mem;
 
 
@@ -425,6 +428,8 @@ void Pool::destroyPool(VkDevice device) {
 }
 
 void Pool::createPool(VkDevice device, PoolCreateInfo create_info) {
+    printf("1: %u \n", create_info.pool_size);
+    printf("2: %u \n", create_info.set_type);
     //create pool described by pool_info
     VkDescriptorPoolSize pool_size{};
     pool_size.type = create_info.set_type;
@@ -455,6 +460,7 @@ size_t Pool::allocate(VkDevice device, VkDeviceSize allocation_size) {
     }
 
     if (!allocate) {
+        pool_create_info.pool_size = int(std::max(std::pow(pool_create_info.pool_size, 2), (double)allocation_size));
         createPool(device, pool_create_info);
         pool_to_allocate = allocations.size() - 1;
     }

@@ -58,7 +58,7 @@ int main() {
 	//in order to create a scene we need a camera, a light, and a object right?
 
 	//create camera
-	glm::vec3 camera_pos = glm::vec3(0.0, 0.0, 3.0);
+	glm::vec3 camera_pos = glm::vec3(-2.0, 0.2, 1.0);
 	//the direction the camera is looking at
 	//think of the camera_pos moving away from the center, inorder to look at the center then
 	//you need to look in the negative z axis to "look back" at the center.
@@ -70,7 +70,7 @@ int main() {
 	//create some light for the scene
 	//TODO: implement debug mode where we'll render light with mesh
 	//its kinda hard to determine a direction for a user, much easier for them to give a location to light
-	glm::vec3 light_position = glm::vec3(7.0f, 5.0f, 3.0f);
+	glm::vec3 light_position = glm::vec3(7.0f, 10.0f, 3.0f);
 	glm::vec3 light_look_at = glm::vec3(0.0f, 0.0f, 0.0f);
 	tuco::Light* light = antuco.create_light(light_position, light_look_at, glm::vec3(1.0, 1.0, 1.0), glm::vec3(0.0, 1.0, 0.0), true);
 
@@ -92,6 +92,7 @@ int main() {
 #if defined(__APPLE__)
 	another->add_mesh(root_project + "/objects/antuco-files/mac/surface.obj");
 	another->scale(glm::vec3(5, 0.1, 5));
+    another->translate(glm::vec3(0, 0.6, 0));
 
 	some_object->add_mesh(root_project + "/objects/antuco-files/mac/bmw.obj");
 	some_object->scale(glm::vec3(0.2, 0.2, 0.2));

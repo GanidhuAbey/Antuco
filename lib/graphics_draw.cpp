@@ -10,6 +10,7 @@
 
 #include "shader_text.hpp"
 
+#include <vector>
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
@@ -591,6 +592,59 @@ void GraphicsImpl::create_light_layout() {
 }
 
 
+void GraphicsImpl::create_materials_layout() {
+    /* UNIFORM BUFFER DESCRIPTOR SET */
+    VkDescriptorSetLayoutBinding mat_layout_binding{};
+    mat_layout_binding.binding = 0;
+    mat_layout_binding.descriptorCount = 1;
+    mat_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    mat_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    mat_layout_binding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo layout_info{};
+    layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+
+    layout_info.bindingCount = 1;
+    layout_info.pBindings = &mat_layout_binding;
+
+    if (vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &mat_layout) != VK_SUCCESS) {
+        LOG("[ERROR] - could not create materials layout");
+    }
+}
+
+//PURPOSE: create pool to allocate memory to.
+void GraphicsImpl::create_materials_pool() {
+    mem::PoolCreateInfo pool_info{};
+    pool_info.pool_size = MATERIALS_POOL_SIZE;
+    pool_info.set_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+    mat_pool = std::make_unique<mem::Pool>(device, pool_info);
+}
+
+void GraphicsImpl::create_materials_set(uint32_t mesh_count) {
+    std::vector<VkDescriptorSetLayout> mat_layouts(mesh_count, mat_layout);
+
+    VkDescriptorSetAllocateInfo allocateInfo{};
+
+    VkDescriptorPool allocated_pool;
+    size_t pool_index = mat_pool->allocate(device, mesh_count);
+
+    allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocateInfo.descriptorPool = mat_pool->pools[pool_index];
+    allocateInfo.descriptorSetCount = mesh_count;
+    allocateInfo.pSetLayouts = mat_layouts.data();
+
+   
+    mat_sets.resize(mat_sets.size() + 1);
+    mat_sets[mat_sets.size() - 1].resize(mesh_count);
+    auto result = vkAllocateDescriptorSets(device, &allocateInfo, mat_sets[mat_sets.size() - 1].data());
+    if (result != VK_SUCCESS) {
+        LOG("failed to allocate descriptor sets!");
+        throw std::runtime_error("");
+    } 
+}
+
+
 void GraphicsImpl::create_ubo_layout() {
     /* UNIFORM BUFFER DESCRIPTOR SET */
     VkDescriptorSetLayoutBinding ubo_layout_binding{};
@@ -638,6 +692,8 @@ void GraphicsImpl::create_ubo_set() {
     //descriptorSets.resize(currentSize + 1);
     //descriptorSets[currentSize].resize(swapChainImages.size());
 
+    //TODO: now we know that having a ubo copy for each swap chain image is useless, so we should change
+    //      to only create one copy for every swapchain image.
     size_t current_size = ubo_sets.size();
     ubo_sets.resize(current_size + 1);
     ubo_sets[current_size].resize(swapchain_images.size());
@@ -717,6 +773,8 @@ void GraphicsImpl::create_shadowmap_layout() {
         throw std::runtime_error("could not create texture layout");
     }
 }
+
+
 
 void GraphicsImpl::create_texture_layout() {
     /* SAMPLED IMAGE DESCRIPTOR SET (FOR TEXTURING) */
@@ -1006,12 +1064,15 @@ void GraphicsImpl::create_graphics_pipeline() {
         VK_DYNAMIC_STATE_SCISSOR,
         VK_DYNAMIC_STATE_DEPTH_BIAS
     };
-
+    
+    //TEX
     std::vector<VkDescriptorSetLayout> descriptor_layouts = { 
-        ubo_layout, 
+
         light_layout, 
+        ubo_layout, 
         texture_layout, 
-        shadowmap_layout };
+        shadowmap_layout,
+        mat_layout};
 
     std::vector<VkPushConstantRange> push_ranges;
 
@@ -1036,27 +1097,47 @@ void GraphicsImpl::create_graphics_pipeline() {
             );
 }
 
-void GraphicsImpl::write_to_ubo() {
-    VkDeviceSize offset = uniform_buffer.allocate(sizeof(UniformBufferObject));
+
+VkDescriptorBufferInfo GraphicsImpl::setup_descriptor_set_buffer(uint32_t set_size) {
+    VkDeviceSize offset = uniform_buffer.allocate(set_size);
 
     VkDescriptorBufferInfo buffer_info{};
     buffer_info.buffer = uniform_buffer.buffer;
     buffer_info.offset = offset;
-    buffer_info.range = (VkDeviceSize)sizeof(UniformBufferObject);
+    buffer_info.range = (VkDeviceSize)set_size;
 
-    ubo_offsets.push_back(offset);
+    return buffer_info;
+}
+
+void GraphicsImpl::update_descriptor_set(VkDescriptorBufferInfo buffer_info, uint32_t dst_binding, VkDescriptorSet set) {
+    VkWriteDescriptorSet writeInfo{};
+    writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeInfo.dstBinding = dst_binding;
+    writeInfo.dstSet = set;
+    writeInfo.descriptorCount = 1;
+    writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    writeInfo.pBufferInfo = &buffer_info;
+    writeInfo.dstArrayElement = 0;
+
+    vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
+}
+
+void GraphicsImpl::write_to_materials() {
+    mat_offsets.resize(mat_offsets.size() + 1);
+    for (size_t i = 0; i < mat_sets[mat_sets.size() - 1].size(); i++) {
+        VkDescriptorBufferInfo buffer_info = setup_descriptor_set_buffer(sizeof(MaterialsObject)); 
+        mat_offsets[mat_offsets.size() - 1].push_back(buffer_info.offset);
+        update_descriptor_set(buffer_info, 0, mat_sets[mat_sets.size() - 1][i]);
+    }
+}
+
+void GraphicsImpl::write_to_ubo() {
+    VkDescriptorBufferInfo buffer_info = setup_descriptor_set_buffer(sizeof(UniformBufferObject));
+
+    ubo_offsets.push_back(buffer_info.offset);
 
     for (size_t i = 0; i < swapchain_images.size(); i++) {
-        VkWriteDescriptorSet writeInfo{};
-        writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeInfo.dstBinding = 0;
-        writeInfo.dstSet = ubo_sets[ubo_sets.size() - 1][i];
-        writeInfo.descriptorCount = 1;
-        writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        writeInfo.pBufferInfo = &buffer_info;
-        writeInfo.dstArrayElement = 0;
-
-        vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
+        update_descriptor_set(buffer_info, 0, ubo_sets[ubo_sets.size() - 1][i]);
     }
 }
 
@@ -1065,7 +1146,7 @@ void GraphicsImpl::destroy_draw() {
     
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyFence(device, in_flight_fences[i], nullptr);
-        vkDestroySemaphore(device, image_available_semaphores[i], nullptr);
+
         vkDestroySemaphore(device, render_finished_semaphores[i], nullptr);
     }
 
@@ -1466,10 +1547,11 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
                     //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
                     //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
+                   
+                    //PROBLEM IS THAT texture set is not updated when the model/mesh we're dealing with has not texture
+                    VkDescriptorSet descriptors[5] = { light_ubo[j][i], ubo_sets[j][i], texture_sets[j][k], shadowmap_set, mat_sets[j][k] };
+                    vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 5, descriptors, 0, nullptr); 
 
-                    VkDescriptorSet descriptors[4] = { ubo_sets[j][i], light_ubo[j][i], texture_sets[j][k], shadowmap_set };
-                    vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 4, descriptors, 0, nullptr); 
-                    //vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, set1, 0, nullptr);
                     vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
 
                     total_indexes += index_count;
@@ -1628,6 +1710,10 @@ void GraphicsImpl::end_command_buffer(VkCommandBuffer commandBuffer) {
 
 void GraphicsImpl::update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo) {
     uniform_buffer.write(device, memory_offset, sizeof(lbo), &lbo);
+}
+
+void GraphicsImpl::update_materials(VkDeviceSize memory_offset, MaterialsObject mat) {
+    uniform_buffer.write(device, memory_offset, sizeof(mat), &mat);
 }
 
 void GraphicsImpl::update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo) {
@@ -1994,9 +2080,70 @@ void GraphicsImpl::write_to_texture_set(VkDescriptorSet texture_set, mem::Memory
     vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
 }
 
+void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
+    //CREATE A WHITE IMAGE TO SEND TO THE SHADER THIS WAY WE CAN ALSO ELIMINATE THE IF STATEMENTS 
+    
+    //create vector of white pixels... and then map that to image?
+    mem::Memory* new_texture_image = new mem::Memory{};
+
+    mem::ImageCreateInfo imageInfo{};
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+    VkExtent3D extent{};
+    extent.width = 1;
+    extent.height = 1;
+    extent.depth = 1; //this depth might be key to blending the textures...
+    imageInfo.extent = extent;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.queueFamilyIndexCount = 1;
+    imageInfo.pQueueFamilyIndices = &graphics_family;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    mem::createImage(physical_device, device, &imageInfo, new_texture_image);
+
+    //transfer the image again to a more optimal layout for texture sampling?
+    transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, new_texture_image->image, VK_IMAGE_ASPECT_COLOR_BIT);
+
+    //create image view for image
+    mem::ImageViewCreateInfo viewInfo{};
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+    viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    mem::createImageView(device, viewInfo, new_texture_image);
+
+    //save texture image to mesh
+    mem::ImageSize image_dimensions{};
+    image_dimensions.width = 1;
+    image_dimensions.height = 1;
+
+    texture_images.resize(texture_images.size() + 1);
+    texture_images[texture_images.size() - 1].push_back(new_texture_image);
+
+    //write to texture set
+    write_to_texture_set(texture_sets[object][texture_set], new_texture_image);
+
+}
+
 
 void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, size_t texture_set) {
     int imageWidth, imageHeight, imageChannels;
+    //this is a char... why is that?
     stbi_uc *pixels = stbi_load(texturePath.data, &imageWidth, &imageHeight, &imageChannels, STBI_rgb_alpha);
 
     VkDeviceSize dataSize = 4 * (imageWidth * imageHeight);

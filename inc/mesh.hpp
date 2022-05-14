@@ -20,12 +20,14 @@ public:
 	std::vector<uint32_t> indices;
 	std::vector<aiString> textures;
 
+    MaterialsObject mat_data;
+
     //when mesh is allocated into memory, we will save its location within the mesh, for easy deletion
     uint32_t index_mem;
     uint32_t vertex_mem;
 
 private:
-	Mesh(std::vector<Vertex> newVertices, std::vector<uint32_t> newIndices, std::vector<aiString> newTextures);
+	Mesh(std::vector<Vertex> newVertices, std::vector<uint32_t> newIndices, Material material);
 public:
 	~Mesh();
 };

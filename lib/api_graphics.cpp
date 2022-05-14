@@ -33,6 +33,8 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	create_shadowpass();
 	create_ubo_layout();
 	create_light_layout();
+    create_materials_layout();
+    create_materials_pool();
 	create_texture_layout();
 	create_shadowmap_layout();
 	create_shadowmap_pool();
@@ -113,6 +115,9 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 			//create texture data
 			create_texture_set(meshes.size());
 
+            create_materials_set(meshes.size());
+            write_to_materials();
+
 			for (size_t j = 0; j < meshes.size(); j++) {
 				//for now lets just assume this works so we can deal with the other errors...
 				uint32_t index_mem = update_vertex_buffer(meshes[j]->vertices);
@@ -121,9 +126,15 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
                 meshes[j]->index_mem = index_mem;
                 meshes[j]->vertex_mem = vertices_mem;
 
+                update_materials(mat_offsets[i][j], meshes[j]->mat_data);
+
 				//create vulkan image
 				//why is textures even a vector???
-				create_texture_image(meshes[j]->textures[0], i, j);
+                if (meshes[j]->mat_data.has_texture.r > 0) {
+                    create_texture_image(meshes[j]->textures[0], i, j);
+                } else {
+                    create_empty_image(i, j);
+                }
 			}
 		}
 		

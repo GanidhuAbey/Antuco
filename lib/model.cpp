@@ -5,9 +5,6 @@
 
 using namespace tuco;
 
-
-const std::string DEFAULT_TEXTURE_PATH = get_project_root(__FILE__) + "/objects/antuco-files/textures/surface.jpeg";
-
 void Model::add_mesh(const std::string& fileName) {
 	//have assimp read file
 	Assimp::Importer importer;
@@ -56,17 +53,17 @@ Mesh* Model::processMesh(aiMesh* mesh, aiMaterial** materials) {
 	//multithread this functionality
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
-	std::vector<aiString> texturePaths;
+    Material material;
 
 	auto future_vertices = std::async(std::launch::async, [&] { return processVertices(mesh->mNumVertices, mesh->mVertices, mesh->mNormals, mesh->mTextureCoords); });
 	auto future_indices = std::async(std::launch::async, [&] { return processIndices(mesh->mNumFaces, mesh->mFaces); });
-	auto future_texturePaths = std::async(std::launch::async, [&] { return processTextures(mesh->mMaterialIndex, materials); });
+	auto future_material = std::async(std::launch::async, [&] { return processMaterial(mesh->mMaterialIndex, materials); });
 
 	vertices = future_vertices.get();
 	indices = future_indices.get();
-	texturePaths = future_texturePaths.get();
+    material = future_material.get();
 
-	Mesh* new_mesh = new Mesh(vertices, indices, texturePaths);
+	Mesh* new_mesh = new Mesh(vertices, indices, material);
 	
 	return new_mesh;
 }
@@ -111,22 +108,41 @@ std::vector<uint32_t> Model::processIndices(uint32_t numOfFaces, aiFace* faces) 
 	return meshIndices;
 }
 
-std::vector<aiString> Model::processTextures(uint32_t materialIndex, aiMaterial** materials) {
+Material Model::processMaterial(uint32_t materialIndex, aiMaterial** materials) {
 	aiMaterial* mat = materials[materialIndex];
 	unsigned int texCount = mat->GetTextureCount(aiTextureType_DIFFUSE);
 	aiString texturePath;
 	char imagePath;
-	std::vector<aiString> texturePaths;
-	for (unsigned int i = 0; i < texCount; i++) {
-		mat->GetTexture(aiTextureType_DIFFUSE, i, &texturePath);
-		texturePaths.push_back(texturePath);
-	}
+    
+    Material material{};
+    
+    if (texCount > 0) {
+		mat->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath);
+        material.texturePath = texturePath;
+    }
 
-    if (texturePaths.size() == 0) {
-        //pass in a default texture
-        aiString path = aiString(DEFAULT_TEXTURE_PATH);
-		texturePaths.push_back(path);
+    //ambient
+    aiColor3D ambient (0.f, 0.f, 0.f);
+    if (AI_SUCCESS != mat->Get(AI_MATKEY_COLOR_AMBIENT, ambient)) {
+        printf("[ERROR] - could not load materials ambient colour \n");
+    }
+
+    //diffuse
+    aiColor3D diffuse (0.f, 0.f, 0.f);
+    if (AI_SUCCESS != mat->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse)) {
+        printf("[ERROR] - could not load materials diffuse colour \n");
+    }
+
+    //specular
+    aiColor3D specular (0.f, 0.f, 0.f);
+    if (AI_SUCCESS != mat->Get(AI_MATKEY_COLOR_SPECULAR, specular)) {
+        printf("[ERROR] - could not load materials specular colour \n");
     } 
 
-	return texturePaths;
+    material.ambient = ambient;
+    material.diffuse = diffuse;
+    material.specular = specular;
+
+    return material;
+
 }

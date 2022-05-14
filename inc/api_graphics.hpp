@@ -110,6 +110,7 @@ private:
 private:
 	VkDescriptorSetLayout ubo_layout;
 	VkDescriptorSetLayout texture_layout;
+    VkDescriptorSetLayout mat_layout;
 
 	VkSwapchainKHR swapchain;
 	VkExtent2D swapchain_extent;
@@ -142,8 +143,10 @@ private:
 
 	std::unique_ptr<mem::Pool> ubo_pool;
 	std::unique_ptr<mem::Pool> texture_pool;
+    std::unique_ptr<mem::Pool> mat_pool;
 
 	std::vector<std::vector<VkDescriptorSet>> ubo_sets;
+    std::vector<std::vector<VkDescriptorSet>> mat_sets; //model -> mesh
 	
 	//game object -> mesh -> swapchain image
 	std::vector<std::vector<VkDescriptorSet>> texture_sets;
@@ -153,6 +156,7 @@ private:
 	std::vector<VkCommandBuffer> command_buffers;
 
 	std::vector<VkDeviceSize> ubo_offsets; //holds the offset data for a objects ubo information within the uniform buffer
+	std::vector<std::vector<VkDeviceSize>> mat_offsets;
 	std::vector<std::vector<mem::Memory*>> texture_images;
 
 
@@ -278,6 +282,9 @@ private:
 	void create_ubo_layout();
 	void create_ubo_pool();
 	void create_ubo_set();
+    void create_materials_layout();
+    void create_materials_pool();
+    void create_materials_set(uint32_t mesh_count);
 	void create_texture_layout();
 	void create_texture_pool();
 	void create_texture_set(size_t mesh_count);
@@ -294,11 +301,14 @@ private:
 	VkShaderModule create_shader_module(std::vector<uint32_t> shaderCode);
 	VkPipelineShaderStageCreateInfo fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
 	void write_to_ubo();	
+    void write_to_materials();
 	void update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo);
+    void update_materials(VkDeviceSize memory_offset, MaterialsObject mat);
 	void copy_buffer_to_image(VkBuffer buffer, mem::Memory image, VkOffset3D image_offset, VkImageAspectFlagBits aspect_mask, uint32_t image_width, uint32_t image_height, std::optional<VkCommandBuffer> command_buffer = std::nullopt);	
 	void copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset, std::optional<VkCommandBuffer> command_buffer=std::nullopt);
 	void transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, VkImage image, VkImageAspectFlagBits aspect_mask, std::optional<VkCommandBuffer> command_buffer=std::nullopt);
-	void create_texture_image(aiString texturePath, size_t object, size_t texture_set);
+	void create_texture_image(aiString texturePath, size_t object, size_t texture_set); 
+    void create_empty_image(size_t object, size_t texture_set);
 	void write_to_texture_set(VkDescriptorSet texture_set, mem::Memory* image);
 	void update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo);
 	void create_light_set(UniformBufferObject lbo);
@@ -308,6 +318,13 @@ private:
 	void free_command_buffers();
 private:
 	void destroy_draw();
+
+
+
+//helper functions
+private:
+    VkDescriptorBufferInfo setup_descriptor_set_buffer(uint32_t set_size);
+    void update_descriptor_set(VkDescriptorBufferInfo buffer_info, uint32_t dst_binding, VkDescriptorSet set);
 
 
 //vulkan initialization

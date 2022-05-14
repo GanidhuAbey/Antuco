@@ -6,13 +6,13 @@ struct UniformBufferTemplate {
     mat4 projection;
 };
 
-layout(set=0, binding = 0) uniform UniformBufferObject  {
+layout(set=1, binding = 0) uniform UniformBufferObject  {
     mat4 modelToWorld;
     mat4 worldToCamera;
     mat4 projection;
 } ubo;
 
-layout(set=1, binding = 1) uniform LightBufferObject {
+layout(set=0, binding = 1) uniform LightBufferObject {
 	mat4 model_to_world;
     mat4 world_to_light;
     mat4 projection;
