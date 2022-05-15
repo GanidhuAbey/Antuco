@@ -14,7 +14,7 @@ layout(set=2, binding=0) uniform sampler2D texture1;
 layout(set=3, binding=1) uniform sampler2D shadowmap;
 
 layout(set=4, binding=0) uniform Materials {
-    bool has_texture;
+    vec3 has_texture;
     vec3 ambient; //Ka
     vec3 diffuse; //Kd
     vec3 specular; //Ks
@@ -26,6 +26,7 @@ float bias = 5e-3;
 
 int LIGHT_FACTOR = 10;
 float SPECULAR_STRENGTH = 1.0f;
+float AMBIENCE_FACTOR = 0.01f;
 
 //light perspective is now clamped from between the specified near plane and far plane
 //going to hard code this values to check for now but will edit them once the effect
@@ -46,6 +47,11 @@ float check_shadow(vec3 light_view) {
 }
 
 void main() {
+
+    if (mat.has_texture.g != 1) {
+        discard;
+    }
+
     float dist = length(light_position - vec3(vPos));
 
 
@@ -69,7 +75,7 @@ void main() {
     //need to pass data on the location of the camera
     vec3 object_to_camera = normalize(camera_pos - vec3(vPos));
     float specular_value = pow(max(0.f, dot(reflected_light, object_to_camera)), 32);
-    vec3 specular_light = specular_value * SPECULAR_STRENGTH * mat.specular;
+    vec3 specular_light = specular_value * mat.specular;
 
     //analyze depth at the given coordinate of the object
     float light_dist = length(light_position - vec3(vPos));
@@ -88,12 +94,12 @@ void main() {
     
     //TODO: get rid of this if statement once everything works
     vec3 result;
-    if (!mat.has_texture) {
-        result =  diffuse_final;
-    } else {
-        result = (texture_component * mat.ambient + diffuse_final + specular_light) * shadow_factor;
+    if (mat.has_texture.r == 0) {
+        texture_component = vec3(1);
     }
 
     
+    result = (mat.ambient * AMBIENCE_FACTOR + diffuse_final + specular_light) * texture_component * shadow_factor;
+
     outColor = vec4(result, 0);
 }

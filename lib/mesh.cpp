@@ -9,9 +9,9 @@ Mesh::Mesh(std::vector<Vertex> newVertices, std::vector<uint32_t> newIndices, Ma
 
     if (material.texturePath.has_value()) {
         textures.push_back(material.texturePath.value());
-        mat_data.has_texture = glm::vec4(1.0, 0.0, 0.0, 0.0);
+        mat_data.texture_opacity = glm::vec4(1.0, material.opacity, 0.0, 0.0);
     } else {
-        mat_data.has_texture = glm::vec4(0.0, 0.0, 0.0, 0.0); 
+        mat_data.texture_opacity = glm::vec4(0.0, material.opacity, 0.0, 0.0); 
     }
 
     glm::vec4 ambient_colour = glm::vec4(material.ambient.r,material.ambient.b,material.ambient.g, 0.0);

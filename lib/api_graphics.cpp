@@ -130,7 +130,7 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 
 				//create vulkan image
 				//why is textures even a vector???
-                if (meshes[j]->mat_data.has_texture.r > 0) {
+                if (meshes[j]->mat_data.texture_opacity.r > 0) {
                     create_texture_image(meshes[j]->textures[0], i, j);
                 } else {
                     create_empty_image(i, j);

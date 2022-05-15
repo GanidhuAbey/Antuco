@@ -1,6 +1,8 @@
 //the implementation of the Model class
 #include "model.hpp"
 
+#include "logger/interface.hpp"
+
 #include <stdexcept>
 
 using namespace tuco;
@@ -139,9 +141,20 @@ Material Model::processMaterial(uint32_t materialIndex, aiMaterial** materials) 
         printf("[ERROR] - could not load materials specular colour \n");
     } 
 
+    //opacity
+    float opacity = 0.0f;
+    if (AI_SUCCESS != mat->Get(AI_MATKEY_OPACITY, opacity)) {
+        LOG("[ERROR] - could not load materials opacity data");        
+    }
+
+    
+
     material.ambient = ambient;
     material.diffuse = diffuse;
     material.specular = specular;
+
+    printf("opacity: %f \n", opacity);
+    material.opacity = opacity;
 
     return material;
 

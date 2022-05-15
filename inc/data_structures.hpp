@@ -42,7 +42,7 @@ struct LightBufferObject {
 };
 
 struct MaterialsObject {
-    glm::vec4 has_texture;
+    glm::vec4 texture_opacity;
     glm::vec4 ambient; //Ka
     glm::vec4 diffuse; //Kd
     glm::vec4 specular; //Ks
@@ -53,6 +53,7 @@ struct Material {
     aiColor3D ambient; //Ka
     aiColor3D diffuse; //Kd
     aiColor3D specular; //Ks
+    float opacity;
 };
 
 /*
