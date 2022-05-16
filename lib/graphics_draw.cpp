@@ -31,7 +31,7 @@ const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
 using namespace tuco;
 
 /// <summary>
-///  create device memory buffer to transfer data between the shadowmap texture (created by a render pass) to the shadowmap atlas
+///  create *p_device memory buffer to transfer data between the shadowmap texture (created by a render pass) to the shadowmap atlas
 /// </summary>
 void GraphicsImpl::create_shadowmap_transfer_buffer() {
     //create 4 buffers to transfer a quarter of the image at a time (this way we only have to tranfer a regular shadow map size, and later on it'll be easy
@@ -53,7 +53,7 @@ void GraphicsImpl::create_shadowmap_transfer_buffer() {
 
     for (size_t i = 0; i < SHADOW_TRANSFER_BUFFERS; i++) {
         //create all required buffers
-        shadowmap_buffers[i].init(&physical_device, &device, &command_pool, &buffer_info);
+        shadowmap_buffers[i].init(&physical_device, &*p_device, &command_pool, &buffer_info);
     } 
 }
 
@@ -76,7 +76,7 @@ void GraphicsImpl::create_shadowmap_atlas() {
     shadow_image_info.pQueueFamilyIndices = &graphics_family;
     shadow_image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    mem::createImage(physical_device, device, &shadow_image_info, &shadowmap_atlas);
+    mem::createImage(physical_device, *p_device, &shadow_image_info, &shadowmap_atlas);
 
 	VkImageViewUsageCreateInfo usageInfo{};
 	usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
@@ -103,7 +103,7 @@ void GraphicsImpl::create_shadowmap_atlas() {
 	createInfo.subresourceRange.baseArrayLayer = 0;
 	createInfo.subresourceRange.layerCount = 1;
 
-	mem::createImageView(device, createInfo, &shadowmap_atlas);
+	mem::createImageView(*p_device, createInfo, &shadowmap_atlas);
 
     //transfer image to depth stencil read only (or shader read only if they wont allow the first one
 }
@@ -128,7 +128,7 @@ void GraphicsImpl::create_texture_sampler() {
     samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
     samplerInfo.unnormalizedCoordinates = VK_FALSE;
 
-    if (vkCreateSampler(device, &samplerInfo, nullptr, &texture_sampler) != VK_SUCCESS) {
+    if (vkCreateSampler(*p_device, &samplerInfo, nullptr, &texture_sampler) != VK_SUCCESS) {
         LOG("[ERROR] - createTextureSampler() : failed to create sampler object");
     }
 }
@@ -153,7 +153,7 @@ void GraphicsImpl::create_shadowmap_sampler() {
     samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
     samplerInfo.unnormalizedCoordinates = VK_FALSE;
 
-    if (vkCreateSampler(device, &samplerInfo, nullptr, &shadowmap_sampler) != VK_SUCCESS) {
+    if (vkCreateSampler(*p_device, &samplerInfo, nullptr, &shadowmap_sampler) != VK_SUCCESS) {
         LOG("[ERROR] - createTextureSampler() : failed to create sampler object");
     }
 }
@@ -183,7 +183,7 @@ void GraphicsImpl::create_frame_buffer(VkRenderPass pass, uint32_t attachment_co
     createInfo.height = height;
     createInfo.layers = 1;
 
-    if (vkCreateFramebuffer(device, &createInfo, nullptr, frame_buffer) != VK_SUCCESS) {
+    if (vkCreateFramebuffer(*p_device, &createInfo, nullptr, frame_buffer) != VK_SUCCESS) {
         throw std::runtime_error("could not create a frame buffer");
     }
 }
@@ -197,8 +197,8 @@ void GraphicsImpl::create_semaphores() {
     render_finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        if (vkCreateSemaphore(device, &semaphoreBegin, nullptr, &image_available_semaphores[i]) != VK_SUCCESS ||
-            vkCreateSemaphore(device, &semaphoreBegin, nullptr, &render_finished_semaphores[i]) != VK_SUCCESS) {
+        if (vkCreateSemaphore(*p_device, &semaphoreBegin, nullptr, &image_available_semaphores[i]) != VK_SUCCESS ||
+            vkCreateSemaphore(*p_device, &semaphoreBegin, nullptr, &render_finished_semaphores[i]) != VK_SUCCESS) {
             throw std::runtime_error("could not create semaphore ready signal");
         }
     }
@@ -212,7 +212,7 @@ void GraphicsImpl::create_fences() {
     createInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        if (vkCreateFence(device, &createInfo, nullptr, &in_flight_fences[i]) != VK_SUCCESS) {
+        if (vkCreateFence(*p_device, &createInfo, nullptr, &in_flight_fences[i]) != VK_SUCCESS) {
             throw std::runtime_error("failed to create fences");
         };
     }
@@ -235,7 +235,7 @@ void GraphicsImpl::create_shadowpass_resources() {
     shadow_image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     //create memory for image
-    mem::createImage(physical_device, device, &shadow_image_info, &shadow_pass_texture);
+    mem::createImage(physical_device, *p_device, &shadow_image_info, &shadow_pass_texture);
 
     //transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, &shadow_pass_texture);
 
@@ -266,7 +266,7 @@ void GraphicsImpl::create_shadowpass_resources() {
 	createInfo.subresourceRange.baseArrayLayer = 0;
 	createInfo.subresourceRange.layerCount = 1;
 
-	mem::createImageView(device, createInfo, &shadow_pass_texture);
+	mem::createImageView(*p_device, createInfo, &shadow_pass_texture);
 }
 
 void GraphicsImpl::create_depth_resources() {
@@ -287,7 +287,7 @@ void GraphicsImpl::create_depth_resources() {
     depth_image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     //create memory for image
-    mem::createImage(physical_device, device, &depth_image_info, &depth_memory);
+    mem::createImage(physical_device, *p_device, &depth_image_info, &depth_memory);
 
     //create image view
     VkImageViewUsageCreateInfo usageInfo{};
@@ -316,7 +316,7 @@ void GraphicsImpl::create_depth_resources() {
     createInfo.subresourceRange.baseArrayLayer = 0;
     createInfo.subresourceRange.layerCount = 1;
 
-    mem::createImageView(device, createInfo, &depth_memory);
+    mem::createImageView(*p_device, createInfo, &depth_memory);
 }
 
 void GraphicsImpl::create_colour_image_views() {
@@ -351,7 +351,7 @@ void GraphicsImpl::create_colour_image_views() {
         createInfo.subresourceRange.baseArrayLayer = 0;
         createInfo.subresourceRange.layerCount = 1;
 
-        if (vkCreateImageView(device, &createInfo, nullptr, &swapchain_image_views[i]) != VK_SUCCESS) {
+        if (vkCreateImageView(*p_device, &createInfo, nullptr, &swapchain_image_views[i]) != VK_SUCCESS) {
             throw std::runtime_error("one of the image views could not be created");
         }
     }
@@ -409,7 +409,7 @@ void GraphicsImpl::create_shadowpass() {
     createInfo.pDependencies = dependencies.data();
 
 
-    if (vkCreateRenderPass(device, &createInfo, nullptr, &shadowpass) != VK_SUCCESS) {
+    if (vkCreateRenderPass(*p_device, &createInfo, nullptr, &shadowpass) != VK_SUCCESS) {
         throw std::runtime_error("could not create render pass");
     }
 }
@@ -493,7 +493,7 @@ void GraphicsImpl::create_geometry_pass() {
     passCreate.pSubpasses = subpasses;
     passCreate.pAttachments = attachments;
 
-    if (vkCreateRenderPass(device, &passCreate, nullptr, &geometry_pass) != VK_SUCCESS) {
+    if (vkCreateRenderPass(*p_device, &passCreate, nullptr, &geometry_pass) != VK_SUCCESS) {
         LOG("could not create geometry pass");
     }
  
@@ -566,7 +566,7 @@ void GraphicsImpl::create_render_pass() {
     //createInfo.pDependencies = &dependency;
 
 
-    if (vkCreateRenderPass(device, &createInfo, nullptr, &render_pass) != VK_SUCCESS) {
+    if (vkCreateRenderPass(*p_device, &createInfo, nullptr, &render_pass) != VK_SUCCESS) {
         throw std::runtime_error("could not create render pass");
     }
 }
@@ -586,7 +586,7 @@ void GraphicsImpl::create_light_layout() {
     layout_info.bindingCount = 1;
     layout_info.pBindings = &ubo_layout_binding;
 
-    if (vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &light_layout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(*p_device, &layout_info, nullptr, &light_layout) != VK_SUCCESS) {
         ERR_V_MSG("COULD NOT CREATE DESCRIPTOR SET");
     }
 }
@@ -607,7 +607,7 @@ void GraphicsImpl::create_materials_layout() {
     layout_info.bindingCount = 1;
     layout_info.pBindings = &mat_layout_binding;
 
-    if (vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &mat_layout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(*p_device, &layout_info, nullptr, &mat_layout) != VK_SUCCESS) {
         LOG("[ERROR] - could not create materials layout");
     }
 }
@@ -618,7 +618,7 @@ void GraphicsImpl::create_materials_pool() {
     pool_info.pool_size = MATERIALS_POOL_SIZE;
     pool_info.set_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
-    mat_pool = std::make_unique<mem::Pool>(device, pool_info);
+    mat_pool = std::make_unique<mem::Pool>(*p_device, pool_info);
 }
 
 void GraphicsImpl::create_materials_set(uint32_t mesh_count) {
@@ -627,7 +627,7 @@ void GraphicsImpl::create_materials_set(uint32_t mesh_count) {
     VkDescriptorSetAllocateInfo allocateInfo{};
 
     VkDescriptorPool allocated_pool;
-    size_t pool_index = mat_pool->allocate(device, mesh_count);
+    size_t pool_index = mat_pool->allocate(*p_device, mesh_count);
 
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocateInfo.descriptorPool = mat_pool->pools[pool_index];
@@ -637,7 +637,7 @@ void GraphicsImpl::create_materials_set(uint32_t mesh_count) {
    
     mat_sets.resize(mat_sets.size() + 1);
     mat_sets[mat_sets.size() - 1].resize(mesh_count);
-    auto result = vkAllocateDescriptorSets(device, &allocateInfo, mat_sets[mat_sets.size() - 1].data());
+    auto result = vkAllocateDescriptorSets(*p_device, &allocateInfo, mat_sets[mat_sets.size() - 1].data());
     if (result != VK_SUCCESS) {
         LOG("failed to allocate descriptor sets!");
         throw std::runtime_error("");
@@ -660,7 +660,7 @@ void GraphicsImpl::create_ubo_layout() {
     layout_info.bindingCount = 1;
     layout_info.pBindings = &ubo_layout_binding;
 
-    if (vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &ubo_layout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(*p_device, &layout_info, nullptr, &ubo_layout) != VK_SUCCESS) {
         throw std::runtime_error("could not create ubo layout");
     }
 }
@@ -672,7 +672,7 @@ void GraphicsImpl::create_ubo_pool() {
     pool_info.pool_size = swapchain_images.size() * 50;
     pool_info.set_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
-    ubo_pool = std::make_unique<mem::Pool>(device, pool_info);
+    ubo_pool = std::make_unique<mem::Pool>(*p_device, pool_info);
 }
 
 void GraphicsImpl::create_ubo_set() {
@@ -681,7 +681,7 @@ void GraphicsImpl::create_ubo_set() {
     VkDescriptorSetAllocateInfo allocateInfo{};
 
     VkDescriptorPool allocated_pool;
-    size_t pool_index = ubo_pool->allocate(device, swapchain_images.size());
+    size_t pool_index = ubo_pool->allocate(*p_device, swapchain_images.size());
 
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocateInfo.descriptorPool = ubo_pool->pools[pool_index];
@@ -697,7 +697,7 @@ void GraphicsImpl::create_ubo_set() {
     size_t current_size = ubo_sets.size();
     ubo_sets.resize(current_size + 1);
     ubo_sets[current_size].resize(swapchain_images.size());
-    if (vkAllocateDescriptorSets(device, &allocateInfo, ubo_sets[current_size].data()) != VK_SUCCESS) {
+    if (vkAllocateDescriptorSets(*p_device, &allocateInfo, ubo_sets[current_size].data()) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     } 
 }
@@ -707,7 +707,7 @@ void GraphicsImpl::create_shadowmap_pool() {
     pool_info.pool_size = 100;
     pool_info.set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-    shadowmap_pool = std::make_unique<mem::Pool>(device, pool_info);
+    shadowmap_pool = std::make_unique<mem::Pool>(*p_device, pool_info);
 }
 
 void GraphicsImpl::create_texture_pool() { 
@@ -715,13 +715,13 @@ void GraphicsImpl::create_texture_pool() {
     pool_info.pool_size = swapchain_images.size() * 100;
     pool_info.set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-    texture_pool = std::make_unique<mem::Pool>(device, pool_info);
+    texture_pool = std::make_unique<mem::Pool>(*p_device, pool_info);
 }
 
 void GraphicsImpl::create_shadowmap_set() {
     VkDescriptorSetAllocateInfo allocateInfo{};
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.descriptorPool = shadowmap_pool->pools[shadowmap_pool->allocate(device, 1)];
+    allocateInfo.descriptorPool = shadowmap_pool->pools[shadowmap_pool->allocate(*p_device, 1)];
     allocateInfo.descriptorSetCount = 1;
     allocateInfo.pSetLayouts = &shadowmap_layout;
 
@@ -729,7 +729,7 @@ void GraphicsImpl::create_shadowmap_set() {
     //descriptorSets.resize(currentSize + 1);
     //descriptorSet[currentSize].resize(swapChainImages.size());
 
-	if (vkAllocateDescriptorSets(device, &allocateInfo, &shadowmap_set) != VK_SUCCESS) {
+	if (vkAllocateDescriptorSets(*p_device, &allocateInfo, &shadowmap_set) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate texture sets!");
 	}
 }
@@ -739,7 +739,7 @@ void GraphicsImpl::create_texture_set(size_t mesh_count) {
 
     VkDescriptorSetAllocateInfo allocateInfo{};
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.descriptorPool = texture_pool->pools[texture_pool->allocate(device, mesh_count)];
+    allocateInfo.descriptorPool = texture_pool->pools[texture_pool->allocate(*p_device, mesh_count)];
     allocateInfo.descriptorSetCount = mesh_count;
     allocateInfo.pSetLayouts = texture_layouts.data();
 
@@ -747,7 +747,7 @@ void GraphicsImpl::create_texture_set(size_t mesh_count) {
     texture_sets.resize(current_size + 1);
     texture_sets[current_size].resize(mesh_count);
 
-    VkResult result = vkAllocateDescriptorSets(device, &allocateInfo, texture_sets[current_size].data());
+    VkResult result = vkAllocateDescriptorSets(*p_device, &allocateInfo, texture_sets[current_size].data());
     if (result != VK_SUCCESS) {
         printf("[ERROR CODE %d] - could not allocate texture sets \n", result);
         throw new std::runtime_error("");
@@ -769,7 +769,7 @@ void GraphicsImpl::create_shadowmap_layout() {
     layout_info.bindingCount = 1;
     layout_info.pBindings = &texture_layout_binding;
 
-    if (vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &shadowmap_layout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(*p_device, &layout_info, nullptr, &shadowmap_layout) != VK_SUCCESS) {
         throw std::runtime_error("could not create texture layout");
     }
 }
@@ -791,7 +791,7 @@ void GraphicsImpl::create_texture_layout() {
     layout_info.bindingCount = 1;
     layout_info.pBindings = &texture_layout_binding;
 
-    if (vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &texture_layout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(*p_device, &layout_info, nullptr, &texture_layout) != VK_SUCCESS) {
         throw std::runtime_error("could not create texture layout");
     }
 }
@@ -806,7 +806,7 @@ VkShaderModule GraphicsImpl::create_shader_module(std::vector<uint32_t> shaderCo
 
     createInfo.pCode = shaderCode.data();
 
-    if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+    if (vkCreateShaderModule(*p_device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
         throw std::runtime_error("could not create shader module");
     }
 
@@ -1007,13 +1007,13 @@ void GraphicsImpl::create_render_pipeline(VkExtent2D screen_extent, std::optiona
     create_pipeline_info.renderPass = pass;
     create_pipeline_info.subpass = subpass_index;
 
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &create_pipeline_info, nullptr, pipeline) != VK_SUCCESS) {
+    if (vkCreateGraphicsPipelines(*p_device, VK_NULL_HANDLE, 1, &create_pipeline_info, nullptr, pipeline) != VK_SUCCESS) {
         throw std::runtime_error("could not create graphics pipeline");
     }
 
     //destroy the used shader object
-    if (vert_shader_path.has_value()) vkDestroyShaderModule(device, vert_shader, nullptr);
-    if (frag_shader_path.has_value()) vkDestroyShaderModule(device, frag_shader, nullptr);
+    if (vert_shader_path.has_value()) vkDestroyShaderModule(*p_device, vert_shader, nullptr);
+    if (frag_shader_path.has_value()) vkDestroyShaderModule(*p_device, frag_shader, nullptr);
 
 }
 
@@ -1027,7 +1027,7 @@ void GraphicsImpl::create_pipeline_layout(std::vector<VkDescriptorSetLayout> des
     pipeline_layout_info.pushConstantRangeCount = static_cast<uint32_t>(push_ranges.size());
     pipeline_layout_info.pPushConstantRanges = push_ranges.data();
 
-    if (vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, layout) != VK_SUCCESS) {
+    if (vkCreatePipelineLayout(*p_device, &pipeline_layout_info, nullptr, layout) != VK_SUCCESS) {
         throw std::runtime_error("could not create pipeline layout");
     }
 }
@@ -1052,7 +1052,7 @@ void GraphicsImpl::create_compute_pipeline(std::string compute_shader_path, std:
     pipeline_info.basePipelineIndex = -1;
 
 
-    if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, pipeline) != VK_SUCCESS) {
+    if (vkCreateComputePipelines(*p_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, pipeline) != VK_SUCCESS) {
         LOG("could not create compute shader");
     }
 
@@ -1120,7 +1120,7 @@ void GraphicsImpl::update_descriptor_set(VkDescriptorBufferInfo buffer_info, uin
     writeInfo.pBufferInfo = &buffer_info;
     writeInfo.dstArrayElement = 0;
 
-    vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
+    vkUpdateDescriptorSets(*p_device, 1, &writeInfo, 0, nullptr);
 }
 
 void GraphicsImpl::write_to_materials() {
@@ -1143,66 +1143,66 @@ void GraphicsImpl::write_to_ubo() {
 }
 
 void GraphicsImpl::destroy_draw() {
-    vkDeviceWaitIdle(device);
+    vkDeviceWaitIdle(*p_device);
     
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vkDestroyFence(device, in_flight_fences[i], nullptr);
+        vkDestroyFence(*p_device, in_flight_fences[i], nullptr);
 
-        vkDestroySemaphore(device, render_finished_semaphores[i], nullptr);
+        vkDestroySemaphore(*p_device, render_finished_semaphores[i], nullptr);
     }
 
     for (size_t i = 0; i < swapchain_images.size(); i++) {
-        vkDestroyImageView(device, swapchain_image_views[i], nullptr);
+        vkDestroyImageView(*p_device, swapchain_image_views[i], nullptr);
     }
 
     for (size_t i = 0; i < texture_images.size(); i++) {
         for (size_t j = 0; j < texture_images[i].size(); j++) {
-            mem::destroyImage(device, *texture_images[i][j]);
+            mem::destroyImage(*p_device, *texture_images[i][j]);
         }
     }
 
-    mem::destroyImage(device, shadowmap_atlas);
+    mem::destroyImage(*p_device, shadowmap_atlas);
  
     for (auto& buffer_data : shadowmap_buffers) {
-        buffer_data.destroy(device);
+        buffer_data.destroy(*p_device);
     }
     
 
-    mem::destroyImage(device, shadow_pass_texture);
+    mem::destroyImage(*p_device, shadow_pass_texture);
 
-    ubo_pool->destroyPool(device);
-    shadowmap_pool->destroyPool(device);
-    texture_pool->destroyPool(device);
+    ubo_pool->destroyPool(*p_device);
+    shadowmap_pool->destroyPool(*p_device);
+    texture_pool->destroyPool(*p_device);
 
-    uniform_buffer.destroy(device);
+    uniform_buffer.destroy(*p_device);
     
-    vkDestroyCommandPool(device, command_pool, nullptr);
+    vkDestroyCommandPool(*p_device, command_pool, nullptr);
     
-    vkDestroyPipelineLayout(device, shadowpass_layout, nullptr);
-    vkDestroyPipeline(device, shadowpass_pipeline, nullptr);
+    vkDestroyPipelineLayout(*p_device, shadowpass_layout, nullptr);
+    vkDestroyPipeline(*p_device, shadowpass_pipeline, nullptr);
 
-    vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
-    vkDestroyPipeline(device, graphics_pipeline, nullptr);
+    vkDestroyPipelineLayout(*p_device, pipeline_layout, nullptr);
+    vkDestroyPipeline(*p_device, graphics_pipeline, nullptr);
     
-    vkDestroyRenderPass(device, shadowpass, nullptr);
-    vkDestroyRenderPass(device, render_pass, nullptr);
+    vkDestroyRenderPass(*p_device, shadowpass, nullptr);
+    vkDestroyRenderPass(*p_device, render_pass, nullptr);
 
-    vkDestroyDescriptorSetLayout(device, ubo_layout, nullptr);
-    vkDestroyDescriptorSetLayout(device, light_layout, nullptr);
-    vkDestroyDescriptorSetLayout(device, shadowmap_layout, nullptr);
-    vkDestroyDescriptorSetLayout(device, texture_layout, nullptr);
+    vkDestroyDescriptorSetLayout(*p_device, ubo_layout, nullptr);
+    vkDestroyDescriptorSetLayout(*p_device, light_layout, nullptr);
+    vkDestroyDescriptorSetLayout(*p_device, shadowmap_layout, nullptr);
+    vkDestroyDescriptorSetLayout(*p_device, texture_layout, nullptr);
 
-    vkDestroySampler(device, texture_sampler, nullptr);
-    vkDestroySampler(device, shadowmap_sampler, nullptr);
+    vkDestroySampler(*p_device, texture_sampler, nullptr);
+    vkDestroySampler(*p_device, shadowmap_sampler, nullptr);
 
     for (int i = 0; i < swapchain_framebuffers.size(); i++) {
-        vkDestroyFramebuffer(device, swapchain_framebuffers[i], nullptr);
+        vkDestroyFramebuffer(*p_device, swapchain_framebuffers[i], nullptr);
 
     }
-    vkDestroyFramebuffer(device, shadowpass_buffer, nullptr);
+    vkDestroyFramebuffer(*p_device, shadowpass_buffer, nullptr);
 
-    mem::destroyImage(device, depth_memory);
-    vkDestroySwapchainKHR(device, swapchain, nullptr);
+    mem::destroyImage(*p_device, depth_memory);
+    vkDestroySwapchainKHR(*p_device, swapchain, nullptr);
 }
 
 VkSurfaceFormatKHR choose_best_format(std::vector<VkSurfaceFormatKHR> formats) {
@@ -1263,16 +1263,16 @@ void GraphicsImpl::create_swapchain() {
     swapInfo.clipped = VK_TRUE;
     swapInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    if (vkCreateSwapchainKHR(device, &swapInfo, nullptr, &swapchain) != VK_SUCCESS) {
+    if (vkCreateSwapchainKHR(*p_device, &swapInfo, nullptr, &swapchain) != VK_SUCCESS) {
         LOG("[ERROR] - create_swapchain : could not create swapchain \n");
         throw std::runtime_error("");
     }
 
     //grab swapchain images
     uint32_t swapchain_image_count = 0;
-    vkGetSwapchainImagesKHR(device, swapchain, &swapchain_image_count, nullptr);
+    vkGetSwapchainImagesKHR(*p_device, swapchain, &swapchain_image_count, nullptr);
     swapchain_images.resize(swapchain_image_count);
-    vkGetSwapchainImagesKHR(device, swapchain, &swapchain_image_count, swapchain_images.data());
+    vkGetSwapchainImagesKHR(*p_device, swapchain, &swapchain_image_count, swapchain_images.data());
 }
 
 
@@ -1283,7 +1283,7 @@ void GraphicsImpl::create_light_set(UniformBufferObject lbo) {
     VkDescriptorSetAllocateInfo allocateInfo{};
 
     VkDescriptorPool allocated_pool;
-    size_t pool_index = ubo_pool->allocate(device, swapchain_images.size());
+    size_t pool_index = ubo_pool->allocate(*p_device, swapchain_images.size());
 
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocateInfo.descriptorPool = ubo_pool->pools[pool_index];
@@ -1298,7 +1298,7 @@ void GraphicsImpl::create_light_set(UniformBufferObject lbo) {
     size_t current_size = light_ubo.size();
     light_ubo.resize(current_size + 1);
     light_ubo[current_size].resize(swapchain_images.size());
-    if (vkAllocateDescriptorSets(device, &allocateInfo, light_ubo[current_size].data()) != VK_SUCCESS) {
+    if (vkAllocateDescriptorSets(*p_device, &allocateInfo, light_ubo[current_size].data()) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
     
@@ -1322,7 +1322,7 @@ void GraphicsImpl::create_light_set(UniformBufferObject lbo) {
         writeInfo.pBufferInfo = &buffer_info;
         writeInfo.dstArrayElement = 0;
 
-        vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
+        vkUpdateDescriptorSets(*p_device, 1, &writeInfo, 0, nullptr);
     }
 
     update_uniform_buffer(offset, lbo);
@@ -1338,9 +1338,9 @@ void GraphicsImpl::run_shadow_pass(VkCommandBuffer command_buffer) {
 void GraphicsImpl::free_command_buffers() {
     if (command_buffers.size() == 0) return;
 
-    vkWaitForFences(device, 1, &in_flight_fences[submitted_frame], VK_TRUE, UINT64_MAX);
+    vkWaitForFences(*p_device, 1, &in_flight_fences[submitted_frame], VK_TRUE, UINT64_MAX);
 
-    vkFreeCommandBuffers(device, command_pool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
+    vkFreeCommandBuffers(*p_device, command_pool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
 }
 
 void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects) {
@@ -1355,7 +1355,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
     uint32_t imageCount = static_cast<uint32_t>(command_buffers.size());
     bufferAllocate.commandBufferCount = imageCount;
 
-    if (vkAllocateCommandBuffers(device, &bufferAllocate, command_buffers.data()) != VK_SUCCESS) {
+    if (vkAllocateCommandBuffers(*p_device, &bufferAllocate, command_buffers.data()) != VK_SUCCESS) {
         throw std::runtime_error("could not allocate memory for command buffers");
     }
 
@@ -1546,6 +1546,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                     uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
                     uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 
+
                     //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
                     //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
                    
@@ -1582,7 +1583,7 @@ void GraphicsImpl::create_uniform_buffer() {
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    uniform_buffer.init(physical_device, device, &buffer_info);
+    uniform_buffer.init(physical_device, *p_device, &buffer_info);
 }
 
 void GraphicsImpl::create_vertex_buffer() {
@@ -1594,7 +1595,7 @@ void GraphicsImpl::create_vertex_buffer() {
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    vertex_buffer.init(&physical_device, &device, &command_pool, &buffer_info);
+    vertex_buffer.init(&physical_device, &*p_device, &command_pool, &buffer_info);
 }
 
 void GraphicsImpl::create_index_buffer() {
@@ -1606,7 +1607,7 @@ void GraphicsImpl::create_index_buffer() {
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     
-    index_buffer.init(&physical_device, &device, &command_pool, &buffer_info);
+    index_buffer.init(&physical_device, &*p_device, &command_pool, &buffer_info);
 }
 
 
@@ -1673,7 +1674,7 @@ VkCommandBuffer GraphicsImpl::begin_command_buffer() {
     bufferAllocate.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     bufferAllocate.commandBufferCount = 1;
 
-    if (vkAllocateCommandBuffers(device, &bufferAllocate, &transferBuffer) != VK_SUCCESS) {
+    if (vkAllocateCommandBuffers(*p_device, &bufferAllocate, &transferBuffer) != VK_SUCCESS) {
         throw std::runtime_error("could not allocate memory for transfer buffer");
     }
 
@@ -1706,39 +1707,39 @@ void GraphicsImpl::end_command_buffer(VkCommandBuffer commandBuffer) {
     vkQueueSubmit(graphics_queue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(graphics_queue);
 
-    vkFreeCommandBuffers(device, command_pool, 1, &commandBuffer);
+    vkFreeCommandBuffers(*p_device, command_pool, 1, &commandBuffer);
 }
 
 void GraphicsImpl::update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo) {
-    uniform_buffer.write(device, memory_offset, sizeof(lbo), &lbo);
+    uniform_buffer.write(*p_device, memory_offset, sizeof(lbo), &lbo);
 }
 
 void GraphicsImpl::update_materials(VkDeviceSize memory_offset, MaterialsObject mat) {
-    uniform_buffer.write(device, memory_offset, sizeof(mat), &mat);
+    uniform_buffer.write(*p_device, memory_offset, sizeof(mat), &mat);
 }
 
 void GraphicsImpl::update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo) {
     //overwrite memory
-    uniform_buffer.write(device, memory_offset, sizeof(ubo), &ubo);
+    uniform_buffer.write(*p_device, memory_offset, sizeof(ubo), &ubo);
 }
 
 /// <summary>
 /// When called, this function will destroy all objects associated with the swapchain.
 /// </summary>
 void GraphicsImpl::cleanup_swapchain() {
-    vkDeviceWaitIdle(device);
+    vkDeviceWaitIdle(*p_device);
 
     for (const auto& frame_buffer : swapchain_framebuffers) {
-        vkDestroyFramebuffer(device, frame_buffer, nullptr);
+        vkDestroyFramebuffer(*p_device, frame_buffer, nullptr);
     }
 
     for (size_t i = 0; i < swapchain_images.size(); i++) {
-        vkDestroyImageView(device, swapchain_image_views[i], nullptr);
+        vkDestroyImageView(*p_device, swapchain_image_views[i], nullptr);
     }
  
-    mem::destroyImage(device, depth_memory);
-    vkDestroyRenderPass(device, render_pass, nullptr);
-    vkDestroySwapchainKHR(device, swapchain, nullptr);
+    mem::destroyImage(*p_device, depth_memory);
+    vkDestroyRenderPass(*p_device, render_pass, nullptr);
+    vkDestroySwapchainKHR(*p_device, swapchain, nullptr);
 }
 
 /// <summary>
@@ -1757,18 +1758,18 @@ void GraphicsImpl::recreate_swapchain() {
 //TODO: need to make better use of cpu-cores
 void GraphicsImpl::draw_frame() {
     //make sure that the current frame thats being drawn in parallel is available
-    vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
+    vkWaitForFences(*p_device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
     //allocate memory to store next image
     uint32_t nextImage;
 
-    VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, image_available_semaphores[current_frame], VK_NULL_HANDLE, &nextImage);
+    VkResult result = vkAcquireNextImageKHR(*p_device, swapchain, UINT64_MAX, image_available_semaphores[current_frame], VK_NULL_HANDLE, &nextImage);
 
     if (result != VK_SUCCESS) {
         throw std::runtime_error("could not aquire image from swapchain");
     }
 
     if (images_in_flight[nextImage] != VK_NULL_HANDLE) {
-        vkWaitForFences(device, 1, &images_in_flight[nextImage], VK_TRUE, UINT64_MAX);
+        vkWaitForFences(*p_device, 1, &images_in_flight[nextImage], VK_TRUE, UINT64_MAX);
         //imagesInFlight[nextImage] = VK_NULL_HANDLE;
     }
     // Mark the image as now being in use by this frame
@@ -1790,7 +1791,7 @@ void GraphicsImpl::draw_frame() {
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    vkResetFences(device, 1, &in_flight_fences[current_frame]);
+    vkResetFences(*p_device, 1, &in_flight_fences[current_frame]);
 
     if (vkQueueSubmit(graphics_queue, 1, &submitInfo, in_flight_fences[current_frame]) !=  VK_SUCCESS) {
         throw std::runtime_error("could not submit command buffer to queue");
@@ -2056,7 +2057,7 @@ void GraphicsImpl::write_to_shadowmap_set() {
     writeInfo.pImageInfo = &imageInfo;
     writeInfo.dstArrayElement = 0;
 
-    vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
+    vkUpdateDescriptorSets(*p_device, 1, &writeInfo, 0, nullptr);
     
     //wonder if this is a fine time to transfer the image from undefined to shader
     //TODO: move this somewhere else (into its own function if you absolutely have to)
@@ -2078,7 +2079,7 @@ void GraphicsImpl::write_to_texture_set(VkDescriptorSet texture_set, mem::Memory
     writeInfo.pImageInfo = &imageInfo;
     writeInfo.dstArrayElement = 0;
 
-    vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
+    vkUpdateDescriptorSets(*p_device, 1, &writeInfo, 0, nullptr);
 }
 
 void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
@@ -2106,7 +2107,7 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    mem::createImage(physical_device, device, &imageInfo, new_texture_image);
+    mem::createImage(physical_device, *p_device, &imageInfo, new_texture_image);
 
     //transfer the image again to a more optimal layout for texture sampling?
     transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, new_texture_image->image, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -2126,7 +2127,7 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
     viewInfo.subresourceRange.baseArrayLayer = 0;
     viewInfo.subresourceRange.layerCount = 1;
 
-    mem::createImageView(device, viewInfo, new_texture_image);
+    mem::createImageView(*p_device, viewInfo, new_texture_image);
 
     //save texture image to mesh
     mem::ImageSize image_dimensions{};
@@ -2158,10 +2159,10 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
 
     //TODO: make buffer at runtime specifically for transfer commands
     mem::Memory newBuffer;
-    mem::createBuffer(physical_device, device, &textureBufferInfo, &newBuffer);
+    mem::createBuffer(physical_device, *p_device, &textureBufferInfo, &newBuffer);
     
     mem::allocateMemory(dataSize, &newBuffer);
-    mem::mapMemory(device, dataSize, &newBuffer, pixels);
+    mem::mapMemory(*p_device, dataSize, &newBuffer, pixels);
 
     //use size of loaded image to create VkImage
     mem::Memory* new_texture_image = new mem::Memory{};
@@ -2185,7 +2186,7 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    mem::createImage(physical_device, device, &imageInfo, new_texture_image);
+    mem::createImage(physical_device, *p_device, &imageInfo, new_texture_image);
 
     //mem::maAllocateMemory(dataSize, &newTextureImage);
     //transfer the image to appropriate layout for copying
@@ -2210,9 +2211,9 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
     viewInfo.subresourceRange.baseArrayLayer = 0;
     viewInfo.subresourceRange.layerCount = 1;
 
-    mem::createImageView(device, viewInfo, new_texture_image);
+    mem::createImageView(*p_device, viewInfo, new_texture_image);
 
-    mem::destroyBuffer(device, newBuffer);
+    mem::destroyBuffer(*p_device, newBuffer);
 
     //save texture image to mesh
     mem::ImageSize image_dimensions{};

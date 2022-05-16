@@ -27,7 +27,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 }
 
 void GraphicsImpl::destroy_initialize() {
-	vkDestroyDevice(device, nullptr);
+	vkDestroyDevice(*p_device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	
 	if (enableValidationLayers) {
@@ -270,8 +270,9 @@ void GraphicsImpl::create_logical_device() {
 	VkPhysicalDeviceFeatures device_features{};
 	deviceInfo.pEnabledFeatures = &device_features;
 
-
+    VkDevice device;
 	VkResult device_result = vkCreateDevice(physical_device, &deviceInfo, nullptr, &device);
+    p_device = std::make_shared<VkDevice>(device);
 	if (device_result != VK_SUCCESS) {
 		printf("[ERROR %d] - create_logical_device: could not create vulkan device object", device_result);
 		throw std::runtime_error("");
@@ -295,7 +296,7 @@ void GraphicsImpl::create_command_pool() {
 	poolInfo.queueFamilyIndex = graphics_family; //these command buffers we are allocating are for drawing
 
 	//create the command pool
-	if (vkCreateCommandPool(device, &poolInfo, nullptr, &command_pool) != VK_SUCCESS) {
+	if (vkCreateCommandPool(*p_device, &poolInfo, nullptr, &command_pool) != VK_SUCCESS) {
 		printf("[ERROR] - create_command_pool : could not create command pool");
 		throw std::runtime_error("");
 	}

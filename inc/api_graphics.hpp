@@ -9,6 +9,7 @@
 
 #include "window.hpp"
 
+#include <memory>
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -71,7 +72,7 @@ private:
 	VkInstance instance;
 	VkSurfaceKHR surface;
 	VkPhysicalDevice physical_device;
-	VkDevice device;
+    std::shared_ptr<VkDevice> p_device;
 	VkDebugUtilsMessengerEXT debug_messenger;
 
 	uint32_t graphics_family;
