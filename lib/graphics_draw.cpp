@@ -1,4 +1,4 @@
-//this will handle setting up the graphics pipeline, recording command buffers, and generally anything requiring rendering within
+//this will handle settingcl up the graphics pipeline, recording command buffers, and generally anything requiring rendering within
 //the vulkan framework will end up here
 #include "api_graphics.hpp"
 
@@ -854,7 +854,6 @@ void GraphicsImpl::create_graphics_pipeline() {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR,
         VK_DYNAMIC_STATE_DEPTH_BIAS,
-        VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE
     };
     
     //TEX
@@ -884,6 +883,7 @@ void GraphicsImpl::create_graphics_pipeline() {
     config.pass = render_pass;
     config.subpass_index = 0;
     config.screen_extent = swapchain_extent;
+    config.blend_colours = true;
 
     graphics_pipeline.init(*p_device, config);
 }

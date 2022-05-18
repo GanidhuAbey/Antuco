@@ -27,9 +27,9 @@ namespace tuco {
  *      it can be used be, this parameter will set that.
  *  subpass_index : similiar to the above this will control which subpass within the renderpass
  *      the pipeline will be used by.
+ *  blend_colours : when set to true, the alpha value of a fragment will be accounted for when computing
+ *      the final colour of a pixel.
  *  
- *  VkPipelineLayout* : a pointer which will save the created pipeline layout 
- *  VkPipeline* : a pointer which will save the created pipeline
  * --------------------------------------------------------------------------------
 */
 struct PipelineConfig {
@@ -42,6 +42,7 @@ struct PipelineConfig {
     std::vector<VkPushConstantRange> push_ranges = std::vector<VkPushConstantRange>(0);
     VkRenderPass pass;
     uint32_t subpass_index;
+    bool blend_colours = VK_FALSE;
 };
 
 class TucoPipeline {
@@ -59,11 +60,14 @@ class TucoPipeline {
         VkPipelineLayout get_api_layout();
 
     private:
-
         void create_render_pipeline(PipelineConfig config);
         void create_compute_pipeline(PipelineConfig config);
 
 
+    //helper functions
+    private:
+        
+        VkPipelineColorBlendAttachmentState enable_alpha_blending();
         VkShaderModule create_shader_module(std::vector<uint32_t> shaderCode);
         VkPipelineShaderStageCreateInfo fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
         void create_pipeline_layout(std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkPipelineLayout* layout);

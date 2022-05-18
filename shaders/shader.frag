@@ -26,7 +26,7 @@ float bias = 5e-3;
 
 int LIGHT_FACTOR = 10;
 float SPECULAR_STRENGTH = 1.0f;
-float AMBIENCE_FACTOR = 0.01f;
+float AMBIENCE_FACTOR = 0.1f;
 
 //light perspective is now clamped from between the specified near plane and far plane
 //going to hard code this values to check for now but will edit them once the effect
@@ -47,11 +47,6 @@ float check_shadow(vec3 light_view) {
 }
 
 void main() {
-
-    if (mat.has_texture.g != 1) {
-        discard;
-    }
-
     float dist = length(light_position - vec3(vPos));
 
 
@@ -97,9 +92,8 @@ void main() {
     if (mat.has_texture.r == 0) {
         texture_component = vec3(1);
     }
-
     
     result = (mat.ambient * AMBIENCE_FACTOR + diffuse_final + specular_light) * texture_component * shadow_factor;
 
-    outColor = vec4(result, 0);
+    outColor = vec4(result, mat.has_texture.g);
 }
