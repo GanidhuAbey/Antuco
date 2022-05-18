@@ -834,229 +834,20 @@ void GraphicsImpl::create_shadowpass_pipeline() {
         VK_DYNAMIC_STATE_SCISSOR,
     };
 
-    std::vector<VkPushConstantRange> push_ranges;
 
     std::vector<VkDescriptorSetLayout> layouts = { light_layout };
 
-    create_render_pipeline(
-            shadowmap_extent, 
-            SHADER_PATH + "shadow.vert", 
-            std::nullopt,
-            dynamic_states,
-            layouts,
-            push_ranges,
-            shadowpass,
-            0,
-            &shadowpass_layout,
-            &shadowpass_pipeline
-            );
+    PipelineConfig config{};
+    config.vert_shader_path = SHADER_PATH + "shadow.vert";
+    config.dynamic_states = dynamic_states;
+    config.descriptor_layouts = layouts;
+    config.screen_extent = shadowmap_extent;
+    config.pass = shadowpass;
+    config.subpass_index = 0;
+
+    shadowmap_pipeline.init(*p_device, config);
 }
 
-void GraphicsImpl::create_render_pipeline(VkExtent2D screen_extent, std::optional<std::string> vert_shader_path, std::optional<std::string> frag_shader_path, 
-        std::vector<VkDynamicState> dynamic_states, std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges,
-        VkRenderPass pass, uint32_t subpass_index, VkPipelineLayout* layout, VkPipeline* pipeline) {
-    //might have two might have one
-    VkShaderModule vert_shader;
-    VkShaderModule frag_shader;
-    VkPipelineShaderStageCreateInfo vert_shader_info;
-    VkPipelineShaderStageCreateInfo frag_shader_info;
-
-    std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
-
-    if (vert_shader_path.has_value()) {
-        ShaderText vert_code(vert_shader_path.value(), ShaderKind::VERTEX_SHADER);
-        vert_shader = create_shader_module(vert_code.get_code());
-        vert_shader_info = fill_shader_stage_struct(VK_SHADER_STAGE_VERTEX_BIT, vert_shader);
-        shader_stages.push_back(vert_shader_info);
-    }
-    if (frag_shader_path.has_value()) {
-        ShaderText frag_code(frag_shader_path.value(), ShaderKind::FRAGMENT_SHADER);
-        frag_shader = create_shader_module(frag_code.get_code());
-        frag_shader_info = fill_shader_stage_struct(VK_SHADER_STAGE_FRAGMENT_BIT, frag_shader);
-        shader_stages.push_back(frag_shader_info);
-    }
-
-    VkPipelineVertexInputStateCreateInfo vertex_input_info{};
-    vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertex_input_info.vertexBindingDescriptionCount = 1; 
-    //we probably won't ever need multiple vertex buffers....
-    VkVertexInputBindingDescription binding_descrip{};
-    binding_descrip.binding = 0;
-    binding_descrip.stride = sizeof(Vertex);
-    binding_descrip.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    vertex_input_info.pVertexBindingDescriptions = &binding_descrip;
-
-    vertex_input_info.vertexAttributeDescriptionCount = 3;
-
-    VkVertexInputAttributeDescription pos_attribute{};
-    pos_attribute.location = 0;
-    pos_attribute.binding = 0;
-    pos_attribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-    pos_attribute.offset = 0;
-
-    VkVertexInputAttributeDescription normal_attribute{};
-    normal_attribute.location = 1;
-    normal_attribute.binding = 0;
-    normal_attribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-    normal_attribute.offset = offsetof(Vertex, normal);
-
-    VkVertexInputAttributeDescription tex_attribute{};
-    tex_attribute.location = 2;
-    tex_attribute.binding = 0;
-    tex_attribute.format = VK_FORMAT_R32G32_SFLOAT;
-    tex_attribute.offset = offsetof(Vertex, tex_coord);
-
-
-    VkVertexInputAttributeDescription attribute_descriptions[] = { pos_attribute, normal_attribute, tex_attribute };
-
-    vertex_input_info.pVertexAttributeDescriptions = attribute_descriptions;
-
-    VkPipelineInputAssemblyStateCreateInfo input_assembly_info{};
-    input_assembly_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    input_assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    input_assembly_info.primitiveRestartEnable = VK_FALSE;
-
-    VkViewport viewport{};
-    viewport.x = 0;
-    viewport.y = 0;
-    viewport.width = (float)screen_extent.width;
-    viewport.height = (float)screen_extent.height;
-    viewport.minDepth = 0.0;
-    viewport.maxDepth = 1.0;
-
-    VkRect2D scissor{   };
-    scissor.offset = { 0, 0 };
-    scissor.extent = screen_extent;
- 
-    VkPipelineViewportStateCreateInfo viewport_info{};
-
-    viewport_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewport_info.viewportCount = 1;
-    viewport_info.pViewports = &viewport;
-    viewport_info.scissorCount = 1;
-    viewport_info.pScissors = &scissor;
-
-    VkPipelineRasterizationStateCreateInfo rasterization_info{};
-    rasterization_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterization_info.depthClampEnable = VK_FALSE;
-    rasterization_info.rasterizerDiscardEnable = VK_FALSE;
-    rasterization_info.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterization_info.lineWidth = 1.0f;
-    rasterization_info.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterization_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
-    rasterization_info.depthBiasEnable = VK_FALSE;
-    rasterization_info.depthBiasConstantFactor = 0.0f; // Optional
-    rasterization_info.depthBiasClamp = 0.0f; // Optional
-    rasterization_info.depthBiasSlopeFactor = 0.0f; // Optional
-    
-    VkPipelineMultisampleStateCreateInfo multisampling{};
-    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    multisampling.minSampleShading = 1.0f; // Optional
-    multisampling.pSampleMask = nullptr; // Optional
-    multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
-    multisampling.alphaToOneEnable = VK_FALSE; // Optional
-    
-    VkPipelineColorBlendAttachmentState color_blend_attachment{};
-    color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    color_blend_attachment.blendEnable = VK_FALSE;
-
-    VkPipelineColorBlendStateCreateInfo color_blend_info{};
-    color_blend_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    color_blend_info.logicOpEnable = VK_FALSE;
-    color_blend_info.attachmentCount = 1;
-    color_blend_info.pAttachments = &color_blend_attachment;
-    
-    VkPipelineDepthStencilStateCreateInfo depth_stencil_info{};
-    depth_stencil_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depth_stencil_info.pNext = nullptr;
-    depth_stencil_info.flags = 0;
-    depth_stencil_info.depthTestEnable = VK_TRUE;
-    depth_stencil_info.depthWriteEnable = VK_TRUE;
-    depth_stencil_info.depthCompareOp = VK_COMPARE_OP_LESS;
-    depth_stencil_info.depthBoundsTestEnable = VK_FALSE;
-    depth_stencil_info.stencilTestEnable = VK_FALSE;
-
-    float blendValues[4] = { 0.0, 0.0, 0.0, 0.5 };
-    color_blend_info.blendConstants[0] = blendValues[0];
-    color_blend_info.blendConstants[1] = blendValues[1];
-    color_blend_info.blendConstants[2] = blendValues[2];
-    color_blend_info.blendConstants[3] = blendValues[3];
-
-    VkPipelineDynamicStateCreateInfo dynamic_info{};
-    dynamic_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamic_info.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
-    dynamic_info.pDynamicStates = dynamic_states.data();
-    
-    create_pipeline_layout(descriptor_layouts, push_ranges, layout);
-
-    VkGraphicsPipelineCreateInfo create_pipeline_info{};
-    create_pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    create_pipeline_info.stageCount = static_cast<uint32_t>(shader_stages.size());
-    create_pipeline_info.pStages = shader_stages.data();
-    create_pipeline_info.pVertexInputState = &vertex_input_info;
-    create_pipeline_info.pInputAssemblyState = &input_assembly_info;
-    create_pipeline_info.pViewportState = &viewport_info;
-    create_pipeline_info.pRasterizationState = &rasterization_info;
-    create_pipeline_info.pMultisampleState = &multisampling;
-    create_pipeline_info.pColorBlendState = &color_blend_info;
-    create_pipeline_info.pDepthStencilState = &depth_stencil_info;
-    create_pipeline_info.pDynamicState = &dynamic_info;
-    create_pipeline_info.layout = *layout;
-    create_pipeline_info.renderPass = pass;
-    create_pipeline_info.subpass = subpass_index;
-
-    if (vkCreateGraphicsPipelines(*p_device, VK_NULL_HANDLE, 1, &create_pipeline_info, nullptr, pipeline) != VK_SUCCESS) {
-        throw std::runtime_error("could not create graphics pipeline");
-    }
-
-    //destroy the used shader object
-    if (vert_shader_path.has_value()) vkDestroyShaderModule(*p_device, vert_shader, nullptr);
-    if (frag_shader_path.has_value()) vkDestroyShaderModule(*p_device, frag_shader, nullptr);
-
-}
-
-void GraphicsImpl::create_pipeline_layout(std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkPipelineLayout* layout) {
-    VkPipelineLayoutCreateInfo pipeline_layout_info{};
-    pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipeline_layout_info.setLayoutCount = static_cast<uint32_t>(descriptor_layouts.size());
-    pipeline_layout_info.pSetLayouts = descriptor_layouts.data();
-
-    //as long as this is zero the pointer data sent in will be ignored, so the user can send an empty vector and it wont matter
-    pipeline_layout_info.pushConstantRangeCount = static_cast<uint32_t>(push_ranges.size());
-    pipeline_layout_info.pPushConstantRanges = push_ranges.data();
-
-    if (vkCreatePipelineLayout(*p_device, &pipeline_layout_info, nullptr, layout) != VK_SUCCESS) {
-        throw std::runtime_error("could not create pipeline layout");
-    }
-}
-
-void GraphicsImpl::create_compute_pipeline(std::string compute_shader_path, std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkPipelineLayout* layout, VkPipeline* pipeline) {
-    VkShaderModule compute_shader;
-    VkPipelineShaderStageCreateInfo shader_info;
-
-    ShaderText compute_code(compute_shader_path, ShaderKind::COMPUTE_SHADER); 
-    compute_shader = create_shader_module(compute_code.get_code());
-    shader_info = fill_shader_stage_struct(VK_SHADER_STAGE_COMPUTE_BIT, compute_shader);
-
-    create_pipeline_layout(descriptor_layouts, push_ranges, layout);
-
-    VkComputePipelineCreateInfo pipeline_info{};
-    pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipeline_info.pNext = nullptr;
-    pipeline_info.flags = 0;
-    pipeline_info.stage = shader_info;
-    pipeline_info.layout = *layout;
-    pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
-    pipeline_info.basePipelineIndex = -1;
-
-
-    if (vkCreateComputePipelines(*p_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, pipeline) != VK_SUCCESS) {
-        LOG("could not create compute shader");
-    }
-
-}
 
 void GraphicsImpl::create_graphics_pipeline() {
     std::vector<VkDynamicState> dynamic_states = {
@@ -1084,18 +875,17 @@ void GraphicsImpl::create_graphics_pipeline() {
 
     push_ranges.push_back(pushRange);
 
-    create_render_pipeline(
-            swapchain_extent, 
-            SHADER_PATH + "shader.vert", 
-            SHADER_PATH + "shader.frag", 
-            dynamic_states, 
-            descriptor_layouts, 
-            push_ranges, 
-            render_pass, 
-            0, 
-            &pipeline_layout, 
-            &graphics_pipeline
-            );
+    PipelineConfig config{};
+    config.vert_shader_path = SHADER_PATH + "shader.vert";
+    config.frag_shader_path = SHADER_PATH + "shader.frag";
+    config.dynamic_states = dynamic_states;
+    config.descriptor_layouts = descriptor_layouts;
+    config.push_ranges = push_ranges;
+    config.pass = render_pass;
+    config.subpass_index = 0;
+    config.screen_extent = swapchain_extent;
+
+    graphics_pipeline.init(*p_device, config);
 }
 
 
@@ -1177,13 +967,7 @@ void GraphicsImpl::destroy_draw() {
     uniform_buffer.destroy(*p_device);
     
     vkDestroyCommandPool(*p_device, command_pool, nullptr);
-    
-    vkDestroyPipelineLayout(*p_device, shadowpass_layout, nullptr);
-    vkDestroyPipeline(*p_device, shadowpass_pipeline, nullptr);
-
-    vkDestroyPipelineLayout(*p_device, pipeline_layout, nullptr);
-    vkDestroyPipeline(*p_device, graphics_pipeline, nullptr);
-    
+        
     vkDestroyRenderPass(*p_device, shadowpass, nullptr);
     vkDestroyRenderPass(*p_device, render_pass, nullptr);
 
@@ -1394,7 +1178,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                     //there is at least one light that is casting a shadow here
                     vkCmdBeginRenderPass(command_buffers[i], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
                     //do stuff...
-                    vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_pipeline);
+                    vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmap_pipeline.get_api_pipeline());
 
                     VkViewport shadowpass_port = {};
                     shadowpass_port.x = 0;
@@ -1437,7 +1221,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                                 //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
 
                                 VkDescriptorSet descriptors[1] = { light_ubo[j][i] };
-                                vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowpass_layout, 0, 1, descriptors, 0, nullptr);
+                                vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmap_pipeline.get_api_layout(), 0, 1, descriptors, 0, nullptr);
                                 vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
 
                                 total_indexes += index_count;
@@ -1504,7 +1288,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);
 
 		//add commands to command buffer
-		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline.get_api_pipeline());
 
 		VkViewport newViewport{};
 		newViewport.x = 0;
@@ -1533,8 +1317,8 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		light.color = light_data[0]->color;
         light.light_count = glm::vec4(MAX_SHADOW_CASTERS, 1, 1, 1); //NOTE: will only pass into the shader with a vec4, don't ask me why it seems glsl really really values constant spacing
         
-		vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(light), &light);
-        vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(light), sizeof(glm::vec4), &camera_pos); 
+		vkCmdPushConstants(command_buffers[i], graphics_pipeline.get_api_layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(light), &light);
+        vkCmdPushConstants(command_buffers[i], graphics_pipeline.get_api_layout(), VK_SHADER_STAGE_VERTEX_BIT, sizeof(light), sizeof(glm::vec4), &camera_pos); 
 		//draw first object (cube)
 		uint32_t total_indexes = 0;
 		uint32_t total_vertices = 0;
@@ -1552,7 +1336,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                    
                     //PROBLEM IS THAT texture set is not updated when the model/mesh we're dealing with has not texture
                     VkDescriptorSet descriptors[5] = { light_ubo[j][i], ubo_sets[j][i], texture_sets[j][k], shadowmap_set, mat_sets[j][k] };
-                    vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 5, descriptors, 0, nullptr); 
+                    vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline.get_api_layout(), 0, 5, descriptors, 0, nullptr); 
 
                     vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
 

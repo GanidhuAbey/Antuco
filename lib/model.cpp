@@ -153,7 +153,6 @@ Material Model::processMaterial(uint32_t materialIndex, aiMaterial** materials) 
     material.diffuse = diffuse;
     material.specular = specular;
 
-    printf("opacity: %f \n", opacity);
     material.opacity = opacity;
 
     return material;

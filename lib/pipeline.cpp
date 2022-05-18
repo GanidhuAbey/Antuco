@@ -2,6 +2,7 @@
 #include "shader_text.hpp"
 
 #include "data_structures.hpp"
+#include "logger/interface.hpp"
 
 
 using namespace tuco;
@@ -9,12 +10,33 @@ using namespace tuco;
 //PURPOSE: create a vulkan pipeline with desired configuration
 //PARAMETERS:
 //<PipelineConfig config> - configuration settings for pipeline
-TucoPipeline::TucoPipeline(VkDevice device, PipelineConfig config) {
-    
+void TucoPipeline::init(VkDevice device, PipelineConfig config) {
+    p_device = std::make_shared<VkDevice>(device);
+
+    //distinguish render/compute pipeline
+    if (config.compute_shader_path.has_value()) {
+        //build compute shader
+        create_compute_pipeline(config);
+    } else {
+        create_render_pipeline(config);
+    }
 }
 
-TucoPipeline::~TucoPipeline() {
+TucoPipeline::TucoPipeline() {}
 
+TucoPipeline::~TucoPipeline() {
+    if (p_device) return;
+
+    vkDestroyPipeline(*p_device, pipeline, nullptr);
+    vkDestroyPipelineLayout(*p_device, layout, nullptr);
+}
+
+VkPipeline TucoPipeline::get_api_pipeline() {
+    return pipeline;
+}
+
+VkPipelineLayout TucoPipeline::get_api_layout() {
+    return layout;
 }
 
 
@@ -42,6 +64,32 @@ VkPipelineShaderStageCreateInfo TucoPipeline::fill_shader_stage_struct(VkShaderS
     createInfo.pName = "main";
 
     return createInfo;
+}
+
+void TucoPipeline::create_compute_pipeline(PipelineConfig config) {
+    VkShaderModule compute_shader;
+    VkPipelineShaderStageCreateInfo shader_info;
+
+    ShaderText compute_code(config.compute_shader_path.value(), ShaderKind::COMPUTE_SHADER); 
+    compute_shader = create_shader_module(compute_code.get_code());
+    shader_info = fill_shader_stage_struct(VK_SHADER_STAGE_COMPUTE_BIT, compute_shader);
+
+    create_pipeline_layout(config.descriptor_layouts, config.push_ranges, &layout);
+
+    VkComputePipelineCreateInfo pipeline_info{};
+    pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipeline_info.pNext = nullptr;
+    pipeline_info.flags = 0;
+    pipeline_info.stage = shader_info;
+    pipeline_info.layout = layout;
+    pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+    pipeline_info.basePipelineIndex = -1;
+
+
+    if (vkCreateComputePipelines(*p_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline) != VK_SUCCESS) {
+        LOG("could not create compute shader");
+    }
+
 }
 
 void TucoPipeline::create_render_pipeline(PipelineConfig config) {
@@ -220,7 +268,7 @@ void TucoPipeline::create_pipeline_layout(std::vector<VkDescriptorSetLayout> des
     pipeline_layout_info.pushConstantRangeCount = static_cast<uint32_t>(push_ranges.size());
     pipeline_layout_info.pPushConstantRanges = push_ranges.data();
 
-    if (vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, layout) != VK_SUCCESS) {
+    if (vkCreatePipelineLayout(*p_device, &pipeline_layout_info, nullptr, layout) != VK_SUCCESS) {
         throw std::runtime_error("could not create pipeline layout");
     }
 }

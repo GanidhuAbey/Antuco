@@ -20,6 +20,9 @@
 #include "world_objects.hpp"
 #include "config.hpp"
 
+
+#include "pipeline.hpp"
+
 #include <vector>
 #include <optional>
 #include <math.h>
@@ -105,6 +108,10 @@ private:
 	uint32_t score_physical_device(VkPhysicalDevice physical_device);
 	void destroy_initialize();
 
+//vulkan pipelines
+private:
+    TucoPipeline shadowmap_pipeline;
+    TucoPipeline graphics_pipeline;
 
 //draw	
 
@@ -120,10 +127,6 @@ private:
 	std::vector<VkImageView> swapchain_image_views;
 
 	VkRenderPass render_pass;
-
-	VkPipelineLayout pipeline_layout;
-	VkPipeline graphics_pipeline;
-
 
 	VkSampler texture_sampler;
 
@@ -192,10 +195,6 @@ private:
 	VkDescriptorSetLayout shadowmap_layout;
 
 	VkRenderPass shadowpass;
-
-	VkPipeline shadowpass_pipeline;
-
-	VkPipelineLayout shadowpass_layout;
 	
 	VkFramebuffer shadowpass_buffer;
 
@@ -225,58 +224,6 @@ private:
     void create_geometry_pass();
     void create_geometry_buffer();
     void create_deffered_textures();
-
-//-------------------------------------------------------------------------------------
-
-//generic functions -------------------------------------------------------------------
-private:
-    /* ---- creates a vulkan render pipeline based on the specified parameters --------
-     *  screen_extent : dimensions of the screen being rendered to
-     *  vert_shader_path : optional path to the vertex shader
-     *  frag_shader_path : optional path to the fragment shader
-     *  dynamic_states : list of pipeline states that the user would like to control
-     *      from the command buffers (read doc on VkDynamicState for more info)
-     *  descriptor_layouts : descriptor sets specify how data is read into the shader, the layouts
-     *      the layouts will control what descriptor sets the pipeline is able to use.
-     *  push_ranges : a list which contains the relavent data for all push constants being
-     *      used in the pipeline
-     *  pass : render passes can use multiple pipelines, but pipelines must state which renderpass
-     *      it can be used be, this parameter will set that.
-     *  subpass_index : similiar to the above this will control which subpass within the renderpass
-     *      the pipeline will be used by.
-     *  
-     *  VkPipelineLayout* : a pointer which will save the created pipeline layout 
-     *  VkPipeline* : a pointer which will save the created pipeline
-     * --------------------------------------------------------------------------------
-    */
-    void create_render_pipeline(VkExtent2D screen_extent, std::optional<std::string> vert_shader_path, std::optional<std::string> frag_shader_path, std::vector<VkDynamicState> dynamic_states, std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkRenderPass pass, uint32_t subpass_index, VkPipelineLayout* layout, VkPipeline* pipeline);
-
-	void create_frame_buffer(VkRenderPass pass, uint32_t attachment_count, VkImageView* p_attachments, uint32_t width, uint32_t height, VkFramebuffer* frame_buffer);
-
-    /* ----- creates a vulkan layout for some pipeline -----
-     * describes how the pipeline interacts with the render pass to vulkan. This function is present to reduce code redundancy, and is not
-     * mean't to be called individually.
-     *
-     * descriptor_layouts : descriptions of the descriptor sets that will bind to the pipeline
-     * push_ranges : description of the push constants being pushed to the pipeline
-     * layout : object to store the newly created pipeline layout
-     */
-    void create_pipeline_layout(std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkPipelineLayout* layout);
-
-    /* ---- creates a vulkan compute shader based on the specified parameters ------
-     * 
-     * compute_shader_path : an absolute filepath to computer shader that this pipeline
-     *                       is responsible for
-     *
-     * REMAKRS ---------------------------------------------------------------------
-     * - its possible to create similar parant pipelines, but i'll choose to ignore this
-     *   now
-     *
-     * - Its also possible to cache the pipeline, (making creating similar pipelines later faster
-     *   but I won't need this now so I will also ignore it
-    */
-    void create_compute_pipeline(std::string computer_shader_path, std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkPipelineLayout* layout, VkPipeline* pipeline);
-//-------------------------------------------------------------------------------------
 
 private:
 	void create_graphics_pipeline();
@@ -326,6 +273,7 @@ private:
 private:
     VkDescriptorBufferInfo setup_descriptor_set_buffer(uint32_t set_size);
     void update_descriptor_set(VkDescriptorBufferInfo buffer_info, uint32_t dst_binding, VkDescriptorSet set);
+	void create_frame_buffer(VkRenderPass pass, uint32_t attachment_count, VkImageView* p_attachments, uint32_t width, uint32_t height, VkFramebuffer* frame_buffer);
 
 
 //vulkan initialization

@@ -10,13 +10,36 @@
 
 namespace tuco {
 
+
+/* ---- parameters which control pipeline creation --------
+ *  screen_extent : dimensions of the screen being rendered to
+ *  vert_shader_path : optional path to the vertex shader
+ *  frag_shader_path : optional path to the fragment shader
+ *  compute_shader_path : optional path to the compute shader, if this value is filled in,
+ *                        then pipeline will be assumed to be a compute pipeline.
+ *  dynamic_states : list of pipeline states that the user would like to control
+ *      from the command buffers (read doc on VkDynamicState for more info)
+ *  descriptor_layouts : descriptor sets specify how data is read into the shader, the layouts
+ *      the layouts will control what descriptor sets the pipeline is able to use.
+ *  push_ranges : a list which contains the relavent data for all push constants being
+ *      used in the pipeline
+ *  pass : render passes can use multiple pipelines, but pipelines must state which renderpass
+ *      it can be used be, this parameter will set that.
+ *  subpass_index : similiar to the above this will control which subpass within the renderpass
+ *      the pipeline will be used by.
+ *  
+ *  VkPipelineLayout* : a pointer which will save the created pipeline layout 
+ *  VkPipeline* : a pointer which will save the created pipeline
+ * --------------------------------------------------------------------------------
+*/
 struct PipelineConfig {
     VkExtent2D screen_extent;
-    std::optional<std::string> vert_shader_path;
-    std::optional<std::string> frag_shader_path;
+    std::optional<std::string> vert_shader_path = std::nullopt;
+    std::optional<std::string> frag_shader_path = std::nullopt;
+    std::optional<std::string> compute_shader_path = std::nullopt;
     std::vector<VkDynamicState> dynamic_states;
     std::vector<VkDescriptorSetLayout> descriptor_layouts;
-    std::vector<VkPushConstantRange> push_ranges;
+    std::vector<VkPushConstantRange> push_ranges = std::vector<VkPushConstantRange>(0);
     VkRenderPass pass;
     uint32_t subpass_index;
 };
@@ -28,14 +51,17 @@ class TucoPipeline {
 
         std::shared_ptr<VkDevice> p_device;
     public:
-        TucoPipeline(VkDevice device, PipelineConfig config);
+        void init(VkDevice device, PipelineConfig config);
+        TucoPipeline();
         ~TucoPipeline();
 
         VkPipeline get_api_pipeline();
+        VkPipelineLayout get_api_layout();
 
     private:
+
         void create_render_pipeline(PipelineConfig config);
-        void create_compute_pipeline();
+        void create_compute_pipeline(PipelineConfig config);
 
 
         VkShaderModule create_shader_module(std::vector<uint32_t> shaderCode);
