@@ -284,6 +284,56 @@ void GraphicsImpl::create_shadowpass_resources() {
 	mem::createImageView(*p_device, createInfo, &shadow_pass_texture);
 }
 
+void GraphicsImpl::create_oit_pipeline() {
+    std::vector<VkDynamicState> dynamic_states = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR,
+        VK_DYNAMIC_STATE_DEPTH_BIAS,
+    };
+    
+    //TEX
+    std::vector<VkDescriptorSetLayout> descriptor_layouts = { 
+
+        light_layout, 
+        ubo_layout, 
+        texture_layout, 
+        shadowmap_layout,
+        mat_layout};
+
+    std::vector<VkPushConstantRange> push_ranges;
+
+    VkPushConstantRange pushRange{};
+    pushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pushRange.offset = 0;
+    pushRange.size = sizeof(LightObject) + sizeof(glm::vec4);
+
+    push_ranges.push_back(pushRange);
+
+    PipelineConfig config{};
+    config.vert_shader_path = SHADER_PATH + "shader.vert";
+    config.frag_shader_path = SHADER_PATH + "shader.frag";
+    config.dynamic_states = dynamic_states;
+    config.descriptor_layouts = descriptor_layouts;
+    config.push_ranges = push_ranges;
+    config.pass = render_pass.get_api_pass();
+    config.subpass_index = 0;
+    config.screen_extent = swapchain_extent;
+    config.blend_colours = true;
+
+    graphics_pipeline.init(*p_device, config);
+}
+
+void GraphicsImpl::create_oit_pass() {
+    ColourConfig config{};
+    config.format = swapchain_format;
+    config.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+    config.final_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    oit_pass.add_colour(0, config);
+    oit_pass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, true, false);
+    oit_pass.build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);
+}
+
 void GraphicsImpl::create_depth_resources() {
     //create image to represent depth
     mem::ImageCreateInfo depth_image_info{};
@@ -409,7 +459,10 @@ void GraphicsImpl::create_geometry_buffer() {
 }
 
 void GraphicsImpl::create_render_pass() {
-    render_pass.add_colour(0, swapchain_format);
+    ColourConfig config{};
+    config.format = swapchain_format;
+
+    render_pass.add_colour(0, config);
     render_pass.add_depth(1);
     render_pass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, true, true);
     render_pass.build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);

@@ -10,6 +10,12 @@ struct DepthConfig {
     VkImageLayout final_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 };
 
+struct ColourConfig {
+    VkFormat format;
+    VkImageLayout initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkImageLayout final_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+};
+
 class TucoPass {
     private:
         VkRenderPass render_pass;
@@ -41,7 +47,7 @@ class TucoPass {
         VkRenderPass get_api_pass();
         void build(VkDevice device, VkPipelineBindPoint bind_point);
         void add_depth(uint32_t attachment, DepthConfig config = DepthConfig{});
-        void add_colour(uint32_t attachment, VkFormat format);
+        void add_colour(uint32_t attachment, ColourConfig config);
         void add_dependency(std::vector<VkSubpassDependency> d);
         void create_subpass(VkPipelineBindPoint bind_point, bool colour, bool depth);
 

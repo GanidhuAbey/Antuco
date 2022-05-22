@@ -47,12 +47,12 @@ void TucoPass::add_depth(uint32_t attachment, DepthConfig config) {
     attachments.push_back(depth_attachment); 
 }
 
-void TucoPass::add_colour(uint32_t attachment, VkFormat format) {
+void TucoPass::add_colour(uint32_t attachment, ColourConfig config) {
     colour_attach = true;
 
     colour_location = attachment;
 
-    colour_attachment.format = format;
+    colour_attachment.format = config.format;
     colour_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
     colour_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     colour_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;

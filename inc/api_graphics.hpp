@@ -131,6 +131,10 @@ private:
 	TucoPass render_pass;
 	TucoPass shadowpass;
     TucoPass geometry_pass;
+    TucoPass oit_pass;
+
+private:
+    void create_oit_pass();
 
 //draw	
 
