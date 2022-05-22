@@ -57,6 +57,21 @@ void GraphicsImpl::create_shadowmap_transfer_buffer() {
     } 
 }
 
+
+void GraphicsImpl::create_depth_pipeline() {
+    PipelineConfig config{};
+    config.vert_shader_path = SHADER_PATH + "shader.vert";
+    config.blend_colours = false;
+    config.descriptor_layouts = {light_layout, ubo_layout};
+    
+    std::vector<VkDynamicState> dynamic_states = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR,
+    };
+    config.dynamic_states = dynamic_states;
+    //config.pass
+}
+
 /// <summary>
 /// Creates a large image to contain the depth textures of all the lights in the scene
 /// </summary>
@@ -160,7 +175,7 @@ void GraphicsImpl::create_shadowmap_sampler() {
 
 void GraphicsImpl::create_shadowpass_buffer() {  
     VkImageView image_views[1] = { shadow_pass_texture.imageView };
-    create_frame_buffer(shadowpass, 1, image_views, shadowmap_width, shadowmap_height, &shadowpass_buffer);
+    create_frame_buffer(shadowpass.get_api_pass(), 1, image_views, shadowmap_width, shadowmap_height, &shadowpass_buffer);
 }
 
 void GraphicsImpl::create_swapchain_buffers() {
@@ -169,7 +184,7 @@ void GraphicsImpl::create_swapchain_buffers() {
     
     for (size_t i = 0; i < image_num; i++) {
         VkImageView image_views[2] = { swapchain_image_views[i], depth_memory.imageView };
-        create_frame_buffer(render_pass, 2, image_views, swapchain_extent.width, swapchain_extent.height, &swapchain_framebuffers[i]);
+        create_frame_buffer(render_pass.get_api_pass(), 2, image_views, swapchain_extent.width, swapchain_extent.height, &swapchain_framebuffers[i]);
     }
 }
 
@@ -358,27 +373,6 @@ void GraphicsImpl::create_colour_image_views() {
 }
 
 void GraphicsImpl::create_shadowpass() {
-    VkAttachmentDescription shadowpass_attachment{};
-    shadowpass_attachment.format = VK_FORMAT_D16_UNORM;//format must be a depth/stencil format
-    shadowpass_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    shadowpass_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    shadowpass_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    shadowpass_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    shadowpass_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-    shadowpass_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    shadowpass_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-
-    VkAttachmentReference shadowpass_ref{};
-    shadowpass_ref.attachment = 0;
-    shadowpass_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-
-    VkSubpassDescription subpass{};
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 0;
-    subpass.pDepthStencilAttachment = &shadowpass_ref;
-
     std::vector<VkSubpassDependency> dependencies(2);
 
     dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -396,22 +390,14 @@ void GraphicsImpl::create_shadowpass() {
     dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT; 
-    
-    VkRenderPassCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    createInfo.attachmentCount = 1;
-    VkAttachmentDescription attachments[1] = { shadowpass_attachment };
-    createInfo.pAttachments = attachments;
-    createInfo.subpassCount = 1;
-    VkSubpassDescription subpasses[1] = {subpass};
-    createInfo.pSubpasses = subpasses;
-    createInfo.dependencyCount = 2;
-    createInfo.pDependencies = dependencies.data();
 
+    DepthConfig config{};
+    config.final_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
-    if (vkCreateRenderPass(*p_device, &createInfo, nullptr, &shadowpass) != VK_SUCCESS) {
-        throw std::runtime_error("could not create render pass");
-    }
+    shadowpass.add_depth(0, config);
+    shadowpass.add_dependency(dependencies);
+    shadowpass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, false, true);
+    shadowpass.build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);
 }
 
 void GraphicsImpl::create_deffered_textures() {
@@ -419,156 +405,14 @@ void GraphicsImpl::create_deffered_textures() {
 }
 
 void GraphicsImpl::create_geometry_buffer() {
-
     //create_frame_buffer(&g_buffer);
 }
 
-//for deferred shading, psas which will render required information for shader computation to multiple textures
-void GraphicsImpl::create_geometry_pass() {
-    VkAttachmentDescription depthAttachment{};
-    depthAttachment.format = VK_FORMAT_D16_UNORM;//format must be a depth/stencil format
-    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    //do not need colour attachment, instead need attachment to hold image
-    VkAttachmentDescription position{};
-    position.format = VK_FORMAT_B8G8R8A8_SRGB;
-    position.samples = VK_SAMPLE_COUNT_1_BIT;
-    position.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    position.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-
-    position.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    position.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-    position.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    position.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-    VkAttachmentReference positionRef{};
-    positionRef.attachment = 0;
-    positionRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkAttachmentDescription normal{};
-
-    normal.format = VK_FORMAT_B8G8R8A8_SRGB;
-    normal.samples = VK_SAMPLE_COUNT_1_BIT;
-    normal.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    normal.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-    normal.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    normal.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-    normal.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    normal.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-    VkAttachmentReference normalRef{};
-    normalRef.attachment = 1;
-    normalRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkSubpassDescription positionPass{};
-    positionPass.flags = 0;
-    positionPass.colorAttachmentCount = 1;
-    positionPass.pColorAttachments = &positionRef;
-
-    VkSubpassDescription normalPass{};
-    normalPass.flags = 0;
-    normalPass.colorAttachmentCount = 1;
-    normalPass.pColorAttachments = &normalRef;
-
-    VkSubpassDescription subpasses[2] = {positionPass, normalPass};
-    VkAttachmentDescription attachments[2] = { position, normal };
-
-    VkRenderPassCreateInfo passCreate{};
-    passCreate.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    passCreate.pNext = nullptr;
-    passCreate.flags = 0;
-    passCreate.subpassCount = 2;
-    passCreate.attachmentCount = 2;
-    passCreate.pSubpasses = subpasses;
-    passCreate.pAttachments = attachments;
-
-    if (vkCreateRenderPass(*p_device, &passCreate, nullptr, &geometry_pass) != VK_SUCCESS) {
-        LOG("could not create geometry pass");
-    }
- 
-}
-
 void GraphicsImpl::create_render_pass() {
-    //create a depth attachment and a depth subpass
-    VkAttachmentDescription depthAttachment{};
-    depthAttachment.format = VK_FORMAT_D16_UNORM;//format must be a depth/stencil format
-    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    //colour buffer is a buffer for the colour data at each pixel in the framebuffer, obviously important for actually drawing to screen
-    VkAttachmentDescription colorAttachment{};
-    colorAttachment.format = swapchain_format;
-    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-
-    //when an image is being rendered to this is asking whether to clear everything that was on the image or store it to be readable.
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    //this is too make after the rendering too screen is done makes sure the rendered contents aren't cleared and are still readable.
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-    //NOTE: dont know much about stencilling, seems to be something about colouring in the image from a different layer?
-    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-    //"The initialLayout specifies which layout the image will have before the render pass begins" - vulkan tutorial
-    //"Using VK_IMAGE_LAYOUT_UNDEFINED for initialLayout means that we don't care what previous layout the image was in" - vulkan tutorial
-    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; //the other subpass does not affect the layout of the image this subpass uses.
-    //the final layout most likely means what layout the image should be transferred to at the end
-    //and since we wont to present to the screen this would probably always remain as this
-    //"The finalLayout specifies the layout to automatically transition to when the render pass finishes" - vulkan tutorial
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-    VkAttachmentReference depthAttachmentRef{};
-    depthAttachmentRef.attachment = 1;
-    depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    //these are subpasses you can make in the render pass to add things depending on the framebuffer in previous passes.
-    //i'd assume that if you were to use these for things like post-processing you wouldn't be able to clear the image on load like
-    //we do here
-    VkAttachmentReference colorAttachmentRef{};
-    //this refers to where the VkAttachment is and since we only have one the '0' would point to it.
-    colorAttachmentRef.attachment = 0;
-    //our framebuffer only has a color buffer attached to it so this layout will help optimize it
-    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    //creating the actual subpass using the reference we created above
-    VkSubpassDescription colorSubpass{};
-    colorSubpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    colorSubpass.colorAttachmentCount = 1;
-    colorSubpass.pColorAttachments = &colorAttachmentRef;
-    colorSubpass.pDepthStencilAttachment = &depthAttachmentRef;
-
-    VkRenderPassCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    createInfo.attachmentCount = 2;
-    VkAttachmentDescription attachments[2] = { colorAttachment, depthAttachment };
-    createInfo.pAttachments = attachments;
-    createInfo.subpassCount = 1;
-    VkSubpassDescription subpasses[1] = {colorSubpass};
-    createInfo.pSubpasses = subpasses;
-    //createInfo.dependencyCount = 1;
-    //createInfo.pDependencies = &dependency;
-
-
-    if (vkCreateRenderPass(*p_device, &createInfo, nullptr, &render_pass) != VK_SUCCESS) {
-        throw std::runtime_error("could not create render pass");
-    }
+    render_pass.add_colour(0, swapchain_format);
+    render_pass.add_depth(1);
+    render_pass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, true, true);
+    render_pass.build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);
 }
 
 void GraphicsImpl::create_light_layout() {
@@ -842,7 +686,7 @@ void GraphicsImpl::create_shadowpass_pipeline() {
     config.dynamic_states = dynamic_states;
     config.descriptor_layouts = layouts;
     config.screen_extent = shadowmap_extent;
-    config.pass = shadowpass;
+    config.pass = shadowpass.get_api_pass();
     config.subpass_index = 0;
 
     shadowmap_pipeline.init(*p_device, config);
@@ -880,7 +724,7 @@ void GraphicsImpl::create_graphics_pipeline() {
     config.dynamic_states = dynamic_states;
     config.descriptor_layouts = descriptor_layouts;
     config.push_ranges = push_ranges;
-    config.pass = render_pass;
+    config.pass = render_pass.get_api_pass();
     config.subpass_index = 0;
     config.screen_extent = swapchain_extent;
     config.blend_colours = true;
@@ -968,9 +812,6 @@ void GraphicsImpl::destroy_draw() {
     
     vkDestroyCommandPool(*p_device, command_pool, nullptr);
         
-    vkDestroyRenderPass(*p_device, shadowpass, nullptr);
-    vkDestroyRenderPass(*p_device, render_pass, nullptr);
-
     vkDestroyDescriptorSetLayout(*p_device, ubo_layout, nullptr);
     vkDestroyDescriptorSetLayout(*p_device, light_layout, nullptr);
     vkDestroyDescriptorSetLayout(*p_device, shadowmap_layout, nullptr);
@@ -1158,7 +999,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         VkRenderPassBeginInfo shadowpass_info{};
 
         shadowpass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        shadowpass_info.renderPass = shadowpass;
+        shadowpass_info.renderPass = shadowpass.get_api_pass();
         shadowpass_info.framebuffer = shadowpass_buffer;
         VkRect2D renderArea{};
         renderArea.offset = VkOffset2D{ 0, 0 };
@@ -1259,7 +1100,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
     
 		VkRenderPassBeginInfo renderInfo{};
 		renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderInfo.renderPass = render_pass;
+		renderInfo.renderPass = render_pass.get_api_pass();
 		renderInfo.framebuffer = swapchain_framebuffers[i];
 		renderArea.offset = VkOffset2D{ 0, 0 };
 		renderArea.extent = swapchain_extent;
@@ -1330,7 +1171,6 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                     uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
                     uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 
-
                     //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
                     //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
                    
@@ -1345,7 +1185,6 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                 }
             }
         }
-
         //vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(6), 1, 36, 0, 0);
         //vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);
         vkCmdEndRenderPass(command_buffers[i]);
@@ -1522,7 +1361,7 @@ void GraphicsImpl::cleanup_swapchain() {
     }
  
     mem::destroyImage(*p_device, depth_memory);
-    vkDestroyRenderPass(*p_device, render_pass, nullptr);
+    render_pass.destroy();
     vkDestroySwapchainKHR(*p_device, swapchain, nullptr);
 }
 

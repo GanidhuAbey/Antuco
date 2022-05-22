@@ -22,6 +22,7 @@
 
 
 #include "pipeline.hpp"
+#include "render_pass.hpp"
 
 #include <vector>
 #include <optional>
@@ -88,6 +89,7 @@ private:
 //pre-configuration settings
 private:
 	bool raytracing;
+    bool oit;
 
 private:
 	VkResult create_debug_utils_messengar_utils(VkInstance instance,
@@ -111,7 +113,24 @@ private:
 //vulkan pipelines
 private:
     TucoPipeline shadowmap_pipeline;
+
+    //if oit is enabled, then we must disable depth testing in main pipeline?
     TucoPipeline graphics_pipeline;
+
+    //extract just the depth information from the scene.
+    TucoPipeline depth_pipeline;
+    //compute pipeline, draw texture based on depth texture
+    TucoPipeline oit_pipeline;
+
+private:
+    void create_depth_pipeline();
+    void create_oit_pipeline();
+
+//render passes
+private:
+	TucoPass render_pass;
+	TucoPass shadowpass;
+    TucoPass geometry_pass;
 
 //draw	
 
@@ -125,8 +144,6 @@ private:
 	VkFormat swapchain_format;
 	std::vector<VkImage> swapchain_images;
 	std::vector<VkImageView> swapchain_image_views;
-
-	VkRenderPass render_pass;
 
 	VkSampler texture_sampler;
 
@@ -193,8 +210,6 @@ private:
 
 	VkSampler shadowmap_sampler;	
 	VkDescriptorSetLayout shadowmap_layout;
-
-	VkRenderPass shadowpass;
 	
 	VkFramebuffer shadowpass_buffer;
 
@@ -217,7 +232,6 @@ private:
 //-------------------------------------------------------------------------------------
 //deferred shading --------------------------------------------------------------------
 private: 
-    VkRenderPass geometry_pass;
     VkFramebuffer g_buffer;
 
 private:
