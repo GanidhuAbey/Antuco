@@ -83,6 +83,87 @@ void SearchBuffer::write(VkDevice device, VkDeviceSize offset, VkDeviceSize data
 void SearchBuffer::free(VkDeviceSize offset) {
 }
 
+
+Image::Image() {}
+
+Image::~Image() {
+    destroy();
+}
+
+void Image::destroy() {
+    vkDestroyImageView(*p_device, image_view, nullptr);
+    vkDestroyImage(*p_device, image, nullptr);
+}
+
+VkImage Image::get_api_image() {
+    return image;
+}
+
+VkImageView Image::get_api_image_view() {
+    return image_view;
+}
+
+void Image::init(VkDevice device, ImageData info) {
+    p_device = std::make_shared<VkDevice>(device);
+    data = info;
+
+    create_image(info.image_info);
+    create_image_view(info.image_view_info);
+}
+
+void Image::create_image(ImageCreateInfo info) {
+    VkImageCreateInfo image_info{};
+    image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    image_info.pNext = nullptr;
+    image_info.flags = info.flags;
+    image_info.imageType = info.imageType;
+    image_info.format = info.format;
+    image_info.extent = info.extent;
+    image_info.mipLevels = info.mipLevels;
+    image_info.arrayLayers = info.arrayLayers;
+    image_info.samples = info.samples;
+    image_info.tiling = info.tiling;
+    image_info.usage = info.usage;
+    image_info.sharingMode = info.sharingMode;
+    image_info.queueFamilyIndexCount = info.queueFamilyIndexCount;
+    image_info.pQueueFamilyIndices = info.pQueueFamilyIndices;
+    image_info.initialLayout = info.initialLayout;
+
+
+    vkCreateImage(*p_device, &image_info, nullptr, &image);
+}
+
+void Image::create_image_view(ImageViewCreateInfo info) {
+    VkImageViewCreateInfo view_info{};
+
+    view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    view_info.pNext = nullptr;
+    view_info.flags = info.flags;
+    view_info.format = data.image_info.format;
+    if (info.format.has_value()) {
+        view_info.format = info.format.value();
+    }
+    view_info.components.r = info.r;
+    view_info.components.b = info.b;
+    view_info.components.g = info.g;
+    view_info.components.a = info.a;
+
+    view_info.image = image;
+    
+    VkImageSubresourceRange subresource{};
+    subresource.aspectMask = info.aspect_mask;
+    subresource.baseArrayLayer = info.base_array_layer;
+    subresource.baseMipLevel = info.base_mip_level;
+    subresource.layerCount = info.layer_count;
+    subresource.levelCount = info.level_count;
+
+    view_info.subresourceRange = subresource;
+    view_info.viewType = info.view_type;
+
+    vkCreateImageView(*p_device, &view_info, nullptr, &image_view);
+}
+
+
 StackBuffer::StackBuffer() {}
 
 StackBuffer::~StackBuffer() {
@@ -606,10 +687,17 @@ void mem::createImageView(VkDevice device, ImageViewCreateInfo viewInfo, Memory*
     createInfo.pNext = viewInfo.pNext;
     createInfo.flags = viewInfo.flags;
     createInfo.image = pMemory->image;
-    createInfo.viewType = viewInfo.viewType;
-    createInfo.format = viewInfo.format;
-    createInfo.components = viewInfo.components;
-    createInfo.subresourceRange = viewInfo.subresourceRange;
+    createInfo.viewType = viewInfo.view_type;
+    createInfo.format = viewInfo.format.value();
+    createInfo.components.r = viewInfo.r;
+    createInfo.components.b = viewInfo.b;
+    createInfo.components.g = viewInfo.g;
+    createInfo.components.a = viewInfo.a;
+    createInfo.subresourceRange.aspectMask = viewInfo.aspect_mask;
+    createInfo.subresourceRange.baseArrayLayer = viewInfo.base_array_layer;
+    createInfo.subresourceRange.baseMipLevel = viewInfo.base_mip_level;
+    createInfo.subresourceRange.layerCount = viewInfo.layer_count;
+    createInfo.subresourceRange.levelCount = viewInfo.level_count;
 
     if (vkCreateImageView(device, &createInfo, nullptr, &pMemory->imageView) != VK_SUCCESS) {
         throw std::runtime_error("could not create image view");

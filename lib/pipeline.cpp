@@ -4,6 +4,8 @@
 #include "data_structures.hpp"
 #include "logger/interface.hpp"
 
+#include <stdexcept>
+
 
 using namespace tuco;
 

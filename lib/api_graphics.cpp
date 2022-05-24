@@ -11,7 +11,7 @@ using namespace tuco;
 GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	not_created = true;
 	raytracing = false; //set this as an option in the pre-configuration settings.
-    oit = true;
+	oit_layers = 2;
 #ifdef APPLE_M1
     raytracing = false;
 #endif
@@ -49,11 +49,6 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	write_to_shadowmap_set();
 	create_semaphores();
 	create_fences();
-
-    if (oit) {
-        create_oit_pipeline();
-        create_oit_pass();
-    }
 
 	//create some buffers now
 	create_vertex_buffer();

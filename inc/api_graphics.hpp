@@ -89,7 +89,7 @@ private:
 //pre-configuration settings
 private:
 	bool raytracing;
-    bool oit;
+    uint32_t oit_layers;
 
 private:
 	VkResult create_debug_utils_messengar_utils(VkInstance instance,
@@ -109,6 +109,10 @@ private:
 	void create_command_pool();
 	uint32_t score_physical_device(VkPhysicalDevice physical_device);
 	void destroy_initialize();
+
+//images
+private:
+	std::vector<mem::Image> image_layers;
 
 //vulkan pipelines
 private:
@@ -264,6 +268,7 @@ private:
 	void create_colour_image_views();
 	void create_texture_sampler();
 	void create_render_pass();
+	void create_image_layers();
 	VkShaderModule create_shader_module(std::vector<uint32_t> shaderCode);
 	VkPipelineShaderStageCreateInfo fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
 	void write_to_ubo();	

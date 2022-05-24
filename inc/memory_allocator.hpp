@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <list>
 #include <utility>
+#include <optional>
 
 const VkDeviceSize INTER_BUFFER_SIZE = 1e8;
 const VkDeviceSize MINIMUM_SORT_DISTANCE = 1e5;
@@ -39,8 +40,69 @@ struct BufferCreateInfo {
     VkMemoryPropertyFlags memoryProperties;
 };
 
-class Image {
+struct ImageData {
+    ImageCreateInfo image_info;
+    ImageViewCreateInfo image_view_info;
+};
 
+struct ImageCreateInfo {
+    VkImageCreateFlags flags = 0;   
+    VkImageType imageType = VK_IMAGE_TYPE_2D;
+    VkFormat format;
+    VkExtent3D extent;
+    uint32_t mipLevels = 1;
+    uint32_t arrayLayers = 1;
+    VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
+    VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
+    VkImageUsageFlags usage;
+    VkImageLayout initialLayout;
+    VkDeviceSize size;
+    VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    uint32_t queueFamilyIndexCount;
+    const uint32_t* pQueueFamilyIndices;
+
+    VkMemoryPropertyFlags memoryProperties;
+};
+
+struct ImageViewCreateInfo {
+    void* pNext = nullptr;
+    VkImageViewCreateFlags flags = 0;
+    VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_2D;
+    std::optional<VkFormat> format = std::nullopt;
+    
+    VkComponentSwizzle r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    VkComponentSwizzle b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    VkComponentSwizzle g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    VkComponentSwizzle a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    
+    //image subresource
+    uint32_t layer_count = 1;
+    uint32_t base_array_layer = 0;
+    uint32_t level_count = 1;
+    uint32_t base_mip_level = 0;
+    VkImageAspectFlags aspect_mask;
+};
+
+
+class Image {
+private:
+    std::shared_ptr<VkDevice> p_device;
+    ImageData data;
+
+    VkImage image;
+    VkImageView image_view;
+public:
+    Image();
+    ~Image();
+    void init(VkDevice device, ImageData info);
+    //can only be called after init()
+    void destroy();
+    VkImage get_api_image();
+    VkImageView get_api_image_view();
+
+private:
+    void create_image(ImageCreateInfo info);
+    void create_image_view(ImageViewCreateInfo info);
 };
 
 class SearchBuffer {
@@ -177,33 +239,7 @@ struct MemoryData {
     size_t offsetIndex;
 };
 
-struct ImageCreateInfo {
-    VkImageCreateFlags flags = 0;
-    VkImageType imageType;
-    VkFormat format;
-    VkExtent3D extent;
-    uint32_t mipLevels;
-    uint32_t arrayLayers;
-    VkSampleCountFlagBits samples;
-    VkImageTiling tiling;
-    VkImageUsageFlags usage;
-    VkImageLayout initialLayout;
-    VkDeviceSize size;
-    VkSharingMode sharingMode;
-    uint32_t queueFamilyIndexCount;
-    const uint32_t* pQueueFamilyIndices;
 
-    VkMemoryPropertyFlags memoryProperties;
-};
-
-struct ImageViewCreateInfo {
-    void* pNext = nullptr;
-    VkImageViewCreateFlags flags = 0;
-    VkImageViewType viewType;
-    VkFormat format;
-    VkComponentMapping components;
-    VkImageSubresourceRange subresourceRange;
-};
 
 void createObject();
 void createBuffer(VkPhysicalDevice physicalDevice, VkDevice device, BufferCreateInfo* pCreateInfo, Memory* memory);

@@ -3,6 +3,7 @@
 #include "logger/interface.hpp"
 
 #include <cstdio>
+#include <memory>
 #include <stdexcept>
 
 using namespace tuco;

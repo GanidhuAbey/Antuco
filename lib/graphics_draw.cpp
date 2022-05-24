@@ -100,23 +100,19 @@ void GraphicsImpl::create_shadowmap_atlas() {
 	//setup create struct for image views
 	mem::ImageViewCreateInfo createInfo{};
 	createInfo.pNext = &usageInfo;
-	createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	createInfo.view_type = VK_IMAGE_VIEW_TYPE_2D;
 	createInfo.format = VK_FORMAT_D16_UNORM;
 
 
 	//this changes the colour output of the image, currently set to standard colours
-	createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
 	//layers are used for steroscopic 3d applications in which you would provide multiple images to each eye, creating a 3D effect.
 	//mipmap levels are an optimization made so that lower quality textures are used when further away to save resources.
-	createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-	createInfo.subresourceRange.baseMipLevel = 0;
-	createInfo.subresourceRange.levelCount = 1;
-	createInfo.subresourceRange.baseArrayLayer = 0;
-	createInfo.subresourceRange.layerCount = 1;
+	createInfo.aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
 	mem::createImageView(*p_device, createInfo, &shadowmap_atlas);
 
@@ -262,24 +258,20 @@ void GraphicsImpl::create_shadowpass_resources() {
 	//setup create struct for image views
 	mem::ImageViewCreateInfo createInfo{};
 	createInfo.pNext = &usageInfo;
-	createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	createInfo.view_type = VK_IMAGE_VIEW_TYPE_2D;
 	createInfo.format = VK_FORMAT_D16_UNORM;
 
 
 	//this changes the colour output of the image, currently set to standard colours
-	createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
 	//deciding on how many layers are in the image, and if we're using any mipmap levels.
 	//layers are used for steroscopic 3d applications in which you would provide multiple images to each eye, creating a 3D effect.
 	//mipmap levels are an optimization made so that lower quality textures are used when further away to save resources.
-	createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-	createInfo.subresourceRange.baseMipLevel = 0;
-	createInfo.subresourceRange.levelCount = 1;
-	createInfo.subresourceRange.baseArrayLayer = 0;
-	createInfo.subresourceRange.layerCount = 1;
+	createInfo.aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
 	mem::createImageView(*p_device, createInfo, &shadow_pass_texture);
 }
@@ -362,24 +354,20 @@ void GraphicsImpl::create_depth_resources() {
     //setup create struct for image views
     mem::ImageViewCreateInfo createInfo{};
     createInfo.pNext = &usageInfo;
-    createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    createInfo.view_type = VK_IMAGE_VIEW_TYPE_2D;
     createInfo.format = VK_FORMAT_D16_UNORM;
 
 
     //this changes the colour output of the image, currently set to standard colours
-    createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
     //deciding on how many layers are in the image, and if we're using any mipmap levels.
     //layers are used for steroscopic 3d applications in which you would provide multiple images to each eye, creating a 3D effect.
     //mipmap levels are an optimization made so that lower quality textures are used when further away to save resources.
-    createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-    createInfo.subresourceRange.baseMipLevel = 0;
-    createInfo.subresourceRange.levelCount = 1;
-    createInfo.subresourceRange.baseArrayLayer = 0;
-    createInfo.subresourceRange.layerCount = 1;
+    createInfo.aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
     mem::createImageView(*p_device, createInfo, &depth_memory);
 }
@@ -456,6 +444,31 @@ void GraphicsImpl::create_deffered_textures() {
 
 void GraphicsImpl::create_geometry_buffer() {
     //create_frame_buffer(&g_buffer);
+}
+
+void GraphicsImpl::create_image_layers() {
+    mem::ImageData data{};
+    data.image_info.extent.width = swapchain_extent.width;
+    data.image_info.extent.height = swapchain_extent.height;
+    data.image_info.extent.depth = 1.0;
+
+    data.image_info.format = swapchain_format;
+
+    data.image_info.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    data.image_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+
+    data.image_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    data.image_info.queueFamilyIndexCount = 1;
+    data.image_info.pQueueFamilyIndices = &graphics_family;
+
+    data.image_view_info.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+    image_layers.resize(oit_layers);
+
+    for (int i = 0; i < oit_layers; i++) {
+        image_layers[i].init(*p_device, data);
+    }
 }
 
 void GraphicsImpl::create_render_pass() {
@@ -1790,18 +1803,14 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
 
     //create image view for image
     mem::ImageViewCreateInfo viewInfo{};
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.view_type = VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-    viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
+    viewInfo.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
 
     mem::createImageView(*p_device, viewInfo, new_texture_image);
 
@@ -1874,18 +1883,14 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
 
     //create image view for image
     mem::ImageViewCreateInfo viewInfo{};
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.view_type = VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-    viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
+    viewInfo.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
 
     mem::createImageView(*p_device, viewInfo, new_texture_image);
 
