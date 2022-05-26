@@ -373,44 +373,6 @@ void GraphicsImpl::create_depth_resources() {
     mem::createImageView(*p_device, createInfo, &depth_memory);
 }
 
-void GraphicsImpl::create_colour_image_views() {
-    swapchain_image_views.resize(swapchain_images.size());
-
-    for (int i = 0; i < swapchain_image_views.size(); i++) {
-        VkImageViewUsageCreateInfo usageInfo{};
-        usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
-        usageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-        //setup create struct for image views
-        VkImageViewCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        createInfo.pNext = &usageInfo;
-        createInfo.image = swapchain_images[i];
-        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        createInfo.format = swapchain_format;
-
-
-        //this changes the colour output of the image, currently set to standard colours
-        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-        //deciding on how many layers are in the image, and if we're using any mipmap levels.
-        //layers are used for steroscopic 3d applications in which you would provide multiple images to each eye, creating a 3D effect.
-        //mipmap levels are an optimization made so that lower quality textures are used when further away to save resources.
-        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        createInfo.subresourceRange.baseMipLevel = 0;
-        createInfo.subresourceRange.levelCount = 1;
-        createInfo.subresourceRange.baseArrayLayer = 0;
-        createInfo.subresourceRange.layerCount = 1;
-
-        if (vkCreateImageView(*p_device, &createInfo, nullptr, &swapchain_image_views[i]) != VK_SUCCESS) {
-            throw std::runtime_error("one of the image views could not be created");
-        }
-    }
-}
-
 void GraphicsImpl::create_shadowpass() {
     std::vector<VkSubpassDependency> dependencies(2);
 
@@ -871,10 +833,6 @@ void GraphicsImpl::destroy_draw() {
         vkDestroySemaphore(*p_device, render_finished_semaphores[i], nullptr);
     }
 
-    for (size_t i = 0; i < swapchain_images.size(); i++) {
-        vkDestroyImageView(*p_device, swapchain_image_views[i], nullptr);
-    }
-
     for (size_t i = 0; i < texture_images.size(); i++) {
         for (size_t j = 0; j < texture_images[i].size(); j++) {
             mem::destroyImage(*p_device, *texture_images[i][j]);
@@ -980,14 +938,22 @@ void GraphicsImpl::create_swapchain() {
     }
 
     //grab swapchain images
+    mem::ImageViewCreateInfo image_info{};
+    image_info.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_info.format = swapchain_format;
+
+    std::vector<VkImage> images;
+    
     uint32_t swapchain_image_count = 0;
     vkGetSwapchainImagesKHR(*p_device, swapchain, &swapchain_image_count, nullptr);
+    images.resize(swapchain_image_count);
     swapchain_images.resize(swapchain_image_count);
-    vkGetSwapchainImagesKHR(*p_device, swapchain, &swapchain_image_count, swapchain_images.data());
+    vkGetSwapchainImagesKHR(*p_device, swapchain, &swapchain_image_count, images.data());
 
     //transfer swapchain to present layout
     for (size_t i = 0; i < swapchain_image_count; i++) {
-        transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, swapchain_images[i], VK_IMAGE_ASPECT_COLOR_BIT);
+        swapchain_images[i].init(*p_physical_device, *p_device, images[i], image_info);
+        transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, swapchain_images[i].get_api_image(), VK_IMAGE_ASPECT_COLOR_BIT);
     }
 }
 
@@ -1059,6 +1025,140 @@ void GraphicsImpl::free_command_buffers() {
     vkFreeCommandBuffers(*p_device, command_pool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
 }
 
+void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size_t command_index) {
+    VkRenderPassBeginInfo shadowpass_info{};
+
+    shadowpass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    shadowpass_info.renderPass = shadowpass.get_api_pass();
+    shadowpass_info.framebuffer = shadowpass_buffer;
+    VkRect2D renderArea{};
+    renderArea.offset = VkOffset2D{ 0, 0 };
+    renderArea.extent = VkExtent2D{ shadowmap_width, shadowmap_height };
+    shadowpass_info.renderArea = renderArea;
+
+    VkClearValue shadowpass_clear;
+    shadowpass_clear.depthStencil = { 1.0, 0 };
+
+    shadowpass_info.clearValueCount = 1;
+    shadowpass_info.pClearValues = &shadowpass_clear;
+
+    int current_shadow = 0;
+    for (size_t y = 0; y < glm::sqrt(MAX_SHADOW_CASTERS); y++) {
+        for (size_t x = 0; x < glm::sqrt(MAX_SHADOW_CASTERS); x++) {
+            //there is at least one light that is casting a shadow here
+            vkCmdBeginRenderPass(command_buffers[command_index], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
+            //do stuff...
+            vkCmdBindPipeline(command_buffers[command_index], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmap_pipeline.get_api_pipeline());
+
+            VkViewport shadowpass_port = {};
+            shadowpass_port.x = 0;
+            shadowpass_port.y = 0;
+            shadowpass_port.width = (float)shadowmap_width;
+            shadowpass_port.height = (float)shadowmap_height;
+            shadowpass_port.minDepth = 0.0;
+            shadowpass_port.maxDepth = 1.0;
+            vkCmdSetViewport(command_buffers[command_index], 0, 1, &shadowpass_port);
+
+            VkRect2D shadowpass_scissor{};
+            shadowpass_scissor.offset = { 0, 0 };
+            shadowpass_scissor.extent.width = shadowmap_width;
+            shadowpass_scissor.extent.height = shadowmap_height;
+            vkCmdSetScissor(command_buffers[command_index], 0, 1, &shadowpass_scissor);
+
+            //time for the draw calls
+            const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
+            vkCmdBindVertexBuffers(command_buffers[command_index], 0, 1, &vertex_buffer.buffer, offsets);
+            vkCmdBindIndexBuffer(command_buffers[command_index], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+            //vkCmdSetDepthBias(command_buffers[i], 5.0f, 0.0f, 1.75f);
+
+            //universal to every object so i can push the light constants before the for loop
+            //vkCmdPushConstants(shadowpass_render, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
+            //draw first object (cube)
+            uint32_t total_indexes = 0;
+            uint32_t total_vertices = 0;
+
+            uint32_t* number;
+
+            for (size_t j = 0; j < game_objects.size(); j++) {
+                if (!game_objects[j]->update) {
+                    for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
+                        const Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
+                        uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
+                        uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
+
+                        VkDescriptorSet descriptors[1] = { light_ubo[j][command_index] };
+                        vkCmdBindDescriptorSets(command_buffers[command_index], 
+                            VK_PIPELINE_BIND_POINT_GRAPHICS, 
+                            shadowmap_pipeline.get_api_layout(), 
+                            0, 
+                            1, 
+                            descriptors, 
+                            0, 
+                            nullptr);
+
+                        vkCmdDrawIndexed(command_buffers[command_index], 
+                            index_count, 
+                            1, 
+                            total_indexes, 
+                            total_vertices, 
+                            static_cast<uint32_t>(0));
+
+                        total_indexes += index_count;
+                        total_vertices += vertex_count;
+                    }
+                }
+            }
+            vkCmdEndRenderPass(command_buffers[command_index]);
+
+            transfer_image_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, 
+                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+                shadow_pass_texture.image, 
+                VK_IMAGE_ASPECT_DEPTH_BIT, 
+                command_buffers[command_index]);
+
+
+            //take depth texture calculated in first render pass from DEPTH_STENCIL_READ_ONLY -> TRANSFER_SRC       
+            copy_image_to_buffer(shadowmap_buffers[0].buffer, 
+                shadow_pass_texture, 
+                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+                VK_IMAGE_ASPECT_DEPTH_BIT, 
+                0, 
+                command_buffers[command_index]);
+
+            transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+                VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+                shadow_pass_texture.image, 
+                VK_IMAGE_ASPECT_DEPTH_BIT, 
+                command_buffers[command_index]);
+
+            //transfer the image data from the intermediary buffer into the shadow map
+            transfer_image_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+                shadowmap_atlas.image, 
+                VK_IMAGE_ASPECT_DEPTH_BIT, 
+                command_buffers[command_index]);
+
+            VkOffset3D image_offset = { static_cast<int32_t>(x * SHADOWMAP_SIZE), static_cast<int32_t>(y * SHADOWMAP_SIZE), 0 };
+
+            copy_buffer_to_image(shadowmap_buffers[0].buffer, 
+                shadowmap_atlas, 
+                image_offset, 
+                VK_IMAGE_ASPECT_DEPTH_BIT, 
+                SHADOWMAP_SIZE, 
+                SHADOWMAP_SIZE, 
+                command_buffers[command_index]);
+
+            transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+                shadowmap_atlas.image, 
+                VK_IMAGE_ASPECT_DEPTH_BIT, 
+                command_buffers[command_index]);
+        }
+        current_shadow++;
+    }
+}
+
 void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects) {
     //allocate memory for command buffer, you have to create a draw command for each image
     command_buffers.resize(swapchain_framebuffers.size());
@@ -1085,108 +1185,17 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
             throw std::runtime_error("one of the command buffers failed to begin");
         }
 
-		//run shadow pass for every light in the scene
-
-        VkRenderPassBeginInfo shadowpass_info{};
-
-        shadowpass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        shadowpass_info.renderPass = shadowpass.get_api_pass();
-        shadowpass_info.framebuffer = shadowpass_buffer;
-        VkRect2D renderArea{};
-        renderArea.offset = VkOffset2D{ 0, 0 };
-        renderArea.extent = VkExtent2D{ shadowmap_width, shadowmap_height };
-        shadowpass_info.renderArea = renderArea;
-
-        VkClearValue shadowpass_clear;
-        shadowpass_clear.depthStencil = { 1.0, 0 };
-
-        shadowpass_info.clearValueCount = 1;
-        shadowpass_info.pClearValues = &shadowpass_clear;
-    
-        int current_shadow = 0;
-        for (size_t y = 0; y < glm::sqrt(MAX_SHADOW_CASTERS); y++) {
-            for (size_t x = 0; x < glm::sqrt(MAX_SHADOW_CASTERS); x++) {
-                if (shadow_caster_indices.size() > current_shadow) { 
-                    //there is at least one light that is casting a shadow here
-                    vkCmdBeginRenderPass(command_buffers[i], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
-                    //do stuff...
-                    vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmap_pipeline.get_api_pipeline());
-
-                    VkViewport shadowpass_port = {};
-                    shadowpass_port.x = 0;
-                    shadowpass_port.y = 0;
-                    shadowpass_port.width = (float)shadowmap_width;
-                    shadowpass_port.height = (float)shadowmap_height;
-                    shadowpass_port.minDepth = 0.0;
-                    shadowpass_port.maxDepth = 1.0;
-                    vkCmdSetViewport(command_buffers[i], 0, 1, &shadowpass_port);
-
-                    VkRect2D shadowpass_scissor{};
-                    shadowpass_scissor.offset = { 0, 0 };
-                    shadowpass_scissor.extent.width = shadowmap_width;
-                    shadowpass_scissor.extent.height = shadowmap_height;
-                    vkCmdSetScissor(command_buffers[i], 0, 1, &shadowpass_scissor);
-
-                    //time for the draw calls
-                    const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
-                    vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offsets);
-                    vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-                    //vkCmdSetDepthBias(command_buffers[i], 5.0f, 0.0f, 1.75f);
-
-                    //universal to every object so i can push the light constants before the for loop
-                    //vkCmdPushConstants(shadowpass_render, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
-                    //draw first object (cube)
-                    uint32_t total_indexes = 0;
-                    uint32_t total_vertices = 0;
-
-                    uint32_t* number;
-                    
-                    for (size_t j = 0; j < game_objects.size(); j++) {
-                        if (!game_objects[j]->update) {
-                            for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
-                                const Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
-                                uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
-                                uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
-
-                                //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
-                                //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
-
-                                VkDescriptorSet descriptors[1] = { light_ubo[j][i] };
-                                vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmap_pipeline.get_api_layout(), 0, 1, descriptors, 0, nullptr);
-                                vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
-
-                                total_indexes += index_count;
-                                total_vertices += vertex_count;
-                            }
-                        }
-                    }
-                    vkCmdEndRenderPass(command_buffers[i]);
-
-                    transfer_image_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, shadow_pass_texture.image, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
-
-
-                    //take depth texture calculated in first render pass from DEPTH_STENCIL_READ_ONLY -> TRANSFER_SRC       
-                    copy_image_to_buffer(shadowmap_buffers[0].buffer, shadow_pass_texture, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, command_buffers[i]);
-                    transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, shadow_pass_texture.image, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
-
-                    //transfer the image data from the intermediary buffer into the shadow map
-                    transfer_image_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, shadowmap_atlas.image, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
-                    VkOffset3D image_offset = {static_cast<int32_t>(x*SHADOWMAP_SIZE), static_cast<int32_t>(y*SHADOWMAP_SIZE), 0}; 
-                    copy_buffer_to_image(shadowmap_buffers[0].buffer, shadowmap_atlas, image_offset, VK_IMAGE_ASPECT_DEPTH_BIT, SHADOWMAP_SIZE, SHADOWMAP_SIZE, command_buffers[i]);
-                    transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, shadowmap_atlas.image, VK_IMAGE_ASPECT_DEPTH_BIT, command_buffers[i]);
-                }
-                current_shadow++;
-            }			
-		}
+        create_shadow_map(game_objects, i);
          
 		VkRenderPassBeginInfo renderInfo{};
 		renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderInfo.renderPass = render_pass.get_api_pass();
 		renderInfo.framebuffer = swapchain_framebuffers[i];
-		renderArea.offset = VkOffset2D{ 0, 0 };
-		renderArea.extent = swapchain_extent;
-		renderInfo.renderArea = renderArea;
+
+        VkRect2D render_area{};
+		render_area.offset = VkOffset2D{ 0, 0 };
+		render_area.extent = swapchain_extent;
+		renderInfo.renderArea = render_area;
 
 		const size_t size_of_array = 3;
 		std::vector<VkClearValue> clear_values;
@@ -1272,54 +1281,71 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         vkCmdEndRenderPass(command_buffers[i]);
         //switch image back to depth stencil layout for the next render pass
 
-
-        //can use VkSubpassDependency to change layout of image_layers[0] automatically.
-        transfer_image_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, swapchain_images[i], VK_IMAGE_ASPECT_COLOR_BIT, command_buffers[i]); 
- 
-        VkImageCopy copy_info{};
-        
-        VkImageSubresourceLayers src_subresource{};
-        src_subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        src_subresource.baseArrayLayer = 0;
-        src_subresource.layerCount = 1;
-        src_subresource.mipLevel = 0;
-
-        VkOffset3D src_offset{};
-        src_offset.x = 0;
-        src_offset.y = 0;
-        src_offset.z = 0;
-
-        VkImageSubresourceLayers dst_subresource{};
-        dst_subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        dst_subresource.baseArrayLayer = 0;
-        dst_subresource.layerCount = 1;
-        dst_subresource.mipLevel = 0;
-
-        VkOffset3D dst_offset{};
-        dst_offset.x = 0;
-        dst_offset.y = 0;
-        dst_offset.z = 0;
-
-        VkExtent3D size{};
-        size.depth = 1;
-        size.height = swapchain_extent.height;
-        size.width = swapchain_extent.width;
-
-        copy_info.extent = size;
-        copy_info.dstOffset = dst_offset;
-        copy_info.srcOffset = src_offset;
-        copy_info.srcSubresource = src_subresource;
-        copy_info.dstSubresource = dst_subresource;
-
-        vkCmdCopyImage(command_buffers[i], image_layers[0].get_api_image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapchain_images[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_info);
-
-        transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,  swapchain_images[i], VK_IMAGE_ASPECT_COLOR_BIT, command_buffers[i]); 
+        resolve_image_layers(i);
    
         //end commands to go to execute stage
         if (vkEndCommandBuffer(command_buffers[i]) != VK_SUCCESS) {
             throw std::runtime_error("could not end command buffer");
         }
     }
+}
+
+void GraphicsImpl::resolve_image_layers(size_t i) {
+    //can use VkSubpassDependency to change layout of image_layers[0] automatically.
+    transfer_image_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        swapchain_images[i].get_api_image(),
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        command_buffers[i]);
+
+    VkImageCopy copy_info{};
+
+    VkImageSubresourceLayers src_subresource{};
+    src_subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    src_subresource.baseArrayLayer = 0;
+    src_subresource.layerCount = 1;
+    src_subresource.mipLevel = 0;
+
+    VkOffset3D src_offset{};
+    src_offset.x = 0;
+    src_offset.y = 0;
+    src_offset.z = 0;
+
+    VkImageSubresourceLayers dst_subresource{};
+    dst_subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    dst_subresource.baseArrayLayer = 0;
+    dst_subresource.layerCount = 1;
+    dst_subresource.mipLevel = 0;
+
+    VkOffset3D dst_offset{};
+    dst_offset.x = 0;
+    dst_offset.y = 0;
+    dst_offset.z = 0;
+
+    VkExtent3D size{};
+    size.depth = 1;
+    size.height = swapchain_extent.height;
+    size.width = swapchain_extent.width;
+
+    copy_info.extent = size;
+    copy_info.dstOffset = dst_offset;
+    copy_info.srcOffset = src_offset;
+    copy_info.srcSubresource = src_subresource;
+    copy_info.dstSubresource = dst_subresource;
+
+    vkCmdCopyImage(command_buffers[i],
+        image_layers[0].get_api_image(),
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        swapchain_images[i].get_api_image(),
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &copy_info);
+
+    transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        swapchain_images[i].get_api_image(),
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        command_buffers[i]);
 }
 
 void GraphicsImpl::create_uniform_buffer() {
@@ -1481,10 +1507,6 @@ void GraphicsImpl::cleanup_swapchain() {
         vkDestroyFramebuffer(*p_device, frame_buffer, nullptr);
     }
 
-    for (size_t i = 0; i < swapchain_images.size(); i++) {
-        vkDestroyImageView(*p_device, swapchain_image_views[i], nullptr);
-    }
- 
     mem::destroyImage(*p_device, depth_memory);
     render_pass.destroy();
     vkDestroySwapchainKHR(*p_device, swapchain, nullptr);
@@ -1496,7 +1518,6 @@ void GraphicsImpl::cleanup_swapchain() {
 void GraphicsImpl::recreate_swapchain() {
     create_swapchain();
     create_depth_resources();
-    create_colour_image_views();
     create_render_pass();
     create_swapchain_buffers();
         

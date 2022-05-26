@@ -150,8 +150,7 @@ private:
 	VkSwapchainKHR swapchain;
 	VkExtent2D swapchain_extent;
 	VkFormat swapchain_format;
-	std::vector<VkImage> swapchain_images;
-	std::vector<VkImageView> swapchain_image_views;
+	std::vector<mem::Image> swapchain_images;
 
 	VkSampler texture_sampler;
 
@@ -259,13 +258,14 @@ private:
 	void create_texture_pool();
 	void create_texture_set(size_t mesh_count);
 	void create_command_buffers(std::vector<GameObject*> game_objects);
+	void create_shadow_map(std::vector<GameObject*> game_objects, size_t command_index);
+	void resolve_image_layers(size_t i);
 	void draw_frame();
 	void create_semaphores();
 	void create_fences();
 	void create_swapchain();
 	void create_depth_resources();
     void create_swapchain_buffers();
-	void create_colour_image_views();
 	void create_texture_sampler();
 	void create_render_pass();
 	void create_image_layers();

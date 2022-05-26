@@ -99,6 +99,14 @@ VkImage Image::get_api_image() {
     return image;
 }
 
+void mem::Image::init(VkPhysicalDevice physical_device, VkDevice device, VkImage image, ImageViewCreateInfo info) {
+    p_device = std::make_shared<VkDevice>(device);
+    p_phys_device = std::make_shared<VkPhysicalDevice>(physical_device);
+
+    Image::image = image;
+    create_image_view(info);
+}
+
 VkImageView Image::get_api_image_view() {
     return image_view;
 }

@@ -97,6 +97,7 @@ public:
     Image();
     ~Image();
     void init(VkPhysicalDevice physical_device, VkDevice device, ImageData info);
+    void init(VkPhysicalDevice physical_device, VkDevice device, VkImage image, ImageViewCreateInfo info);
     //can only be called after init()
     void destroy();
     VkImage get_api_image();
