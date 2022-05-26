@@ -75,7 +75,7 @@ private:
 private:
 	VkInstance instance;
 	VkSurfaceKHR surface;
-	VkPhysicalDevice physical_device;
+    std::shared_ptr<VkPhysicalDevice> p_physical_device;
     std::shared_ptr<VkDevice> p_device;
 	VkDebugUtilsMessengerEXT debug_messenger;
 
@@ -277,6 +277,7 @@ private:
     void update_materials(VkDeviceSize memory_offset, MaterialsObject mat);
 	void copy_buffer_to_image(VkBuffer buffer, mem::Memory image, VkOffset3D image_offset, VkImageAspectFlagBits aspect_mask, uint32_t image_width, uint32_t image_height, std::optional<VkCommandBuffer> command_buffer = std::nullopt);	
 	void copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset, std::optional<VkCommandBuffer> command_buffer=std::nullopt);
+    void copy_image_to_image(VkImage src_image, VkImageLayout src_layout, VkImage dst_image, VkImageLayout dst_layout, VkCommandBuffer command_buffer);
 	void transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, VkImage image, VkImageAspectFlagBits aspect_mask, std::optional<VkCommandBuffer> command_buffer=std::nullopt);
 	void create_texture_image(aiString texturePath, size_t object, size_t texture_set); 
     void create_empty_image(size_t object, size_t texture_set);

@@ -40,10 +40,6 @@ struct BufferCreateInfo {
     VkMemoryPropertyFlags memoryProperties;
 };
 
-struct ImageData {
-    ImageCreateInfo image_info;
-    ImageViewCreateInfo image_view_info;
-};
 
 struct ImageCreateInfo {
     VkImageCreateFlags flags = 0;   
@@ -83,18 +79,24 @@ struct ImageViewCreateInfo {
     VkImageAspectFlags aspect_mask;
 };
 
+struct ImageData {
+    ImageCreateInfo image_info;
+    ImageViewCreateInfo image_view_info;
+};
 
 class Image {
 private:
     std::shared_ptr<VkDevice> p_device;
+    std::shared_ptr<VkPhysicalDevice> p_phys_device;
     ImageData data;
 
     VkImage image;
     VkImageView image_view;
+    VkDeviceMemory memory;
 public:
     Image();
     ~Image();
-    void init(VkDevice device, ImageData info);
+    void init(VkPhysicalDevice physical_device, VkDevice device, ImageData info);
     //can only be called after init()
     void destroy();
     VkImage get_api_image();

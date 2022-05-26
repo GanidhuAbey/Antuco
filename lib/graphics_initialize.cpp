@@ -178,7 +178,7 @@ void GraphicsImpl::pick_physical_device() {
 	}
 
 	//make the best physical device the one we'll use for the program
-	physical_device = current_best_device;
+	p_physical_device = std::make_shared<VkPhysicalDevice>(current_best_device);
 }
 
 uint32_t GraphicsImpl::score_physical_device(VkPhysicalDevice physical_device) {
@@ -205,7 +205,7 @@ uint32_t GraphicsImpl::score_physical_device(VkPhysicalDevice physical_device) {
 
 void GraphicsImpl::create_logical_device() {
 	//first we need to retrieve queue data from the computer
-	QueueData indices(physical_device, surface);
+	QueueData indices(*p_physical_device, surface);
 
 	graphics_family = indices.graphicsFamily.value();
 	present_family = indices.presentFamily.value();
@@ -271,7 +271,7 @@ void GraphicsImpl::create_logical_device() {
 	deviceInfo.pEnabledFeatures = &device_features;
 
     VkDevice device;
-	VkResult device_result = vkCreateDevice(physical_device, &deviceInfo, nullptr, &device);
+	VkResult device_result = vkCreateDevice(*p_physical_device, &deviceInfo, nullptr, &device);
     p_device = std::make_shared<VkDevice>(device);
 	if (device_result != VK_SUCCESS) {
 		printf("[ERROR %d] - create_logical_device: could not create vulkan device object", device_result);
@@ -331,9 +331,9 @@ bool GraphicsImpl::validation_layer_supported(std::vector<const char*> names) {
 
 bool GraphicsImpl::check_device_extensions(std::vector<const char*> extensions, uint32_t extensions_count) {
 	uint32_t all_extensions_count;
-	vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &all_extensions_count, nullptr);
+	vkEnumerateDeviceExtensionProperties(*p_physical_device, nullptr, &all_extensions_count, nullptr);
 	std::vector<VkExtensionProperties> all_extensions(all_extensions_count);
-	vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &all_extensions_count, all_extensions.data());
+	vkEnumerateDeviceExtensionProperties(*p_physical_device, nullptr, &all_extensions_count, all_extensions.data());
 
 	//check if required extensions are supported
 	for (uint32_t i = 0; i < extensions_count; i++) {

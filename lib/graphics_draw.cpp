@@ -53,7 +53,7 @@ void GraphicsImpl::create_shadowmap_transfer_buffer() {
 
     for (size_t i = 0; i < SHADOW_TRANSFER_BUFFERS; i++) {
         //create all required buffers
-        shadowmap_buffers[i].init(&physical_device, &*p_device, &command_pool, &buffer_info);
+        shadowmap_buffers[i].init(p_physical_device.get(), &*p_device, &command_pool, &buffer_info);
     } 
 }
 
@@ -91,7 +91,7 @@ void GraphicsImpl::create_shadowmap_atlas() {
     shadow_image_info.pQueueFamilyIndices = &graphics_family;
     shadow_image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    mem::createImage(physical_device, *p_device, &shadow_image_info, &shadowmap_atlas);
+    mem::createImage(*p_physical_device, *p_device, &shadow_image_info, &shadowmap_atlas);
 
 	VkImageViewUsageCreateInfo usageInfo{};
 	usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
@@ -178,8 +178,9 @@ void GraphicsImpl::create_swapchain_buffers() {
     size_t image_num = swapchain_images.size();
     swapchain_framebuffers.resize(image_num); 
     
-    for (size_t i = 0; i < image_num; i++) {
-        VkImageView image_views[2] = { swapchain_image_views[i], depth_memory.imageView };
+    for (size_t i = 0; i < swapchain_images.size(); i++) {
+        LOG("hi");
+        VkImageView image_views[2] = { image_layers[0].get_api_image_view(), depth_memory.imageView };
         create_frame_buffer(render_pass.get_api_pass(), 2, image_views, swapchain_extent.width, swapchain_extent.height, &swapchain_framebuffers[i]);
     }
 }
@@ -246,7 +247,7 @@ void GraphicsImpl::create_shadowpass_resources() {
     shadow_image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     //create memory for image
-    mem::createImage(physical_device, *p_device, &shadow_image_info, &shadow_pass_texture);
+    mem::createImage(*p_physical_device, *p_device, &shadow_image_info, &shadow_pass_texture);
 
     //transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, &shadow_pass_texture);
 
@@ -344,7 +345,7 @@ void GraphicsImpl::create_depth_resources() {
     depth_image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     //create memory for image
-    mem::createImage(physical_device, *p_device, &depth_image_info, &depth_memory);
+    mem::createImage(*p_physical_device, *p_device, &depth_image_info, &depth_memory);
 
     //create image view
     VkImageViewUsageCreateInfo usageInfo{};
@@ -454,7 +455,6 @@ void GraphicsImpl::create_image_layers() {
 
     data.image_info.format = swapchain_format;
 
-    data.image_info.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     data.image_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
     data.image_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -467,16 +467,36 @@ void GraphicsImpl::create_image_layers() {
     image_layers.resize(oit_layers);
 
     for (int i = 0; i < oit_layers; i++) {
-        image_layers[i].init(*p_device, data);
+        image_layers[i].init(*p_physical_device, *p_device, data);
     }
 }
 
 void GraphicsImpl::create_render_pass() {
     ColourConfig config{};
     config.format = swapchain_format;
+    config.final_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+    std::vector<VkSubpassDependency> dependencies(2);
+
+    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[0].dstSubpass = 0;
+    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependencies[0].srcAccessMask = VK_ACCESS_NONE;
+    dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+    dependencies[1].srcSubpass = 0;
+    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependencies[1].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
     render_pass.add_colour(0, config);
     render_pass.add_depth(1);
+    render_pass.add_dependency(dependencies);
     render_pass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, true, true);
     render_pass.build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);
 }
@@ -913,15 +933,15 @@ VkSurfaceFormatKHR choose_best_format(std::vector<VkSurfaceFormatKHR> formats) {
 void GraphicsImpl::create_swapchain() {
     //query the surface capabilities
     VkSurfaceCapabilitiesKHR capabilities;
-    if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &capabilities) != VK_SUCCESS) {
+    if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(*p_physical_device, surface, &capabilities) != VK_SUCCESS) {
         LOG("[ERROR] - create_swapchain : could not query the surface capabilities");
         throw std::runtime_error("");
     }
 
     uint32_t format_count = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(*p_physical_device, surface, &format_count, nullptr);
     std::vector<VkSurfaceFormatKHR> formats(format_count);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, formats.data());
+    vkGetPhysicalDeviceSurfaceFormatsKHR(*p_physical_device, surface, &format_count, formats.data());
 
     VkSurfaceFormatKHR best_format = choose_best_format(formats);
 
@@ -947,7 +967,7 @@ void GraphicsImpl::create_swapchain() {
     swapchain_extent = capabilities.currentExtent;
     swapInfo.imageExtent = swapchain_extent;
     swapInfo.imageArrayLayers = 1;
-    swapInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    swapInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     swapInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     swapInfo.preTransform = capabilities.currentTransform;
     swapInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; //its not in the plans to mess with the opacity of of colours, maybe in the future when glass is introduced
@@ -964,6 +984,11 @@ void GraphicsImpl::create_swapchain() {
     vkGetSwapchainImagesKHR(*p_device, swapchain, &swapchain_image_count, nullptr);
     swapchain_images.resize(swapchain_image_count);
     vkGetSwapchainImagesKHR(*p_device, swapchain, &swapchain_image_count, swapchain_images.data());
+
+    //transfer swapchain to present layout
+    for (size_t i = 0; i < swapchain_image_count; i++) {
+        transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, swapchain_images[i], VK_IMAGE_ASPECT_COLOR_BIT);
+    }
 }
 
 
@@ -1154,16 +1179,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                 current_shadow++;
             }			
 		}
-        
-        /*
-        {
-            VkRenderPassBeginInfo g_pass{};
-            g_pass.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            g_pass.renderPass = geometry_pass;
-
-        }
-        */
-    
+         
 		VkRenderPassBeginInfo renderInfo{};
 		renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderInfo.renderPass = render_pass.get_api_pass();
@@ -1256,6 +1272,49 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         vkCmdEndRenderPass(command_buffers[i]);
         //switch image back to depth stencil layout for the next render pass
 
+
+        //can use VkSubpassDependency to change layout of image_layers[0] automatically.
+        transfer_image_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, swapchain_images[i], VK_IMAGE_ASPECT_COLOR_BIT, command_buffers[i]); 
+ 
+        VkImageCopy copy_info{};
+        
+        VkImageSubresourceLayers src_subresource{};
+        src_subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        src_subresource.baseArrayLayer = 0;
+        src_subresource.layerCount = 1;
+        src_subresource.mipLevel = 0;
+
+        VkOffset3D src_offset{};
+        src_offset.x = 0;
+        src_offset.y = 0;
+        src_offset.z = 0;
+
+        VkImageSubresourceLayers dst_subresource{};
+        dst_subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        dst_subresource.baseArrayLayer = 0;
+        dst_subresource.layerCount = 1;
+        dst_subresource.mipLevel = 0;
+
+        VkOffset3D dst_offset{};
+        dst_offset.x = 0;
+        dst_offset.y = 0;
+        dst_offset.z = 0;
+
+        VkExtent3D size{};
+        size.depth = 1;
+        size.height = swapchain_extent.height;
+        size.width = swapchain_extent.width;
+
+        copy_info.extent = size;
+        copy_info.dstOffset = dst_offset;
+        copy_info.srcOffset = src_offset;
+        copy_info.srcSubresource = src_subresource;
+        copy_info.dstSubresource = dst_subresource;
+
+        vkCmdCopyImage(command_buffers[i], image_layers[0].get_api_image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapchain_images[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_info);
+
+        transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,  swapchain_images[i], VK_IMAGE_ASPECT_COLOR_BIT, command_buffers[i]); 
+   
         //end commands to go to execute stage
         if (vkEndCommandBuffer(command_buffers[i]) != VK_SUCCESS) {
             throw std::runtime_error("could not end command buffer");
@@ -1272,7 +1331,7 @@ void GraphicsImpl::create_uniform_buffer() {
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    uniform_buffer.init(physical_device, *p_device, &buffer_info);
+    uniform_buffer.init(*p_physical_device, *p_device, &buffer_info);
 }
 
 void GraphicsImpl::create_vertex_buffer() {
@@ -1284,7 +1343,7 @@ void GraphicsImpl::create_vertex_buffer() {
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    vertex_buffer.init(&physical_device, &*p_device, &command_pool, &buffer_info);
+    vertex_buffer.init(p_physical_device.get(), &*p_device, &command_pool, &buffer_info);
 }
 
 void GraphicsImpl::create_index_buffer() {
@@ -1296,7 +1355,7 @@ void GraphicsImpl::create_index_buffer() {
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     
-    index_buffer.init(&physical_device, &*p_device, &command_pool, &buffer_info);
+    index_buffer.init(&*p_physical_device, &*p_device, &command_pool, &buffer_info);
 }
 
 
@@ -1538,7 +1597,42 @@ void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLa
 
     VkPipelineStageFlags sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
     VkPipelineStageFlags destinationStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
+    if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+        imageTransfer.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    }
+    else if (output_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+        imageTransfer.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        imageTransfer.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    }
+    else if (output_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR && initial_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
+        imageTransfer.srcAccessMask = 0;
+        imageTransfer.dstAccessMask = 0;
+
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    }
+    else if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+        imageTransfer.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    }
+    else if (output_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR && initial_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+        imageTransfer.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        imageTransfer.dstAccessMask = 0;
+
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    }
+    else if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
         imageTransfer.srcAccessMask = 0; // this basically means none or doesnt matter
         imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
@@ -1796,7 +1890,7 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    mem::createImage(physical_device, *p_device, &imageInfo, new_texture_image);
+    mem::createImage(*p_physical_device, *p_device, &imageInfo, new_texture_image);
 
     //transfer the image again to a more optimal layout for texture sampling?
     transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, new_texture_image->image, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -1844,7 +1938,7 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
 
     //TODO: make buffer at runtime specifically for transfer commands
     mem::Memory newBuffer;
-    mem::createBuffer(physical_device, *p_device, &textureBufferInfo, &newBuffer);
+    mem::createBuffer(*p_physical_device, *p_device, &textureBufferInfo, &newBuffer);
     
     mem::allocateMemory(dataSize, &newBuffer);
     mem::mapMemory(*p_device, dataSize, &newBuffer, pixels);
@@ -1871,7 +1965,7 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    mem::createImage(physical_device, *p_device, &imageInfo, new_texture_image);
+    mem::createImage(*p_physical_device, *p_device, &imageInfo, new_texture_image);
 
     //mem::maAllocateMemory(dataSize, &newTextureImage);
     //transfer the image to appropriate layout for copying

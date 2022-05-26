@@ -103,8 +103,9 @@ VkImageView Image::get_api_image_view() {
     return image_view;
 }
 
-void Image::init(VkDevice device, ImageData info) {
+void Image::init(VkPhysicalDevice physical_device, VkDevice device, ImageData info) {
     p_device = std::make_shared<VkDevice>(device);
+    p_phys_device = std::make_shared<VkPhysicalDevice>(physical_device);
     data = info;
 
     create_image(info.image_info);
@@ -127,10 +128,44 @@ void Image::create_image(ImageCreateInfo info) {
     image_info.sharingMode = info.sharingMode;
     image_info.queueFamilyIndexCount = info.queueFamilyIndexCount;
     image_info.pQueueFamilyIndices = info.pQueueFamilyIndices;
-    image_info.initialLayout = info.initialLayout;
-
+    image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     vkCreateImage(*p_device, &image_info, nullptr, &image);
+
+    //allocate memory
+    VkMemoryRequirements memory_req{};
+    vkGetImageMemoryRequirements(*p_device, image, &memory_req);
+
+    //create some memory for the image
+    VkMemoryAllocateInfo memory_alloc{};
+    memory_alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memory_alloc.allocationSize = memory_req.size;
+
+    VkPhysicalDeviceMemoryProperties memoryProperties;
+    vkGetPhysicalDeviceMemoryProperties(*p_phys_device, &memoryProperties);
+
+    VkMemoryPropertyFlags properties = info.memoryProperties;
+
+    uint32_t memoryIndex = 0;
+    //uint32_t suitableMemoryForBuffer = 0;
+    for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++) {
+        if (memory_req.memoryTypeBits & (1 << i) && ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)) {
+            memoryIndex = i;
+            break;
+        }
+    }
+
+    memory_alloc.memoryTypeIndex = findMemoryType(*p_phys_device, memory_req.memoryTypeBits, info.memoryProperties);
+
+    VkResult alloc_result = vkAllocateMemory(*p_device, &memory_alloc, nullptr, &memory);
+
+    if (alloc_result != VK_SUCCESS) {
+        throw std::runtime_error("could not allocate memory for memory pool");
+    }
+
+    if (vkBindImageMemory(*p_device, image, memory, 0) != VK_SUCCESS) {
+        throw std::runtime_error("could not bind memory to image");
+    }
 }
 
 void Image::create_image_view(ImageViewCreateInfo info) {
@@ -509,8 +544,6 @@ void Pool::destroyPool(VkDevice device) {
 }
 
 void Pool::createPool(VkDevice device, PoolCreateInfo create_info) {
-    printf("1: %u \n", create_info.pool_size);
-    printf("2: %u \n", create_info.set_type);
     //create pool described by pool_info
     VkDescriptorPoolSize pool_size{};
     pool_size.type = create_info.set_type;

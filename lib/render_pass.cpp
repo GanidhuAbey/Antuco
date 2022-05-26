@@ -60,7 +60,7 @@ void TucoPass::add_colour(uint32_t attachment, ColourConfig config) {
     colour_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colour_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     colour_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; //the other subpass does not affect the layout of the image this subpass uses.
-    colour_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    colour_attachment.finalLayout = config.final_layout;
 
     colour_ref.attachment = attachment;
     colour_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;

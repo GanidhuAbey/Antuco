@@ -11,11 +11,10 @@ using namespace tuco;
 GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	not_created = true;
 	raytracing = false; //set this as an option in the pre-configuration settings.
-	oit_layers = 2;
+	oit_layers = 1;
 #ifdef APPLE_M1
     raytracing = false;
 #endif
-
 	create_instance(pWindow->get_title());
 	pWindow->pWindow->create_vulkan_surface(instance, &surface); //it aint pretty, but it'll get er done.
 	pick_physical_device();
@@ -29,6 +28,7 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	create_depth_resources();
 	create_shadowpass_resources();
 	create_colour_image_views();
+    create_image_layers();
 	create_render_pass();
     //create_geometry_pass();
 	create_shadowpass();
