@@ -51,7 +51,7 @@ struct ImageCreateInfo {
     VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
     VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
     VkImageUsageFlags usage;
-    VkImageLayout initialLayout;
+    VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VkDeviceSize size;
     VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     uint32_t queueFamilyIndexCount;
@@ -102,6 +102,8 @@ public:
     void destroy();
     VkImage get_api_image();
     VkImageView get_api_image_view();
+
+    void transfer_image_layout(VkImageLayout output_layout, VkQueue queue, VkCommandPool pool, std::optional<VkCommandBuffer> command_buffer);
 
 private:
     void create_image(ImageCreateInfo info);

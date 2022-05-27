@@ -278,7 +278,6 @@ private:
 	void copy_buffer_to_image(VkBuffer buffer, mem::Memory image, VkOffset3D image_offset, VkImageAspectFlagBits aspect_mask, uint32_t image_width, uint32_t image_height, std::optional<VkCommandBuffer> command_buffer = std::nullopt);	
 	void copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset, std::optional<VkCommandBuffer> command_buffer=std::nullopt);
     void copy_image_to_image(VkImage src_image, VkImageLayout src_layout, VkImage dst_image, VkImageLayout dst_layout, VkCommandBuffer command_buffer);
-	void transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, VkImage image, VkImageAspectFlagBits aspect_mask, std::optional<VkCommandBuffer> command_buffer=std::nullopt);
 	void create_texture_image(aiString texturePath, size_t object, size_t texture_set); 
     void create_empty_image(size_t object, size_t texture_set);
 	void write_to_texture_set(VkDescriptorSet texture_set, mem::Memory* image);
@@ -317,8 +316,6 @@ private:
     bool check_data(size_t data_size);
 
 	void copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer, VkDeviceSize dst_offset, VkDeviceSize data_size);
-	VkCommandBuffer begin_command_buffer();
-	void end_command_buffer(VkCommandBuffer command_buffer);
 public:
 	int32_t update_vertex_buffer(std::vector<Vertex> vertex_data);
 	int32_t update_index_buffer(std::vector<uint32_t> indices_data);

@@ -5,6 +5,8 @@
 #include "memory_allocator.hpp"
 #include "data_structures.hpp"
 
+#include "command_buffer.hpp"
+
 #include "logger/interface.hpp"
 #include "vulkan/vulkan_core.h"
 
@@ -93,6 +95,7 @@ void GraphicsImpl::create_shadowmap_atlas() {
 
     mem::createImage(*p_physical_device, *p_device, &shadow_image_info, &shadowmap_atlas);
 
+    //TODO: why do we need this? its used to overwrite the images usage, yet we aren't changing the usage of the original image...
 	VkImageViewUsageCreateInfo usageInfo{};
 	usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
 	usageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -100,15 +103,6 @@ void GraphicsImpl::create_shadowmap_atlas() {
 	//setup create struct for image views
 	mem::ImageViewCreateInfo createInfo{};
 	createInfo.pNext = &usageInfo;
-	createInfo.view_type = VK_IMAGE_VIEW_TYPE_2D;
-	createInfo.format = VK_FORMAT_D16_UNORM;
-
-
-	//this changes the colour output of the image, currently set to standard colours
-	createInfo.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
 	//layers are used for steroscopic 3d applications in which you would provide multiple images to each eye, creating a 3D effect.
 	//mipmap levels are an optimization made so that lower quality textures are used when further away to save resources.
@@ -1419,7 +1413,7 @@ int32_t GraphicsImpl::update_vertex_buffer(std::vector<Vertex> vertex_data) {
 }
 
 void GraphicsImpl::copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer, VkDeviceSize dst_offset, VkDeviceSize data_size) {
-    VkCommandBuffer transferBuffer = begin_command_buffer();
+    VkCommandBuffer transferBuffer = begin_command_buffer(*p_device, command_pool);
 
     //transfer between buffers
     VkBufferCopy copyData{};
@@ -1435,54 +1429,9 @@ void GraphicsImpl::copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer, V
     );
 
     //destroy transfer buffer, shouldnt need it after copying the data.
-    end_command_buffer(transferBuffer);
+    end_command_buffer(*p_device, graphics_queue, command_pool, transferBuffer);
 }
 
-VkCommandBuffer GraphicsImpl::begin_command_buffer() {
-    //create command buffer
-    VkCommandBuffer transferBuffer;
-
-    VkCommandBufferAllocateInfo bufferAllocate{};
-    bufferAllocate.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    bufferAllocate.commandPool = command_pool;
-    bufferAllocate.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    bufferAllocate.commandBufferCount = 1;
-
-    if (vkAllocateCommandBuffers(*p_device, &bufferAllocate, &transferBuffer) != VK_SUCCESS) {
-        throw std::runtime_error("could not allocate memory for transfer buffer");
-    }
-
-    //begin command buffer
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = 0; // Optional
-    beginInfo.pInheritanceInfo = nullptr;
-
-    if (vkBeginCommandBuffer(transferBuffer, &beginInfo) != VK_SUCCESS) {
-        throw std::runtime_error("one of the command buffers failed to begin");
-    }
-
-    return transferBuffer;
-}
-
-
-void GraphicsImpl::end_command_buffer(VkCommandBuffer commandBuffer) {
-    //end command buffer
-    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-        throw std::runtime_error("could not create succesfully end transfer buffer");
-    };
-
-    //destroy transfer buffer, shouldnt need it after copying the data.
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
-
-    vkQueueSubmit(graphics_queue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(graphics_queue);
-
-    vkFreeCommandBuffers(*p_device, command_pool, 1, &commandBuffer);
-}
 
 void GraphicsImpl::update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo) {
     uniform_buffer.write(*p_device, memory_offset, sizeof(lbo), &lbo);
@@ -1587,174 +1536,6 @@ void GraphicsImpl::draw_frame() {
     current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-//TODO: a bug is causing vulkan to spit validation errors because i'm checking whether the 'command_buffer' parameter has a value...
-//      but 'command_buffer' is unused so it never has a value and therefore the functions should behave as if 'command_buffer' doesn't exist
-//      but clearly that isn't happening.
-//
-//      need to figure it out
-void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLayout output_layout, VkImage image, VkImageAspectFlagBits aspect_mask, std::optional<VkCommandBuffer> command_buffer) {
-    //begin command buffer
-    bool delete_buffer = false;
-    if (!command_buffer.has_value()) {
-        command_buffer = begin_command_buffer();
-        delete_buffer = true;
-    }
-
-
-    //transfer image layout
-    VkImageMemoryBarrier imageTransfer{};
-    imageTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageTransfer.pNext = nullptr;
-    imageTransfer.oldLayout = initial_layout;
-    imageTransfer.newLayout = output_layout;
-    imageTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageTransfer.image = image;
-    imageTransfer.subresourceRange.aspectMask = aspect_mask;
-    imageTransfer.subresourceRange.baseMipLevel = 0;
-    imageTransfer.subresourceRange.levelCount = 1;
-    imageTransfer.subresourceRange.baseArrayLayer = 0;
-    imageTransfer.subresourceRange.layerCount = 1;
-
-    VkPipelineStageFlags sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    VkPipelineStageFlags destinationStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR && initial_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
-        imageTransfer.srcAccessMask = 0;
-        imageTransfer.dstAccessMask = 0;
-
-        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        destinationStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
-        imageTransfer.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR && initial_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        imageTransfer.dstAccessMask = 0;
-
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
-        imageTransfer.srcAccessMask = 0; // this basically means none or doesnt matter
-        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_SHADER_READ_BIT; 
-        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-
-        sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
-        imageTransfer.srcAccessMask = 0;
-        imageTransfer.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
-        imageTransfer.srcAccessMask = 0;
-        imageTransfer.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
-        imageTransfer.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        imageTransfer.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    }
-    else if (output_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {  
-        imageTransfer.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-        imageTransfer.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    }
-
-    vkCmdPipelineBarrier(
-        command_buffer.value(),
-        sourceStage,
-        destinationStage,
-        0,
-        0, nullptr,
-        0, nullptr,
-        1, &imageTransfer
-    );
-
-    //end command buffer
-    if (delete_buffer) {
-        end_command_buffer(command_buffer.value());
-    }
-}
-
 /// <summary>
 ///   Copies the entire contents of an image onto a particular place in a buffer
 /// </summary>
@@ -1766,7 +1547,7 @@ void GraphicsImpl::transfer_image_layout(VkImageLayout initial_layout, VkImageLa
 void GraphicsImpl::copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset, std::optional<VkCommandBuffer> command_buffer)  {
     bool delete_buffer = false; 
     if (!command_buffer.has_value()) { 
-        command_buffer = begin_command_buffer();
+        command_buffer = begin_command_buffer(*p_device, command_pool);
         delete_buffer = true;
     }
 
@@ -1790,7 +1571,7 @@ void GraphicsImpl::copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkIm
     vkCmdCopyImageToBuffer(command_buffer.value(), image.image, image_layout, buffer, 1, &copy_data);
 
     if (delete_buffer) { 
-        end_command_buffer(command_buffer.value());
+        end_command_buffer(*p_device, graphics_queue, command_pool, command_buffer.value());
     }
 }
 
@@ -1807,7 +1588,7 @@ void GraphicsImpl::copy_buffer_to_image(VkBuffer buffer, mem::Memory image, VkOf
     //create command buffer
     bool delete_buffer = false;
     if (!command_buffer.has_value()) {
-        command_buffer = begin_command_buffer();
+        command_buffer = begin_command_buffer(*p_device, command_pool);
         delete_buffer = true;
     }
 
@@ -1842,7 +1623,7 @@ void GraphicsImpl::copy_buffer_to_image(VkBuffer buffer, mem::Memory image, VkOf
 
     //destroy transfer buffer, shouldnt need it after copying the data.
     if (delete_buffer) {
-        end_command_buffer(command_buffer.value());
+        end_command_buffer(*p_device, graphics_queue, command_pool, command_buffer.value());
     }
 }
 
