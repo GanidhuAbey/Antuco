@@ -30,6 +30,8 @@ private:
 	Mesh(std::vector<Vertex> newVertices, std::vector<uint32_t> newIndices, Material material);
 public:
 	~Mesh();
+
+	bool is_transparent();
 };
 
 }

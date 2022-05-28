@@ -1174,12 +1174,29 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		uint32_t total_indexes = 0;
 		uint32_t total_vertices = 0;
 
+        std::vector<TransparentMesh> transparent_meshes;
+
         for (size_t j = 0; j < game_objects.size(); j++) {
             if (!game_objects[j]->update) {
                 for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
                     Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
                     uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
                     uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
+
+                    if (mesh_data->is_transparent()) {
+                        TransparentMesh transparent_mesh{};
+                        transparent_mesh.index = total_indexes;
+                        transparent_mesh.vertex = total_vertices;
+                        transparent_mesh.j = j;
+                        transparent_mesh.k = k;
+
+                        transparent_meshes.push_back(transparent_mesh);
+
+                        total_indexes += index_count;
+                        total_vertices += vertex_count;
+
+                        continue;
+                    }
 
                     //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
                     //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
@@ -1195,8 +1212,21 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                 }
             }
         }
-        //vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(6), 1, 36, 0, 0);
-        //vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);
+
+        for (size_t m = 0; m < transparent_meshes.size(); m++) {
+            size_t j = transparent_meshes[m].j;
+            size_t k = transparent_meshes[m].k;
+
+            Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
+            uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
+            uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
+
+            VkDescriptorSet descriptors[5] = { light_ubo[j][i], ubo_sets[j][i], texture_sets[j][k], shadowmap_set, mat_sets[j][k] };
+            vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline.get_api_layout(), 0, 5, descriptors, 0, nullptr);
+
+            vkCmdDrawIndexed(command_buffers[i], index_count, 1, transparent_meshes[m].index, transparent_meshes[m].vertex, static_cast<uint32_t>(0));
+        }
+
         vkCmdEndRenderPass(command_buffers[i]);
         //switch image back to depth stencil layout for the next render pass
 
@@ -1556,7 +1586,8 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
     mem::mapMemory(*p_device, dataSize, &newBuffer, pixels);
 
     //use size of loaded image to create VkImage
-    mem::Image new_texture_image;
+    texture_images.resize(texture_images.size() + 1);
+    texture_images[texture_images.size() - 1].resize(1);
 
     mem::ImageCreateInfo imageInfo{};
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -1585,16 +1616,16 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
     data.image_info = imageInfo;
     data.image_view_info = viewInfo;
 
-    new_texture_image.init(*p_physical_device, *p_device, data);
+    texture_images[texture_images.size() - 1][0].init(*p_physical_device, *p_device, data);
     
 
     //mem::maAllocateMemory(dataSize, &newTextureImage);
     //transfer the image to appropriate layout for copying
    
-    new_texture_image.transfer(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, graphics_queue, command_pool);
+    texture_images[texture_images.size() - 1][0].transfer(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, graphics_queue, command_pool);
     VkOffset3D image_offset = {0, 0, 0};
-    new_texture_image.copy_from_buffer(newBuffer.buffer, image_offset, std::nullopt, graphics_queue, command_pool);
-    new_texture_image.transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool);
+    texture_images[texture_images.size() - 1][0].copy_from_buffer(newBuffer.buffer, image_offset, std::nullopt, graphics_queue, command_pool);
+    texture_images[texture_images.size() - 1][0].transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool);
     //transfer the image again to a more optimal layout for texture sampling?
 
     //create image view for image
@@ -1606,15 +1637,8 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
     image_dimensions.width = static_cast<uint32_t>(imageWidth);
     image_dimensions.height = static_cast<uint32_t>(imageHeight);
 
-    //CAREFUL: push_back() copies the element, this means that new_texture_image should be getting deleted which should cause
-    //         the VkImage and VkImageView in new_texture_image to delete as well (even within our copy).
-    //         this doesn't seem to be happening here which implies that their is a memory leak here causing new_texture_image
-    //         to not delete as it should.
-    texture_images.resize(texture_images.size() + 1);
-    texture_images[texture_images.size() - 1].push_back(new_texture_image);
-
     //write to texture set
-    write_to_texture_set(texture_sets[object][texture_set], new_texture_image.get_api_image_view());
+    write_to_texture_set(texture_sets[object][texture_set], texture_images[texture_images.size() - 1][0].get_api_image_view());
 
     //free image
     stbi_image_free(pixels);

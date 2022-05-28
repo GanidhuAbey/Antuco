@@ -56,6 +56,13 @@ struct Material {
     float opacity;
 };
 
+struct TransparentMesh {
+	uint32_t index;
+	uint32_t vertex;
+	size_t k;
+	size_t j;
+};
+
 /*
 enum class IMAGE_FORMAT {
     DEPTH = VK_FORMAT_D16_UNORM,

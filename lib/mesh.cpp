@@ -24,3 +24,11 @@ Mesh::Mesh(std::vector<Vertex> newVertices, std::vector<uint32_t> newIndices, Ma
 }
 
 Mesh::~Mesh() {}
+
+bool Mesh::is_transparent() {
+    if (mat_data.texture_opacity.g < 0.999) {
+        return true;
+    }
+
+    return false;
+}
