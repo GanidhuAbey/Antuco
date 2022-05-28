@@ -42,8 +42,14 @@ void Model::processScene(aiNode* node, aiMesh** const meshes, aiMaterial** mater
 	for (uint32_t i = 0; i < node->mNumMeshes; i++) {
 
 		Mesh* mesh = processMesh(meshes[node->mMeshes[i]], materials);
-
-		model_meshes.push_back(mesh);
+		
+		if (mesh->is_transparent()) {
+			model_meshes.push_back(mesh);
+		}
+		else {
+			auto it = model_meshes.begin();
+			model_meshes.insert(it, mesh);
+		}
 	}
 
 	for (unsigned int i = 0; i < node->mNumChildren; i++) {

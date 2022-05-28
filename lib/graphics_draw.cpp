@@ -1183,21 +1183,6 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                     uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
                     uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 
-                    if (mesh_data->is_transparent()) {
-                        TransparentMesh transparent_mesh{};
-                        transparent_mesh.index = total_indexes;
-                        transparent_mesh.vertex = total_vertices;
-                        transparent_mesh.j = j;
-                        transparent_mesh.k = k;
-
-                        transparent_meshes.push_back(transparent_mesh);
-
-                        total_indexes += index_count;
-                        total_vertices += vertex_count;
-
-                        continue;
-                    }
-
                     //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
                     //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
                    
@@ -1211,20 +1196,6 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                     total_vertices += vertex_count;
                 }
             }
-        }
-
-        for (size_t m = 0; m < transparent_meshes.size(); m++) {
-            size_t j = transparent_meshes[m].j;
-            size_t k = transparent_meshes[m].k;
-
-            Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
-            uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
-            uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
-
-            VkDescriptorSet descriptors[5] = { light_ubo[j][i], ubo_sets[j][i], texture_sets[j][k], shadowmap_set, mat_sets[j][k] };
-            vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline.get_api_layout(), 0, 5, descriptors, 0, nullptr);
-
-            vkCmdDrawIndexed(command_buffers[i], index_count, 1, transparent_meshes[m].index, transparent_meshes[m].vertex, static_cast<uint32_t>(0));
         }
 
         vkCmdEndRenderPass(command_buffers[i]);
