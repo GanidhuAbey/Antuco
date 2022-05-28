@@ -1,4 +1,5 @@
-/* ------------------------ api_graphics.hpp ----------------------
+/*
+------------------------ api_graphics.hpp ----------------------
  * Handles all vulkan related functionality, its important that any
  * calls made by the engine are made through the "graphics.hpp"
  * abstraction.
@@ -7,6 +8,7 @@
 
 #pragma once
 
+#include "vulkan/vulkan_core.h"
 #include "window.hpp"
 
 #include <memory>
@@ -185,7 +187,7 @@ private:
 
 	std::vector<VkDeviceSize> ubo_offsets; //holds the offset data for a objects ubo information within the uniform buffer
 	std::vector<std::vector<VkDeviceSize>> mat_offsets;
-	std::vector<std::vector<mem::Memory*>> texture_images;
+	std::vector<std::vector<mem::Image>> texture_images;
 
 
 	size_t current_frame = 0;
@@ -205,7 +207,7 @@ private:
     
 //shadow map -------------------------------------------------------------------------
 private:
-	mem::Memory shadowmap_atlas;
+    mem::Image shadowmap_atlas;
 	//this is way to large...
 	uint32_t shadowmap_atlas_width = SHADOWMAP_SIZE*sqrt(MAX_SHADOW_CASTERS);
 	uint32_t shadowmap_atlas_height = SHADOWMAP_SIZE*sqrt(MAX_SHADOW_CASTERS);
@@ -220,7 +222,7 @@ private:
 	
 	VkFramebuffer shadowpass_buffer;
 
-	mem::Memory shadow_pass_texture;
+    mem::Image shadow_pass_texture;
  
 	std::unique_ptr<mem::Pool> shadowmap_pool;
 
@@ -275,12 +277,10 @@ private:
     void write_to_materials();
 	void update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo);
     void update_materials(VkDeviceSize memory_offset, MaterialsObject mat);
-	void copy_buffer_to_image(VkBuffer buffer, mem::Memory image, VkOffset3D image_offset, VkImageAspectFlagBits aspect_mask, uint32_t image_width, uint32_t image_height, std::optional<VkCommandBuffer> command_buffer = std::nullopt);	
-	void copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset, std::optional<VkCommandBuffer> command_buffer=std::nullopt);
     void copy_image_to_image(VkImage src_image, VkImageLayout src_layout, VkImage dst_image, VkImageLayout dst_layout, VkCommandBuffer command_buffer);
 	void create_texture_image(aiString texturePath, size_t object, size_t texture_set); 
     void create_empty_image(size_t object, size_t texture_set);
-	void write_to_texture_set(VkDescriptorSet texture_set, mem::Memory* image);
+	void write_to_texture_set(VkDescriptorSet texture_set, VkImageView image_view);
 	void update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo);
 	void create_light_set(UniformBufferObject lbo);
 	void create_light_layout();

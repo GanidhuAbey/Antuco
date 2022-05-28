@@ -5,13 +5,12 @@
 #include "memory_allocator.hpp"
 #include "data_structures.hpp"
 
-#include "command_buffer.hpp"
-
 #include "logger/interface.hpp"
 #include "vulkan/vulkan_core.h"
 
 #include "shader_text.hpp"
 
+#include <optional>
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
@@ -79,38 +78,27 @@ void GraphicsImpl::create_depth_pipeline() {
 /// </summary>
 void GraphicsImpl::create_shadowmap_atlas() {
     mem::ImageCreateInfo shadow_image_info{};
-    shadow_image_info.arrayLayers = 1;
     shadow_image_info.extent = VkExtent3D{ shadowmap_atlas_width, shadowmap_atlas_height, 1 };
-    shadow_image_info.flags = 0;
-    shadow_image_info.imageType = VK_IMAGE_TYPE_2D;
     shadow_image_info.format = VK_FORMAT_D16_UNORM;
-    shadow_image_info.mipLevels = 1;
-    shadow_image_info.samples = VK_SAMPLE_COUNT_1_BIT;
-    shadow_image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
     shadow_image_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    shadow_image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     shadow_image_info.queueFamilyIndexCount = 1;
     shadow_image_info.pQueueFamilyIndices = &graphics_family;
-    shadow_image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    mem::createImage(*p_physical_device, *p_device, &shadow_image_info, &shadowmap_atlas);
-
-    //TODO: why do we need this? its used to overwrite the images usage, yet we aren't changing the usage of the original image...
 	VkImageViewUsageCreateInfo usageInfo{};
 	usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
 	usageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 	//setup create struct for image views
 	mem::ImageViewCreateInfo createInfo{};
-	createInfo.pNext = &usageInfo;
+	createInfo.pNext = &usageInfo; 
+    createInfo.aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-	//layers are used for steroscopic 3d applications in which you would provide multiple images to each eye, creating a 3D effect.
-	//mipmap levels are an optimization made so that lower quality textures are used when further away to save resources.
-	createInfo.aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    mem::ImageData data{};
+    data.name = "shadowmap";
+    data.image_info = shadow_image_info;
+    data.image_view_info = createInfo;
 
-	mem::createImageView(*p_device, createInfo, &shadowmap_atlas);
-
-    //transfer image to depth stencil read only (or shader read only if they wont allow the first one
+    shadowmap_atlas.init(*p_physical_device, *p_device, data);
 }
 
 void GraphicsImpl::create_texture_sampler() {
@@ -164,7 +152,7 @@ void GraphicsImpl::create_shadowmap_sampler() {
 }
 
 void GraphicsImpl::create_shadowpass_buffer() {  
-    VkImageView image_views[1] = { shadow_pass_texture.imageView };
+    VkImageView image_views[1] = { shadow_pass_texture.get_api_image_view() };
     create_frame_buffer(shadowpass.get_api_pass(), 1, image_views, shadowmap_width, shadowmap_height, &shadowpass_buffer);
 }
 
@@ -226,26 +214,12 @@ void GraphicsImpl::create_fences() {
 
 void GraphicsImpl::create_shadowpass_resources() {
     mem::ImageCreateInfo shadow_image_info{};
-    shadow_image_info.arrayLayers = 1;
     shadow_image_info.extent = VkExtent3D{ shadowmap_width, shadowmap_height, 1 };
-    shadow_image_info.flags = 0;
-    shadow_image_info.imageType = VK_IMAGE_TYPE_2D;
     shadow_image_info.format = VK_FORMAT_D16_UNORM;
-    shadow_image_info.mipLevels = 1;
-    shadow_image_info.samples = VK_SAMPLE_COUNT_1_BIT;
-    shadow_image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
     shadow_image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    shadow_image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     shadow_image_info.queueFamilyIndexCount = 1;
     shadow_image_info.pQueueFamilyIndices = &graphics_family;
-    shadow_image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    //create memory for image
-    mem::createImage(*p_physical_device, *p_device, &shadow_image_info, &shadow_pass_texture);
-
-    //transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, &shadow_pass_texture);
-
-	//create image view
 	VkImageViewUsageCreateInfo usageInfo{};
 	usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
 	usageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -253,22 +227,13 @@ void GraphicsImpl::create_shadowpass_resources() {
 	//setup create struct for image views
 	mem::ImageViewCreateInfo createInfo{};
 	createInfo.pNext = &usageInfo;
-	createInfo.view_type = VK_IMAGE_VIEW_TYPE_2D;
-	createInfo.format = VK_FORMAT_D16_UNORM;
-
-
-	//this changes the colour output of the image, currently set to standard colours
-	createInfo.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-	//deciding on how many layers are in the image, and if we're using any mipmap levels.
-	//layers are used for steroscopic 3d applications in which you would provide multiple images to each eye, creating a 3D effect.
-	//mipmap levels are an optimization made so that lower quality textures are used when further away to save resources.
 	createInfo.aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-	mem::createImageView(*p_device, createInfo, &shadow_pass_texture);
+    mem::ImageData data{};
+    data.image_info = shadow_image_info;
+    data.image_view_info = createInfo;
+
+    shadow_pass_texture.init(*p_physical_device, *p_device, data); 
 }
 
 void GraphicsImpl::create_oit_pipeline() {
@@ -826,22 +791,11 @@ void GraphicsImpl::destroy_draw() {
 
         vkDestroySemaphore(*p_device, render_finished_semaphores[i], nullptr);
     }
-
-    for (size_t i = 0; i < texture_images.size(); i++) {
-        for (size_t j = 0; j < texture_images[i].size(); j++) {
-            mem::destroyImage(*p_device, *texture_images[i][j]);
-        }
-    }
-
-    mem::destroyImage(*p_device, shadowmap_atlas);
  
     for (auto& buffer_data : shadowmap_buffers) {
         buffer_data.destroy(*p_device);
     }
     
-
-    mem::destroyImage(*p_device, shadow_pass_texture);
-
     ubo_pool->destroyPool(*p_device);
     shadowmap_pool->destroyPool(*p_device);
     texture_pool->destroyPool(*p_device);
@@ -944,10 +898,14 @@ void GraphicsImpl::create_swapchain() {
     swapchain_images.resize(swapchain_image_count);
     vkGetSwapchainImagesKHR(*p_device, swapchain, &swapchain_image_count, images.data());
 
+    mem::ImageData data;
+    data.name = "swapchain";
+    data.image_view_info = image_info;
+
     //transfer swapchain to present layout
     for (size_t i = 0; i < swapchain_image_count; i++) {
-        swapchain_images[i].init(*p_physical_device, *p_device, images[i], image_info);
-        transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, swapchain_images[i].get_api_image(), VK_IMAGE_ASPECT_COLOR_BIT);
+        swapchain_images[i].init(*p_physical_device, *p_device, images[i], data);
+        swapchain_images[i].transfer(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, graphics_queue, command_pool);
     }
 }
 
@@ -1064,11 +1022,6 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
             vkCmdBindVertexBuffers(command_buffers[command_index], 0, 1, &vertex_buffer.buffer, offsets);
             vkCmdBindIndexBuffer(command_buffers[command_index], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-            //vkCmdSetDepthBias(command_buffers[i], 5.0f, 0.0f, 1.75f);
-
-            //universal to every object so i can push the light constants before the for loop
-            //vkCmdPushConstants(shadowpass_render, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(light), &light);
-            //draw first object (cube)
             uint32_t total_indexes = 0;
             uint32_t total_vertices = 0;
 
@@ -1105,49 +1058,21 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
             }
             vkCmdEndRenderPass(command_buffers[command_index]);
 
-            transfer_image_layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, 
-                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-                shadow_pass_texture.image, 
-                VK_IMAGE_ASPECT_DEPTH_BIT, 
-                command_buffers[command_index]);
-
+            shadow_pass_texture.transfer(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, graphics_queue, command_pool, command_buffers[command_index]);
+            shadowmap_atlas.transfer(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, graphics_queue, command_pool, command_buffers[command_index]);
 
             //take depth texture calculated in first render pass from DEPTH_STENCIL_READ_ONLY -> TRANSFER_SRC       
-            copy_image_to_buffer(shadowmap_buffers[0].buffer, 
-                shadow_pass_texture, 
-                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-                VK_IMAGE_ASPECT_DEPTH_BIT, 
-                0, 
-                command_buffers[command_index]);
-
-            transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-                VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-                shadow_pass_texture.image, 
-                VK_IMAGE_ASPECT_DEPTH_BIT, 
-                command_buffers[command_index]);
-
+            
+            shadow_pass_texture.copy_to_buffer(shadowmap_buffers[0].buffer, 0, graphics_queue, command_pool, command_buffers[command_index]);
+            shadow_pass_texture.transfer(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, graphics_queue, command_pool, command_buffers[command_index]);
+            
             //transfer the image data from the intermediary buffer into the shadow map
-            transfer_image_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-                shadowmap_atlas.image, 
-                VK_IMAGE_ASPECT_DEPTH_BIT, 
-                command_buffers[command_index]);
-
             VkOffset3D image_offset = { static_cast<int32_t>(x * SHADOWMAP_SIZE), static_cast<int32_t>(y * SHADOWMAP_SIZE), 0 };
+            VkExtent3D image_extent = { SHADOWMAP_SIZE, SHADOWMAP_SIZE, 1};
 
-            copy_buffer_to_image(shadowmap_buffers[0].buffer, 
-                shadowmap_atlas, 
-                image_offset, 
-                VK_IMAGE_ASPECT_DEPTH_BIT, 
-                SHADOWMAP_SIZE, 
-                SHADOWMAP_SIZE, 
-                command_buffers[command_index]);
+            shadowmap_atlas.copy_from_buffer(shadowmap_buffers[0].buffer, image_offset, image_extent, graphics_queue, command_pool, command_buffers[command_index]);
 
-            transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
-                shadowmap_atlas.image, 
-                VK_IMAGE_ASPECT_DEPTH_BIT, 
-                command_buffers[command_index]);
+            shadowmap_atlas.transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool, command_buffers[command_index]);
         }
         current_shadow++;
     }
@@ -1286,11 +1211,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
 void GraphicsImpl::resolve_image_layers(size_t i) {
     //can use VkSubpassDependency to change layout of image_layers[0] automatically.
-    transfer_image_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        swapchain_images[i].get_api_image(),
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        command_buffers[i]);
+    swapchain_images[i].transfer(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, graphics_queue, command_pool, command_buffers[i]);
 
     VkImageCopy copy_info{};
 
@@ -1335,11 +1256,8 @@ void GraphicsImpl::resolve_image_layers(size_t i) {
         1,
         &copy_info);
 
-    transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-        swapchain_images[i].get_api_image(),
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        command_buffers[i]);
+
+    swapchain_images[i].transfer(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, graphics_queue, command_pool, command_buffers[i]);
 }
 
 void GraphicsImpl::create_uniform_buffer() {
@@ -1536,102 +1454,11 @@ void GraphicsImpl::draw_frame() {
     current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-/// <summary>
-///   Copies the entire contents of an image onto a particular place in a buffer
-/// </summary>
-/// <param name="buffer"> buffer the image data will be copied to </param>
-/// <param name="image"> the image that will be transfered </param>
-/// <param name="image_layout"> the layout of the iamge </param>
-/// <param name="image_aspect"> the aspect of the image </param>
-/// <param name="dst_offset"> the offset of the buffer</param>
-void GraphicsImpl::copy_image_to_buffer(VkBuffer buffer, mem::Memory image, VkImageLayout image_layout, VkImageAspectFlagBits image_aspect, VkDeviceSize dst_offset, std::optional<VkCommandBuffer> command_buffer)  {
-    bool delete_buffer = false; 
-    if (!command_buffer.has_value()) { 
-        command_buffer = begin_command_buffer(*p_device, command_pool);
-        delete_buffer = true;
-    }
-
-    //we won't be dealing with mipmap levels for a while i think so i can change this then
-    VkImageSubresourceLayers image_layers{};
-    image_layers.aspectMask = image_aspect;
-    image_layers.mipLevel = 0;
-    image_layers.layerCount = 1;
-    image_layers.baseArrayLayer = 0;
-
-    VkBufferImageCopy copy_data{};
-    copy_data.bufferOffset = dst_offset;
-    copy_data.bufferImageHeight = 0.0f; //ignore
-    copy_data.bufferRowLength = 0.0f;
-    copy_data.imageSubresource = image_layers;
-    copy_data.imageOffset = VkOffset3D{ 0, 0, 0 };
-    copy_data.imageExtent = VkExtent3D{ image.imageDimensions.width, image.imageDimensions.height, 1 };
-
-    //copy image to buffer
-    //TODO: contain this various image data within the memory object so the user doesnt have to keep track of it
-    vkCmdCopyImageToBuffer(command_buffer.value(), image.image, image_layout, buffer, 1, &copy_data);
-
-    if (delete_buffer) { 
-        end_command_buffer(*p_device, graphics_queue, command_pool, command_buffer.value());
-    }
-}
-
-///
-/// transfers data from a buffer to an image
-/// PARAMETERS
-///     - mem::Memory buffer : the source buffer that the data will be transferred from
-///     - mem::Memory image : the image that the data will be transferred to
-///     - VkExtent3D image_offset : which part of the image the buffer data will be mapped to
-///     - uint32_t image_width : width of the image
-///     - uint32_t image_height : height of the image
-/// RETURNS - VOID
-void GraphicsImpl::copy_buffer_to_image(VkBuffer buffer, mem::Memory image, VkOffset3D image_offset, VkImageAspectFlagBits aspect_mask, uint32_t image_width, uint32_t image_height, std::optional<VkCommandBuffer> command_buffer) {
-    //create command buffer
-    bool delete_buffer = false;
-    if (!command_buffer.has_value()) {
-        command_buffer = begin_command_buffer(*p_device, command_pool);
-        delete_buffer = true;
-    }
-
-    VkImageSubresourceLayers imageSub{};
-    imageSub.aspectMask = aspect_mask;
-    imageSub.mipLevel = 0;
-    imageSub.baseArrayLayer = 0;
-    imageSub.layerCount = 1;
-
-    //note for future me: this isn't about the size of destination image, its about the size of image in the buffer that your copying over.
-    VkExtent3D imageExtent = {
-        image_width,
-        image_height,
-        1,
-    };
-
-    VkBufferImageCopy bufferCopy{};
-    bufferCopy.bufferOffset = 0;
-    bufferCopy.bufferRowLength = 0;
-    bufferCopy.bufferImageHeight = 0;
-    bufferCopy.imageSubresource = imageSub;
-    bufferCopy.imageOffset = image_offset;
-    bufferCopy.imageExtent = imageExtent;
-
-    vkCmdCopyBufferToImage(command_buffer.value(),
-        buffer,
-        image.image,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1,
-        &bufferCopy
-    );
-
-    //destroy transfer buffer, shouldnt need it after copying the data.
-    if (delete_buffer) {
-        end_command_buffer(*p_device, graphics_queue, command_pool, command_buffer.value());
-    }
-}
-
 void GraphicsImpl::write_to_shadowmap_set() {
     VkDescriptorImageInfo imageInfo;
     imageInfo.sampler = shadowmap_sampler;
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    imageInfo.imageView = shadowmap_atlas.imageView;
+    imageInfo.imageView = shadowmap_atlas.get_api_image_view();
 
     VkWriteDescriptorSet writeInfo{};
     writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1646,14 +1473,14 @@ void GraphicsImpl::write_to_shadowmap_set() {
     
     //wonder if this is a fine time to transfer the image from undefined to shader
     //TODO: move this somewhere else (into its own function if you absolutely have to)
-    transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, shadowmap_atlas.image, VK_IMAGE_ASPECT_DEPTH_BIT);
+    shadowmap_atlas.transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool);
 }
 
-void GraphicsImpl::write_to_texture_set(VkDescriptorSet texture_set, mem::Memory* image) {
+void GraphicsImpl::write_to_texture_set(VkDescriptorSet texture_set, VkImageView image_view) {
     VkDescriptorImageInfo imageInfo;
     imageInfo.sampler = texture_sampler;
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    imageInfo.imageView = image->imageView;
+    imageInfo.imageView = image_view;
 
     VkWriteDescriptorSet writeInfo{};
     writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1671,56 +1498,39 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
     //CREATE A WHITE IMAGE TO SEND TO THE SHADER THIS WAY WE CAN ALSO ELIMINATE THE IF STATEMENTS 
     
     //create vector of white pixels... and then map that to image?
-    mem::Memory* new_texture_image = new mem::Memory{};
+    texture_images.resize(texture_images.size() + 1);
+    texture_images[texture_images.size() - 1].resize(1);
 
     mem::ImageCreateInfo imageInfo{};
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
     imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
     VkExtent3D extent{};
     extent.width = 1;
     extent.height = 1;
     extent.depth = 1; //this depth might be key to blending the textures...
     imageInfo.extent = extent;
-    imageInfo.mipLevels = 1;
-    imageInfo.arrayLayers = 1;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     imageInfo.queueFamilyIndexCount = 1;
     imageInfo.pQueueFamilyIndices = &graphics_family;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    mem::createImage(*p_physical_device, *p_device, &imageInfo, new_texture_image);
-
-    //transfer the image again to a more optimal layout for texture sampling?
-    transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, new_texture_image->image, VK_IMAGE_ASPECT_COLOR_BIT);
-
-    //create image view for image
     mem::ImageViewCreateInfo viewInfo{};
-    viewInfo.view_type = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-    viewInfo.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
     viewInfo.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-    mem::createImageView(*p_device, viewInfo, new_texture_image);
+    mem::ImageData data{};
+    data.name = "empty";
+    data.image_info = imageInfo;
+    data.image_view_info = viewInfo;
+ 
+    texture_images[texture_images.size() - 1][0].init(*p_physical_device, *p_device, data);
+
+    //transfer the image again to a more optimal layout for texture sampling?
+    texture_images[texture_images.size() - 1][0].transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool);
+    //create image view for image
 
     //save texture image to mesh
-    mem::ImageSize image_dimensions{};
-    image_dimensions.width = 1;
-    image_dimensions.height = 1;
-
-    texture_images.resize(texture_images.size() + 1);
-    texture_images[texture_images.size() - 1].push_back(new_texture_image);
 
     //write to texture set
-    write_to_texture_set(texture_sets[object][texture_set], new_texture_image);
-
+    write_to_texture_set(texture_sets[object][texture_set], texture_images[texture_images.size() - 1][0].get_api_image_view());    
 }
 
 
@@ -1746,7 +1556,7 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
     mem::mapMemory(*p_device, dataSize, &newBuffer, pixels);
 
     //use size of loaded image to create VkImage
-    mem::Memory* new_texture_image = new mem::Memory{};
+    mem::Image new_texture_image;
 
     mem::ImageCreateInfo imageInfo{};
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -1767,28 +1577,27 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    mem::createImage(*p_physical_device, *p_device, &imageInfo, new_texture_image);
+    mem::ImageViewCreateInfo viewInfo{};
+    viewInfo.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+    mem::ImageData data{};
+    data.name = "texture";
+    data.image_info = imageInfo;
+    data.image_view_info = viewInfo;
+
+    new_texture_image.init(*p_physical_device, *p_device, data);
+    
 
     //mem::maAllocateMemory(dataSize, &newTextureImage);
     //transfer the image to appropriate layout for copying
-    transfer_image_layout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, new_texture_image->image, VK_IMAGE_ASPECT_COLOR_BIT);
+   
+    new_texture_image.transfer(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, graphics_queue, command_pool);
     VkOffset3D image_offset = {0, 0, 0};
-    copy_buffer_to_image(newBuffer.buffer, *new_texture_image, image_offset, VK_IMAGE_ASPECT_COLOR_BIT, new_texture_image->imageDimensions.width, new_texture_image->imageDimensions.height);
+    new_texture_image.copy_from_buffer(newBuffer.buffer, image_offset, std::nullopt, graphics_queue, command_pool);
+    new_texture_image.transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool);
     //transfer the image again to a more optimal layout for texture sampling?
-    transfer_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, new_texture_image->image, VK_IMAGE_ASPECT_COLOR_BIT);
 
     //create image view for image
-    mem::ImageViewCreateInfo viewInfo{};
-    viewInfo.view_type = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-    viewInfo.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-    viewInfo.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
-
-    mem::createImageView(*p_device, viewInfo, new_texture_image);
 
     mem::destroyBuffer(*p_device, newBuffer);
 
@@ -1797,11 +1606,15 @@ void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, siz
     image_dimensions.width = static_cast<uint32_t>(imageWidth);
     image_dimensions.height = static_cast<uint32_t>(imageHeight);
 
+    //CAREFUL: push_back() copies the element, this means that new_texture_image should be getting deleted which should cause
+    //         the VkImage and VkImageView in new_texture_image to delete as well (even within our copy).
+    //         this doesn't seem to be happening here which implies that their is a memory leak here causing new_texture_image
+    //         to not delete as it should.
     texture_images.resize(texture_images.size() + 1);
     texture_images[texture_images.size() - 1].push_back(new_texture_image);
 
     //write to texture set
-    write_to_texture_set(texture_sets[object][texture_set], new_texture_image);
+    write_to_texture_set(texture_sets[object][texture_set], new_texture_image.get_api_image_view());
 
     //free image
     stbi_image_free(pixels);

@@ -80,6 +80,7 @@ struct ImageViewCreateInfo {
 };
 
 struct ImageData {
+    std::string name = "null";
     ImageCreateInfo image_info;
     ImageViewCreateInfo image_view_info;
 };
@@ -97,13 +98,15 @@ public:
     Image();
     ~Image();
     void init(VkPhysicalDevice physical_device, VkDevice device, ImageData info);
-    void init(VkPhysicalDevice physical_device, VkDevice device, VkImage image, ImageViewCreateInfo info);
+    void init(VkPhysicalDevice physical_device, VkDevice device, VkImage image, ImageData info);
     //can only be called after init()
     void destroy();
     VkImage get_api_image();
     VkImageView get_api_image_view();
 
-    void transfer_image_layout(VkImageLayout output_layout, VkQueue queue, VkCommandPool pool, std::optional<VkCommandBuffer> command_buffer);
+    void transfer(VkImageLayout output_layout, VkQueue queue, VkCommandPool pool, std::optional<VkCommandBuffer> command_buffer = std::nullopt);
+    void copy_to_buffer(VkBuffer buffer, VkDeviceSize dst_offset, VkQueue queue, VkCommandPool command_pool, std::optional<VkCommandBuffer> command_buffer = std::nullopt);
+    void copy_from_buffer(VkBuffer buffer, VkOffset3D image_offset, std::optional<VkExtent3D> map_size, VkQueue queue, VkCommandPool command_pool, std::optional<VkCommandBuffer> command_buffer = std::nullopt);
 
 private:
     void create_image(ImageCreateInfo info);

@@ -2,7 +2,7 @@
 #include "vulkan/vulkan_core.h"
 #include "queue.hpp"
 #include "logger/interface.hpp"
-#include "command_buffer.hpp"
+#include "config.hpp"
 
 #include <bitset>
 #include <cstring>
@@ -92,6 +92,7 @@ Image::~Image() {
 }
 
 void Image::destroy() {
+    LOG(data.name.c_str());
     vkDestroyImageView(*p_device, image_view, nullptr);
     vkDestroyImage(*p_device, image, nullptr);
 }
@@ -100,12 +101,14 @@ VkImage Image::get_api_image() {
     return image;
 }
 
-void mem::Image::init(VkPhysicalDevice physical_device, VkDevice device, VkImage image, ImageViewCreateInfo info) {
+void mem::Image::init(VkPhysicalDevice physical_device, VkDevice device, VkImage image, ImageData info) {
+    data = info;
+
     p_device = std::make_shared<VkDevice>(device);
     p_phys_device = std::make_shared<VkPhysicalDevice>(physical_device);
 
     Image::image = image;
-    create_image_view(info);
+    create_image_view(info.image_view_info);
 }
 
 VkImageView Image::get_api_image_view() {
@@ -139,7 +142,11 @@ void Image::create_image(ImageCreateInfo info) {
     image_info.pQueueFamilyIndices = info.pQueueFamilyIndices;
     image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    vkCreateImage(*p_device, &image_info, nullptr, &image);
+    VkResult image_create = vkCreateImage(*p_device, &image_info, nullptr, &image);
+
+    if (image_create != VK_SUCCESS) {
+        printf("[ERROR %d] - could not create image \n", image_create);
+    }
 
     //allocate memory
     VkMemoryRequirements memory_req{};
@@ -178,7 +185,91 @@ void Image::create_image(ImageCreateInfo info) {
 }
 
 
-void Image::transfer_image_layout(VkImageLayout output_layout, VkQueue queue, VkCommandPool pool, std::optional<VkCommandBuffer> command_buffer) {
+///
+/// transfers data from a buffer to an image
+/// PARAMETERS
+///     - mem::Memory buffer : the source buffer that the data will be transferred from
+///     - mem::Memory image : the image that the data will be transferred to
+///     - VkOffset3D image_offset : which part of the image the buffer data will be mapped to
+///     - VkExtent3D map_size : describes the size of the image that the buffer is copying,
+//                              if null, will use default size of image
+/// RETURNS - VOID
+void Image::copy_from_buffer(VkBuffer buffer, VkOffset3D image_offset, std::optional<VkExtent3D> map_size, VkQueue queue, VkCommandPool command_pool, std::optional<VkCommandBuffer> command_buffer) {
+    //create command buffer
+    bool delete_buffer = false;
+    if (!command_buffer.has_value()) {
+        command_buffer = begin_command_buffer(*p_device, command_pool);
+        delete_buffer = true;
+    }
+
+    VkImageSubresourceLayers image_layers{};
+    image_layers.aspectMask = data.image_view_info.aspect_mask;
+    image_layers.mipLevel = data.image_view_info.base_mip_level;
+    image_layers.layerCount = data.image_info.arrayLayers;
+    image_layers.baseArrayLayer = data.image_view_info.base_array_layer;
+
+    //note for future me: this isn't about the size of destination image, its about the size of image in the buffer that your copying over.
+
+    VkBufferImageCopy bufferCopy{};
+    bufferCopy.bufferOffset = 0;
+    bufferCopy.bufferRowLength = 0;
+    bufferCopy.bufferImageHeight = 0;
+    bufferCopy.imageSubresource = image_layers;
+    bufferCopy.imageOffset = image_offset;
+    bufferCopy.imageExtent = map_size.has_value() ? map_size.value() : data.image_info.extent;
+
+    vkCmdCopyBufferToImage(command_buffer.value(),
+        buffer,
+        image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &bufferCopy
+    );
+
+    //destroy transfer buffer, shouldnt need it after copying the data.
+    if (delete_buffer) {
+        end_command_buffer(*p_device, queue, command_pool, command_buffer.value());
+    }
+}
+
+/// <summary>
+///   Copies the entire contents of an image onto a particular place in a buffer
+/// </summary>
+/// <param name="buffer"> buffer the image data will be copied to </param>
+/// <param name="dst_offset"> the location in the buffer where the image data is mapped to</param>
+void Image::copy_to_buffer(VkBuffer buffer, VkDeviceSize dst_offset, VkQueue queue, VkCommandPool command_pool, std::optional<VkCommandBuffer> command_buffer)  {
+    bool delete_buffer = false; 
+    if (!command_buffer.has_value()) { 
+        command_buffer = begin_command_buffer(*p_device, command_pool);
+        delete_buffer = true;
+    }
+
+    //we won't be dealing with mipmap levels for a while i think so i can change this then
+    VkImageSubresourceLayers image_layers{};
+    image_layers.aspectMask = data.image_view_info.aspect_mask;
+    image_layers.mipLevel = data.image_view_info.base_mip_level;
+    image_layers.layerCount = data.image_info.arrayLayers;
+    image_layers.baseArrayLayer = data.image_view_info.base_array_layer;
+
+    VkBufferImageCopy copy_data{};
+    copy_data.bufferOffset = dst_offset;
+    copy_data.bufferImageHeight = 0.0f; //ignore
+    copy_data.bufferRowLength = 0.0f;
+    copy_data.imageSubresource = image_layers;
+    copy_data.imageOffset = VkOffset3D{ 0, 0, 0 };
+    copy_data.imageExtent = VkExtent3D{ data.image_info.extent.width, data.image_info.extent.height, data.image_info.extent.depth };
+
+    //copy image to buffer
+    //TODO: contain this various image data within the memory object so the user doesnt have to keep track of it
+    vkCmdCopyImageToBuffer(command_buffer.value(), image, data.image_info.initialLayout, buffer, 1, &copy_data);
+
+    if (delete_buffer) { 
+        end_command_buffer(*p_device, queue, command_pool, command_buffer.value());
+    }
+}
+
+
+void Image::transfer(VkImageLayout output_layout, VkQueue queue, VkCommandPool pool, std::optional<VkCommandBuffer> command_buffer) {
     //begin command buffer
     bool delete_buffer = false;
     if (!command_buffer.has_value()) {
@@ -371,7 +462,11 @@ void Image::create_image_view(ImageViewCreateInfo info) {
     view_info.subresourceRange = subresource;
     view_info.viewType = info.view_type;
 
-    vkCreateImageView(*p_device, &view_info, nullptr, &image_view);
+    VkResult view_create = vkCreateImageView(*p_device, &view_info, nullptr, &image_view);
+
+    if (view_create != VK_SUCCESS) {
+        printf("[ERROR %d] - could not create image view \n", view_create);
+    }
 }
 
 
