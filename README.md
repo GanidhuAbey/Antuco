@@ -31,5 +31,10 @@ These are various screenshots I took through different stages of development in 
 
 ![Shadows](antuco_screenshots/shadow_mapping_1_light.png?raw=true "Shadows")
 
+#### Model Rendering
+
+![BMW](antuco_screenshots/bmw_current.png?raw=true "BMW")
+credit to tyrant_monkey for the model
+
 
 ## Road Map
