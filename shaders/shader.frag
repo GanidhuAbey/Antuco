@@ -26,7 +26,7 @@ float bias = 5e-3;
 
 int LIGHT_FACTOR = 10;
 float SPECULAR_STRENGTH = 1.0f;
-float AMBIENCE_FACTOR = 0.1f;
+float AMBIENCE_FACTOR = 0.2f;
 
 //light perspective is now clamped from between the specified near plane and far plane
 //going to hard code this values to check for now but will edit them once the effect

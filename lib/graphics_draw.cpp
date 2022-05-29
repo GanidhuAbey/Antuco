@@ -683,6 +683,7 @@ void GraphicsImpl::create_shadowpass_pipeline() {
     std::vector<VkDynamicState> dynamic_states = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR,
+        VK_DYNAMIC_STATE_DEPTH_BIAS
     };
 
 
@@ -999,6 +1000,7 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
         for (size_t x = 0; x < glm::sqrt(MAX_SHADOW_CASTERS); x++) {
             //there is at least one light that is casting a shadow here
             vkCmdBeginRenderPass(command_buffers[command_index], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
+
             //do stuff...
             vkCmdBindPipeline(command_buffers[command_index], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmap_pipeline.get_api_pipeline());
 
@@ -1017,6 +1019,7 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
             shadowpass_scissor.extent.height = shadowmap_height;
             vkCmdSetScissor(command_buffers[command_index], 0, 1, &shadowpass_scissor);
 
+            vkCmdSetDepthBias(command_buffers[command_index], 1.25, 0.0f, 1.75f);
             //time for the draw calls
             const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
             vkCmdBindVertexBuffers(command_buffers[command_index], 0, 1, &vertex_buffer.buffer, offsets);
