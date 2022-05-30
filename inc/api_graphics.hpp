@@ -217,6 +217,9 @@ private:
 	uint32_t shadowmap_width = SHADOWMAP_SIZE;
 	uint32_t shadowmap_height = SHADOWMAP_SIZE;
 
+    float depth_bias_constant = 3.5f;
+    float depth_bias_slope = 9.5f;
+
 	VkSampler shadowmap_sampler;	
 	VkDescriptorSetLayout shadowmap_layout;
 	

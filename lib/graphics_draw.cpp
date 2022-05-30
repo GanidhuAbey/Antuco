@@ -1020,7 +1020,7 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
     shadowpass_scissor.extent.height = shadowmap_height;
     vkCmdSetScissor(command_buffers[command_index], 0, 1, &shadowpass_scissor);
 
-    vkCmdSetDepthBias(command_buffers[command_index], 1.25f, 0.0f, 1.75f);
+    vkCmdSetDepthBias(command_buffers[command_index], depth_bias_constant, 0.0f, depth_bias_slope);
 
     vkCmdBindPipeline(command_buffers[command_index], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmap_pipeline.get_api_pipeline());
 
