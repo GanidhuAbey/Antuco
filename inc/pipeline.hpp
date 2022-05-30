@@ -40,6 +40,8 @@ struct PipelineConfig {
     std::vector<VkDynamicState> dynamic_states;
     std::vector<VkDescriptorSetLayout> descriptor_layouts;
     std::vector<VkPushConstantRange> push_ranges = std::vector<VkPushConstantRange>(0);
+    VkCompareOp depth_compare_op = VK_COMPARE_OP_LESS;
+    VkBool32 depth_bias_enable = VK_FALSE;
     VkRenderPass pass;
     uint32_t subpass_index;
     bool blend_colours = VK_FALSE;

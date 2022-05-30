@@ -49,7 +49,7 @@ const uint32_t BUFFER_SIZE = 2e8;
 //CHANGING THIS IS NOT RECOMMENDED
 //shader assumes that shadowmap size is 2048, i could pass in the shadowmap size into the shader but thats a waste of 
 //performance for something that realistically will never need to change
-const uint32_t SHADOWMAP_SIZE=2048;
+const uint32_t SHADOWMAP_SIZE=4096;
 
 const std::vector<const char*> validation_layers = {"VK_LAYER_KHRONOS_validation"};
 

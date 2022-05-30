@@ -34,7 +34,7 @@ private:
 	Light(glm::vec3 light_pos, glm::vec3 light_target, glm::vec3 light_color, glm::vec3 up=glm::vec3(0.0,1.0,0.0));
 public:
 	~Light();
-	void update(glm::vec3 translation);
+	void update(glm::vec3 new_position);
 };
 
 class Camera {

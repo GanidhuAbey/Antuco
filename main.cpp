@@ -129,9 +129,12 @@ int main() {
 
 
 	//update light position
-	light->update(glm::vec3(3.0f, 0.0f, 0.0f));
+	light->update(light_position);
 
 	while (game_loop) {
+		//cut the y axis to analze the rotation from two dimensions.
+		
+
 		auto t1 = TIME_IT;
 		timer += 0.0001f;
 		//query mouse position
@@ -149,7 +152,7 @@ int main() {
 
 		//take some input
 		if (window->get_key_state(tuco::WindowInput::X)) {
-			std::cout << "frame time : " << delta << std::endl;
+			light->update(camera_pos);
 		}
 		//handle movement
 		if (window->get_key_state(tuco::WindowInput::W)) {
@@ -165,17 +168,11 @@ int main() {
 			camera_pos -= PLAYER_SPEED * camera_face * (float)delta;
 		}
 
-		//cut the y axis to analze the rotation from two dimensions.
-		glm::vec2 rotate_item = glm::vec2(light_position.x, light_position.z);
-		glm::vec2 rotate_point = glm::vec2(light_look_at.x, light_look_at.z);
-
-		glm::vec2 step_rotation = rotate_around_point(rotate_item, rotate_point, 0.2f);
-
 		//update light_position
-		//light_position = glm::vec3(step_rotation.x, light_position.y, step_rotation.y);
+		//
 
 		//update light
-		light->update(light_position);
+		//
 		
 		//there seems to be a very glitchy looking shadow that pops for a frame or two right when the 
 		//light goes off the surface and right when its about to re-enter. My assumption is that this is occuring

@@ -198,7 +198,7 @@ void TucoPipeline::create_render_pipeline(PipelineConfig config) {
     rasterization_info.lineWidth = 1.0f;
     rasterization_info.cullMode = VK_CULL_MODE_BACK_BIT;
     rasterization_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
-    rasterization_info.depthBiasEnable = VK_FALSE;
+    rasterization_info.depthBiasEnable = config.depth_bias_enable;
     rasterization_info.depthBiasConstantFactor = 0.0f; // Optional
     rasterization_info.depthBiasClamp = 0.0f; // Optional
     rasterization_info.depthBiasSlopeFactor = 0.0f; // Optional
@@ -232,7 +232,7 @@ void TucoPipeline::create_render_pipeline(PipelineConfig config) {
     depth_stencil_info.flags = 0;
     depth_stencil_info.depthTestEnable = VK_TRUE;
     depth_stencil_info.depthWriteEnable = VK_TRUE;
-    depth_stencil_info.depthCompareOp = VK_COMPARE_OP_LESS;
+    depth_stencil_info.depthCompareOp = config.depth_compare_op;
     depth_stencil_info.depthBoundsTestEnable = VK_FALSE;
     depth_stencil_info.stencilTestEnable = VK_FALSE;
 

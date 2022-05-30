@@ -23,8 +23,8 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 
 	//graphics draw
 	create_swapchain();
-	create_shadowmap_atlas();
-	create_shadowmap_transfer_buffer();
+	//create_shadowmap_atlas();
+	//create_shadowmap_transfer_buffer();
 	create_depth_resources();
 	create_shadowpass_resources();
     create_image_layers();

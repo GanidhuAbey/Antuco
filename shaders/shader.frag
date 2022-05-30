@@ -33,10 +33,30 @@ float AMBIENCE_FACTOR = 0.2f;
 //is working as intended
 
 
+float pcf_shadow(vec4 light_view) {
+    float pd = light_view.z;
+
+    vec2 d = 1.0001 * 1 / textureSize(shadowmap, 0); //multiply by constant value, to make amplify softness of shadow
+
+    //sample 4 points of the shadowmap
+    float s1 = texture(shadowmap, vec2(light_view.s + d.x, light_view.t)).r;
+    float s2 = texture(shadowmap, vec2(light_view.s - d.x, light_view.t)).r;
+    float s3 = texture(shadowmap, vec2(light_view.s, light_view.t + d.y)).r;
+    float s4 = texture(shadowmap, vec2(light_view.s, light_view.t - d.y)).r;
+
+    //apply depth tests
+    float s1_test = ceil(s1 - pd);
+    float s2_test = ceil(s2 - pd);
+    float s3_test = ceil(s3 - pd);
+    float s4_test = ceil(s4 - pd);
+    float amb_val = 1.0f;
+    return ((s1_test + s2_test + s3_test + s4_test + amb_val) / 5);
+}
+
 //returns 0 if in shadow, otherwise 1
-float check_shadow(vec3 light_view) {
+float check_shadow(vec4 light_view) {
 	//light_view -= surfaceNormal * bias;
-	float pixel_depth = light_view.z - bias;
+	float pixel_depth = light_view.z;
   	//check if pixel_depth can sample closest depth
   	//then closest depth must be a valid value, so now we need to clamp to 0 or 1
 
@@ -82,7 +102,7 @@ void main() {
     //float closest_to_light = (texture(shadowmap, sample_value.st)).r;
 
     //just solve it first, and then solve it well
-    float shadow_factor = check_shadow(vec3(sample_value));
+    float shadow_factor = pcf_shadow(sample_value / sample_value.w);
     
     //lets add diffuse light back into the equation
     //if texture is always 1, then no impact on outcome of img

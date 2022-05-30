@@ -482,7 +482,6 @@ void StackBuffer::destroy(VkDevice device) {
     vkFreeMemory(device, buffer_memory, nullptr);
     vkDestroyBuffer(device, buffer, nullptr);
     vkDestroyBuffer(device, inter_buffer, nullptr);
-
 }
 
 void StackBuffer::init(VkPhysicalDevice* physical_device, VkDevice* device, VkCommandPool* command_pool, BufferCreateInfo* p_buffer_info) {

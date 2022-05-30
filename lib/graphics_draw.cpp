@@ -216,13 +216,13 @@ void GraphicsImpl::create_shadowpass_resources() {
     mem::ImageCreateInfo shadow_image_info{};
     shadow_image_info.extent = VkExtent3D{ shadowmap_width, shadowmap_height, 1 };
     shadow_image_info.format = VK_FORMAT_D16_UNORM;
-    shadow_image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    shadow_image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     shadow_image_info.queueFamilyIndexCount = 1;
     shadow_image_info.pQueueFamilyIndices = &graphics_family;
 
 	VkImageViewUsageCreateInfo usageInfo{};
 	usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
-	usageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+	usageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
 	//setup create struct for image views
 	mem::ImageViewCreateInfo createInfo{};
@@ -352,7 +352,7 @@ void GraphicsImpl::create_shadowpass() {
     dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT; 
 
     DepthConfig config{};
-    config.final_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    config.final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     shadowpass.add_depth(0, config);
     shadowpass.add_dependency(dependencies);
@@ -695,7 +695,9 @@ void GraphicsImpl::create_shadowpass_pipeline() {
     config.descriptor_layouts = layouts;
     config.screen_extent = shadowmap_extent;
     config.pass = shadowpass.get_api_pass();
+    config.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
     config.subpass_index = 0;
+    config.depth_bias_enable = VK_TRUE;
 
     shadowmap_pipeline.init(*p_device, config);
 }
@@ -996,89 +998,72 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
     shadowpass_info.pClearValues = &shadowpass_clear;
 
     int current_shadow = 0;
-    for (size_t y = 0; y < glm::sqrt(MAX_SHADOW_CASTERS); y++) {
-        for (size_t x = 0; x < glm::sqrt(MAX_SHADOW_CASTERS); x++) {
+
+    //NOTE: when imeplementing multiple shadowmaps, we can loop through MAX_SHADOW_CASTERS twice.
+    //for (size_t y = 0; y < glm::sqrt(MAX_SHADOW_CASTERS); y++) {
+    //    for (size_t x = 0; x < glm::sqrt(MAX_SHADOW_CASTERS); x++) {
             //there is at least one light that is casting a shadow here
-            vkCmdBeginRenderPass(command_buffers[command_index], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(command_buffers[command_index], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
 
-            //do stuff...
-            vkCmdBindPipeline(command_buffers[command_index], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmap_pipeline.get_api_pipeline());
+    VkViewport shadowpass_port = {};
+    shadowpass_port.x = 0;
+    shadowpass_port.y = 0;
+    shadowpass_port.width = (float)shadowmap_width;
+    shadowpass_port.height = (float)shadowmap_height;
+    shadowpass_port.minDepth = 0.0;
+    shadowpass_port.maxDepth = 1.0;
+    vkCmdSetViewport(command_buffers[command_index], 0, 1, &shadowpass_port);
 
-            VkViewport shadowpass_port = {};
-            shadowpass_port.x = 0;
-            shadowpass_port.y = 0;
-            shadowpass_port.width = (float)shadowmap_width;
-            shadowpass_port.height = (float)shadowmap_height;
-            shadowpass_port.minDepth = 0.0;
-            shadowpass_port.maxDepth = 1.0;
-            vkCmdSetViewport(command_buffers[command_index], 0, 1, &shadowpass_port);
+    VkRect2D shadowpass_scissor{};
+    shadowpass_scissor.offset = { 0, 0 };
+    shadowpass_scissor.extent.width = shadowmap_width;
+    shadowpass_scissor.extent.height = shadowmap_height;
+    vkCmdSetScissor(command_buffers[command_index], 0, 1, &shadowpass_scissor);
 
-            VkRect2D shadowpass_scissor{};
-            shadowpass_scissor.offset = { 0, 0 };
-            shadowpass_scissor.extent.width = shadowmap_width;
-            shadowpass_scissor.extent.height = shadowmap_height;
-            vkCmdSetScissor(command_buffers[command_index], 0, 1, &shadowpass_scissor);
+    vkCmdSetDepthBias(command_buffers[command_index], 1.25f, 0.0f, 1.75f);
 
-            vkCmdSetDepthBias(command_buffers[command_index], 1.25, 0.0f, 1.75f);
-            //time for the draw calls
-            const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
-            vkCmdBindVertexBuffers(command_buffers[command_index], 0, 1, &vertex_buffer.buffer, offsets);
-            vkCmdBindIndexBuffer(command_buffers[command_index], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindPipeline(command_buffers[command_index], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmap_pipeline.get_api_pipeline());
 
-            uint32_t total_indexes = 0;
-            uint32_t total_vertices = 0;
+    //time for the draw calls
+    const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
+    vkCmdBindVertexBuffers(command_buffers[command_index], 0, 1, &vertex_buffer.buffer, offsets);
+    vkCmdBindIndexBuffer(command_buffers[command_index], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-            uint32_t* number;
+    uint32_t total_indexes = 0;
+    uint32_t total_vertices = 0;
 
-            for (size_t j = 0; j < game_objects.size(); j++) {
-                if (!game_objects[j]->update) {
-                    for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
-                        const Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
-                        uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
-                        uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
+    uint32_t* number;
 
-                        VkDescriptorSet descriptors[1] = { light_ubo[j][command_index] };
-                        vkCmdBindDescriptorSets(command_buffers[command_index], 
-                            VK_PIPELINE_BIND_POINT_GRAPHICS, 
-                            shadowmap_pipeline.get_api_layout(), 
-                            0, 
-                            1, 
-                            descriptors, 
-                            0, 
-                            nullptr);
+    for (size_t j = 0; j < game_objects.size(); j++) {
+        if (!game_objects[j]->update) {
+            for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
+                const Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
+                uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
+                uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 
-                        vkCmdDrawIndexed(command_buffers[command_index], 
-                            index_count, 
-                            1, 
-                            total_indexes, 
-                            total_vertices, 
-                            static_cast<uint32_t>(0));
+                VkDescriptorSet descriptors[1] = { light_ubo[j][command_index] };
+                vkCmdBindDescriptorSets(command_buffers[command_index],
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    shadowmap_pipeline.get_api_layout(),
+                    0,
+                    1,
+                    descriptors,
+                    0,
+                    nullptr);
 
-                        total_indexes += index_count;
-                        total_vertices += vertex_count;
-                    }
-                }
+                vkCmdDrawIndexed(command_buffers[command_index], 
+                    index_count, 
+                    1, 
+                    total_indexes, 
+                    total_vertices, 
+                    static_cast<uint32_t>(0));
+
+                total_indexes += index_count;
+                total_vertices += vertex_count;
             }
-            vkCmdEndRenderPass(command_buffers[command_index]);
-
-            shadow_pass_texture.transfer(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, graphics_queue, command_pool, command_buffers[command_index]);
-            shadowmap_atlas.transfer(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, graphics_queue, command_pool, command_buffers[command_index]);
-
-            //take depth texture calculated in first render pass from DEPTH_STENCIL_READ_ONLY -> TRANSFER_SRC       
-            
-            shadow_pass_texture.copy_to_buffer(shadowmap_buffers[0].buffer, 0, graphics_queue, command_pool, command_buffers[command_index]);
-            shadow_pass_texture.transfer(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, graphics_queue, command_pool, command_buffers[command_index]);
-            
-            //transfer the image data from the intermediary buffer into the shadow map
-            VkOffset3D image_offset = { static_cast<int32_t>(x * SHADOWMAP_SIZE), static_cast<int32_t>(y * SHADOWMAP_SIZE), 0 };
-            VkExtent3D image_extent = { SHADOWMAP_SIZE, SHADOWMAP_SIZE, 1};
-
-            shadowmap_atlas.copy_from_buffer(shadowmap_buffers[0].buffer, image_offset, image_extent, graphics_queue, command_pool, command_buffers[command_index]);
-
-            shadowmap_atlas.transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool, command_buffers[command_index]);
         }
-        current_shadow++;
     }
+    vkCmdEndRenderPass(command_buffers[command_index]);
 }
 
 void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects) {
@@ -1462,7 +1447,7 @@ void GraphicsImpl::write_to_shadowmap_set() {
     VkDescriptorImageInfo imageInfo;
     imageInfo.sampler = shadowmap_sampler;
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    imageInfo.imageView = shadowmap_atlas.get_api_image_view();
+    imageInfo.imageView = shadow_pass_texture.get_api_image_view();
 
     VkWriteDescriptorSet writeInfo{};
     writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1477,7 +1462,7 @@ void GraphicsImpl::write_to_shadowmap_set() {
     
     //wonder if this is a fine time to transfer the image from undefined to shader
     //TODO: move this somewhere else (into its own function if you absolutely have to)
-    shadowmap_atlas.transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool);
+    //shadowmap_atlas.transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool);
 }
 
 void GraphicsImpl::write_to_texture_set(VkDescriptorSet texture_set, VkImageView image_view) {
