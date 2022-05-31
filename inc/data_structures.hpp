@@ -27,7 +27,7 @@ public:
 	Vertex(glm::vec4 pos, glm::vec4 norm, glm::vec2 tex);
 	~Vertex();
 
-	char* to_ptr_char();
+	std::string to_string();
 };
 
 struct UniformBufferObject {

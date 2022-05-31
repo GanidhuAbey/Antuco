@@ -79,7 +79,7 @@ int main() {
 
 	//create a simple game object
 	tuco::GameObject* another = antuco.create_object();
-	tuco::GameObject* some_object = antuco.create_object();
+	//tuco::GameObject* some_object = antuco.create_object();
 	//tuco::GameObject* light_mesh = antuco.create_object();
 
 	//light_mesh->add_mesh("objects/test_object/white.obj");
@@ -97,11 +97,11 @@ int main() {
 	some_object->add_mesh(root_project + "/objects/antuco-files/mac/bmw.obj");
 	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
 #elif defined(_WIN32) || defined(_WIN64)
-	another->add_mesh(root_project + "\\objects\\antuco-files\\windows\\surface.obj");
+	another->add_mesh(root_project + "\\objects\\antuco-files\\windows\\surface.obj", "surface");
 	another->scale(glm::vec3(5, 0.1, 5));
 
-	some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.obj", "bmw");
-	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
+	//some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.obj", "bmw");
+	//some_object->scale(glm::vec3(0.2, 0.2, 0.2));
 #endif
 
 	another->translate(glm::vec3(0, -1, 0));	
