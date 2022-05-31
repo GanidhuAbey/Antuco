@@ -12,6 +12,8 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	not_created = true;
 	raytracing = false; //set this as an option in the pre-configuration settings.
 	oit_layers = 1;
+	depth_bias_constant = 7.0f;
+	depth_bias_slope = 9.0f;
 #ifdef APPLE_M1
     raytracing = false;
 #endif

@@ -17,10 +17,17 @@ struct PushFragConstant {
 	glm::vec4 color;
 };
 
-struct Vertex {
+class Vertex {
+public:
 	glm::vec4 position;
 	glm::vec4 normal;
 	glm::vec2 tex_coord;
+
+public:
+	Vertex(glm::vec4 pos, glm::vec4 norm, glm::vec2 tex);
+	~Vertex();
+
+	char* to_ptr_char();
 };
 
 struct UniformBufferObject {

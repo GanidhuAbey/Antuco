@@ -4,10 +4,18 @@
 #include "logger/interface.hpp"
 
 #include <stdexcept>
+#include<iostream>
+#include<fstream>
 
 using namespace tuco;
 
-void Model::add_mesh(const std::string& fileName) {
+void Model::add_mesh(const std::string& fileName, std::optional<std::string> name) {
+	if (name.has_value() && file_exists(name.value())) {
+		read_from_file();
+		model_name = name.value();
+		return;
+	}
+
 	//have assimp read file
 	Assimp::Importer importer;
 
@@ -33,6 +41,11 @@ void Model::add_mesh(const std::string& fileName) {
 
 
 	processScene(rootNode, meshes, materials);
+
+	if (name.has_value()) {
+		model_name = name.value();
+		write_to_file();
+	}
 }
 
 Model::Model() {}
@@ -40,7 +53,6 @@ Model::~Model() {}
 
 void Model::processScene(aiNode* node, aiMesh** const meshes, aiMaterial** materials) {
 	for (uint32_t i = 0; i < node->mNumMeshes; i++) {
-
 		Mesh* mesh = processMesh(meshes[node->mMeshes[i]], materials);
 		
 		if (mesh->is_transparent()) {
@@ -55,6 +67,34 @@ void Model::processScene(aiNode* node, aiMesh** const meshes, aiMaterial** mater
 	for (unsigned int i = 0; i < node->mNumChildren; i++) {
 		processScene(node->mChildren[i], meshes, materials);
 	}
+}
+
+void Model::read_from_file() {
+	
+}
+
+bool Model::file_exists(std::string name) {
+	return false;
+}
+
+void Model::write_to_file() {
+	std::ofstream file(model_name + ".dat", std::ios::out | std::ios::binary);
+
+	file.write(model_name.c_str(), sizeof(model_name.c_str()));
+	for (size_t i = 0; i < model_meshes.size(); i++) {
+		//save vertices
+		for (size_t j = 0; j < model_meshes[i]->vertices.size(); j++) {
+			file.write(model_meshes[i]->vertices[j].to_ptr_char(), sizeof(Vertex));
+		}
+
+		//save indices
+
+		//save textures
+
+		//save materials
+	}
+
+	file.close();
 }
 
 Mesh* Model::processMesh(aiMesh* mesh, aiMaterial** materials) {
@@ -91,11 +131,11 @@ std::vector<Vertex> Model::processVertices(uint32_t numOfVertices, aiVector3D* a
 		}
 		else texCoord = glm::vec2(0.0, 0.0);
 
-		Vertex vertex = {
-			glm::vec4(position.x, position.y, position.z, 0.0),
-			glm::vec4(normal.x, normal.y, normal.z, 0.0),
-			texCoord,
-		};
+		Vertex vertex(
+			glm::vec4(position.x, position.y, position.z, 0.0), 
+			glm::vec4(normal.x, normal.y, normal.z, 0.0), 
+			texCoord
+		);
 
 		meshVertices.push_back(vertex);
 	}

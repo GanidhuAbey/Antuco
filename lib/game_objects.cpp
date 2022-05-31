@@ -15,9 +15,9 @@ GameObject::GameObject() {
 
 GameObject::~GameObject() {}
 
-void GameObject::add_mesh(const std::string& file_name) {
+void GameObject::add_mesh(const std::string& file_name, std::optional<std::string> name) {
 	changed = 1;
-	object_model.add_mesh(file_name);
+	object_model.add_mesh(file_name, name);
 }
 
 void GameObject::translate(glm::vec3 t) {
