@@ -11,7 +11,6 @@ using namespace tuco;
 
 void Model::add_mesh(const std::string& fileName, std::optional<std::string> name) {
 	if (name.has_value() && file_exists(name.value())) {
-		printf("hi \n");
 		read_from_file();
 		model_name = name.value();
 		return;
@@ -73,7 +72,6 @@ void Model::processScene(aiNode* node, aiMesh** const meshes, aiMaterial** mater
 void Model::read_from_file() {
 	std::string file_name = model_name;
 	std::ifstream file(model_name + ".txt", std::ios::binary);
-	printf("%s \n", file_name);
 	if (!file) {
 		LOG("doesn't open");
 	}
@@ -83,7 +81,7 @@ void Model::read_from_file() {
 		char c;
 		file.read(&c, sizeof(float));
 
-		printf("%f \n", std::atof(&c));
+        std::cout << std::atof(&c) << std::endl;
 	}
 }
 
@@ -99,12 +97,9 @@ void Model::write_to_file() {
 		//save vertices
 		for (size_t j = 0; j < model_meshes[i]->vertices.size(); j++) {
 			std::string vertex = model_meshes[i]->vertices[j].to_string();
-			std::cout << vertex.c_str() << std::endl;
-			file.write(vertex.c_str(), sizeof(vertex.c_str()));
-			break;
+			file.write(vertex.c_str(), vertex.size());
 		}
-
-		//save indices
+		//saive indices
 
 		//save textures
 

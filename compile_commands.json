@@ -26,6 +26,11 @@
 },
 {
   "directory": "/Users/ganidhu/Antuco/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/ganidhu/Antuco/inc -I/usr/local/include -I/Users/ganidhu/Antuco/external/include/glfw/include -I/Users/ganidhu/Antuco/external/include/glm -I/Users/ganidhu/Antuco/external/include/stb -I/Users/ganidhu/Antuco/external/include/assimp/include -I/Users/ganidhu/Antuco/external/build/assimp/include  -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.1.sdk -std=gnu++17 -o CMakeFiles/REQUIRED_LIBRARIES.dir/lib/data_structures.cpp.o -c /Users/ganidhu/Antuco/lib/data_structures.cpp",
+  "file": "/Users/ganidhu/Antuco/lib/data_structures.cpp"
+},
+{
+  "directory": "/Users/ganidhu/Antuco/build",
   "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/ganidhu/Antuco/inc -I/usr/local/include -I/Users/ganidhu/Antuco/external/include/glfw/include -I/Users/ganidhu/Antuco/external/include/glm -I/Users/ganidhu/Antuco/external/include/stb -I/Users/ganidhu/Antuco/external/include/assimp/include -I/Users/ganidhu/Antuco/external/build/assimp/include  -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.1.sdk -std=gnu++17 -o CMakeFiles/REQUIRED_LIBRARIES.dir/lib/game_objects.cpp.o -c /Users/ganidhu/Antuco/lib/game_objects.cpp",
   "file": "/Users/ganidhu/Antuco/lib/game_objects.cpp"
 },

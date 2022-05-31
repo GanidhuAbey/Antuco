@@ -90,12 +90,12 @@ int main() {
 
 	
 #if defined(__APPLE__)
-	another->add_mesh(root_project + "/objects/antuco-files/mac/no_texture.obj");
+	another->add_mesh(root_project + "/objects/antuco-files/mac/no_texture.obj", "no_texture");
 	another->scale(glm::vec3(5, 0.1, 5));
     another->translate(glm::vec3(0, 0.6, 0));
 
-	some_object->add_mesh(root_project + "/objects/antuco-files/mac/bmw.obj");
-	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
+	//some_object->add_mesh(root_project + "/objects/antuco-files/mac/bmw.obj");
+	//some_object->scale(glm::vec3(0.2, 0.2, 0.2));
 #elif defined(_WIN32) || defined(_WIN64)
 	another->add_mesh(root_project + "\\objects\\antuco-files\\windows\\surface.obj", "surface");
 	another->scale(glm::vec3(5, 0.1, 5));
