@@ -11,8 +11,8 @@ using namespace tuco;
 
 void Model::add_mesh(const std::string& fileName, std::optional<std::string> name) {
 	if (name.has_value() && file_exists(name.value())) {
-		read_from_file();
 		model_name = name.value();
+		read_from_file();
 		return;
 	}
 
@@ -70,18 +70,24 @@ void Model::processScene(aiNode* node, aiMesh** const meshes, aiMaterial** mater
 }
 
 void Model::read_from_file() {
-	std::string file_name = model_name;
-	std::ifstream file(model_name + ".txt", std::ios::binary);
+	std::string file_name = model_name + ".bin";
+    std::cout << file_name << std::endl;
+	std::ifstream file(file_name, std::ios::in | std::ios::binary);
 	if (!file) {
 		LOG("doesn't open");
+        return;
 	}
 
 	bool file_end = false;
-	while (!file_end) {
+    while (true) {
 		char c;
-		file.read(&c, sizeof(float));
+		file.read(&c, 1);
 
-        std::cout << std::atof(&c) << std::endl;
+        std::cout << c << std::endl;
+
+        if (strcmp(&c, "|") == 0) {
+            break;
+        }
 	}
 }
 
@@ -90,22 +96,35 @@ bool Model::file_exists(std::string name) {
 }
 
 void Model::write_to_file() {
-	std::ofstream file(model_name + ".txt", std::ios::out);
+    std::ofstream file;
+	file.open(model_name + ".bin", std::ios::out | std::ios::binary);
 
 	//file.write(model_name.c_str(), sizeof(model_name.c_str()));
 	for (size_t i = 0; i < model_meshes.size(); i++) {
 		//save vertices
 		for (size_t j = 0; j < model_meshes[i]->vertices.size(); j++) {
-			std::string vertex = model_meshes[i]->vertices[j].to_string();
-			file.write(vertex.c_str(), vertex.size());
+			//std::string vertex = model_meshes[i]->vertices[j].to_string();
+			//file.write(vertex.c_str(), sizeof(vertex));
+            //
+            std::vector<float> floats = model_meshes[i]->vertices[j].linearlize();
+            for (float& f : floats) {
+                file.write(reinterpret_cast<char*>(&f), sizeof(float));
+            }
+            unsigned short int f = 65535;
+            file.write(reinterpret_cast<char*>(&f), sizeof(unsigned short int));
 		}
 		//saive indices
+        /*
+        for (size_t j = 0; j < model_meshes[i]->indices.size(); j++) {
+            std::string s = std::to_string(model_meshes[i]->indices[j]) + "\n";
+            file.write(s.c_str(), 2);
+        }
+        */
 
 		//save textures
 
 		//save materials
 	}
-
 	file.close();
 }
 

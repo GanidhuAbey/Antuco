@@ -8,6 +8,7 @@
 #include "assimp/types.h"
 #include <vulkan/vulkan.h>
 #include <glm/glm.hpp>
+#include <vector>
 #include <optional>
 
 const uint32_t MATERIALS_POOL_SIZE = 5;
@@ -28,6 +29,8 @@ public:
 	~Vertex();
 
 	std::string to_string();
+    //restructure the data stored into a linear array of floats: [positions, normals, textures]
+    std::vector<float> linearlize();
 };
 
 struct UniformBufferObject {
