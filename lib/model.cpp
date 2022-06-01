@@ -99,7 +99,8 @@ void Model::write_to_file() {
     std::ofstream file;
 	file.open(model_name + ".bin", std::ios::out | std::ios::binary);
 
-	//file.write(model_name.c_str(), sizeof(model_name.c_str()));
+	//file.write(model_name.c_str(), sizeof(model_name.c_str())); 
+    unsigned short int f = 65535;
 	for (size_t i = 0; i < model_meshes.size(); i++) {
 		//save vertices
 		for (size_t j = 0; j < model_meshes[i]->vertices.size(); j++) {
@@ -110,20 +111,27 @@ void Model::write_to_file() {
             for (float& f : floats) {
                 file.write(reinterpret_cast<char*>(&f), sizeof(float));
             }
-            unsigned short int f = 65535;
             file.write(reinterpret_cast<char*>(&f), sizeof(unsigned short int));
-		}
+
+            //Vertex vertex = model_meshes[i]->vertices[j];
+            //file.write(reinterpret_cast<char*>(&vertex), sizeof(Vertex));
+		} 
+        file.write(reinterpret_cast<char*>(&f), sizeof(unsigned short int));
 		//saive indices
-        /*
-        for (size_t j = 0; j < model_meshes[i]->indices.size(); j++) {
-            std::string s = std::to_string(model_meshes[i]->indices[j]) + "\n";
-            file.write(s.c_str(), 2);
-        }
-        */
-
-		//save textures
-
+        for (size_t j = 0; j < model_meshes[i]->indices.size(); j+=3) {
+            for (size_t k = 0; k < 3; k++) {
+                uint32_t index = model_meshes[i]->indices[j + k];
+                file.write(reinterpret_cast<char*>(&index), sizeof(uint32_t)); 
+            } 
+            file.write(reinterpret_cast<char*>(&f), sizeof(unsigned short int));
+        } 
+        file.write(reinterpret_cast<char*>(&f), sizeof(unsigned short int));
+        
 		//save materials
+        file.write(reinterpret_cast<char*>(&model_meshes[i]->mat_data), sizeof(MaterialsObject)); 
+
+        file.write(reinterpret_cast<char*>(&f), sizeof(unsigned short int));
+        file.write(reinterpret_cast<char*>(&f), sizeof(unsigned short int));
 	}
 	file.close();
 }
