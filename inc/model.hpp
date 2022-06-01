@@ -45,6 +45,9 @@ private:
 	void write_to_file();
 	bool file_exists(std::string model_name);
 	void read_from_file();
+    std::vector<Vertex> read_vertices(std::ifstream* file);
+    std::vector<uint32_t> read_indices(std::ifstream* file);
+    MaterialsObject read_materials(std::ifstream* file);
 };
 
 }

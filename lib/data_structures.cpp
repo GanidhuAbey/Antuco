@@ -37,3 +37,34 @@ std::vector<float> Vertex::linearlize() {
 
     return float_list;
 }
+
+
+void MaterialsObject::init(glm::vec4 texture_opacity, glm::vec4 ambient, glm::vec4 diffuse, glm::vec4 specular) {
+    MaterialsObject::texture_opacity = texture_opacity;
+    MaterialsObject::ambient = ambient;
+    MaterialsObject::diffuse = diffuse;
+    MaterialsObject::specular = specular;
+}
+
+MaterialsObject::MaterialsObject() {}
+MaterialsObject::~MaterialsObject() {}
+
+std::vector<float> MaterialsObject::linearlize() {
+    std::vector<float> floats;
+    floats.push_back(texture_opacity.x);
+    floats.push_back(texture_opacity.y);
+
+    floats.push_back(ambient.x);
+    floats.push_back(ambient.y);
+    floats.push_back(ambient.z);
+
+    floats.push_back(diffuse.x);
+    floats.push_back(diffuse.y);
+    floats.push_back(diffuse.z);
+
+    floats.push_back(specular.x);
+    floats.push_back(specular.y);
+    floats.push_back(specular.z);
+
+    return floats;
+}

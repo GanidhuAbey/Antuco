@@ -51,11 +51,18 @@ struct LightBufferObject {
 	glm::mat4 projection;
 };
 
-struct MaterialsObject {
+class MaterialsObject {
+public:
     glm::vec4 texture_opacity;
     glm::vec4 ambient; //Ka
     glm::vec4 diffuse; //Kd
     glm::vec4 specular; //Ks
+
+public:
+    void init(glm::vec4 texture_opacity, glm::vec4 ambient, glm::vec4 diffuse, glm::vec4 specular);
+    MaterialsObject();
+    ~MaterialsObject();
+    std::vector<float> linearlize();
 };
 
 struct Material {

@@ -4,8 +4,9 @@
 #include "logger/interface.hpp"
 
 #include <stdexcept>
-#include<iostream>
-#include<fstream>
+#include <iostream>
+#include <fstream>
+#include <limits>
 
 using namespace tuco;
 
@@ -77,22 +78,189 @@ void Model::read_from_file() {
 		LOG("doesn't open");
         return;
 	}
+   
+    uint32_t read_state = 0;
+    uint32_t index;
+    glm::vec3 texture_opacity;
+    glm::vec3 ambient;
+    glm::vec3 diffuse;
+    glm::vec3 specular;
+ 
+    while (file.peek() != EOF) {
+        //read current byte as float
+        //float f;
+        //file.read(reinterpret_cast<char*>(&f), sizeof(float));
 
-	bool file_end = false;
-    while (true) {
-		char c;
-		file.read(&c, 1);
+        //std::cout << f << std::endl;
 
-        std::cout << c << std::endl;
+        std::vector<Vertex> vertices = read_vertices(&file);
+        break;
+        //std::vector<uint32_t> indices = read_indices(&file);
+        //MaterialsObject materials =  read_materials(&file);
 
-        if (strcmp(&c, "|") == 0) {
+        //Mesh new_mesh(vertices, indices, materials);
+
+        //model_meshes.push_back(&new_mesh);
+    } 
+}
+
+std::vector<uint32_t> Model::read_indices(std::ifstream* file) {
+    bool stop = false;
+    uint32_t i;
+    std::vector<uint32_t> indices;
+    while (!stop) {
+        file->read(reinterpret_cast<char*>(&i), sizeof(uint32_t));
+        indices.push_back(i);
+
+        if (i > 1e30) {
             break;
         }
-	}
+    }
+
+    return indices;
+}
+
+MaterialsObject Model::read_materials(std::ifstream* file) {
+    size_t read_state = 0;
+    glm::vec4 t;
+    glm::vec4 a;
+    glm::vec4 d;
+    glm::vec4 s;
+
+    MaterialsObject mat;
+
+    float f;
+    file->read(reinterpret_cast<char*>(&f), sizeof(float));
+
+    std::cout << f << std::endl;
+
+    switch (read_state) {
+        case 0: t.x = f;
+                read_state++;
+                break;
+
+        case 1: t.y = f;
+                read_state++;
+                break;
+
+        case 3: a.x = f;
+                read_state++;
+                break;
+
+        case 4: a.y = f;
+                read_state++;
+                break;
+
+        case 5: a.z = f;
+                read_state++;
+                break;
+
+        case 6: d.x = f;
+                read_state++;
+                break;
+
+        case 7: d.y = f;
+                read_state++;
+                break;
+
+        case 8: d.z = f;
+                read_state++;
+                break;
+
+        case 9: s.x = f;
+                read_state++;
+                break;
+
+        case 10: s.y = f;
+                read_state++;
+                break;
+
+        case 11: s.z = f;
+                read_state++;
+                break;
+
+        case 12: { //create scope to init variable
+                t.w = 0;
+                a.w = 0;
+                d.w = 0;
+                s.w = 0;
+                mat.init(t, a, d, s);
+                }
+    }
+
+    return mat;
+}
+
+
+std::vector<Vertex> Model::read_vertices(std::ifstream* file) {
+    size_t read_state = 0;
+    glm::vec4 pos;
+    glm::vec4 norm;
+    glm::vec2 tex;
+
+    bool stop = false;
+    std::vector<Vertex> vertexes;
+
+    while (!stop && file->peek() != EOF) {
+        float f;
+        file->read(reinterpret_cast<char*>(&f), sizeof(float));
+
+        std::cout << "----------" << std::endl;
+        std::cout << read_state << std::endl;
+        std::cout << f << std::endl;
+
+        switch (read_state) {
+            case 0: if (f > 3.4e10) {
+                        std::cout << "asd" << std::endl; 
+                        stop = true;
+                        break;
+                    }
+                    pos.x = f;
+                    read_state++;
+                    break;
+
+            case 1: pos.y = f;
+                    read_state++;
+                    break;
+
+            case 2: pos.z = f;
+                    read_state++;
+                    break;
+
+            case 3: norm.x = f;
+                    read_state++;
+                    break;
+
+            case 4: norm.y = f;
+                    read_state++;
+                    break;
+
+            case 5: norm.z = f;
+                    read_state++;
+                    break;
+
+            case 6: tex.x = f;
+                    read_state++;
+                    break;
+
+            case 7: { 
+                    tex.y = f;
+
+                    pos.w = 0;
+                    norm.w = 0;
+                    Vertex vertex(pos, norm, tex);
+                    vertexes.push_back(vertex);
+                    read_state = 0;
+                    break;
+                    }
+        }
+    }
+
+    return vertexes;
 }
 
 bool Model::file_exists(std::string name) {
-	return false;
+	return true;
 }
 
 void Model::write_to_file() {
@@ -100,7 +268,8 @@ void Model::write_to_file() {
 	file.open(model_name + ".bin", std::ios::out | std::ios::binary);
 
 	//file.write(model_name.c_str(), sizeof(model_name.c_str())); 
-    unsigned short int f = 65535;
+    unsigned int i = std::numeric_limits<float>::max();
+    float f = std::numeric_limits<float>::max();
 	for (size_t i = 0; i < model_meshes.size(); i++) {
 		//save vertices
 		for (size_t j = 0; j < model_meshes[i]->vertices.size(); j++) {
@@ -111,27 +280,25 @@ void Model::write_to_file() {
             for (float& f : floats) {
                 file.write(reinterpret_cast<char*>(&f), sizeof(float));
             }
-            file.write(reinterpret_cast<char*>(&f), sizeof(unsigned short int));
-
             //Vertex vertex = model_meshes[i]->vertices[j];
             //file.write(reinterpret_cast<char*>(&vertex), sizeof(Vertex));
 		} 
-        file.write(reinterpret_cast<char*>(&f), sizeof(unsigned short int));
+        file.write(reinterpret_cast<char*>(&f), sizeof(float));
 		//saive indices
         for (size_t j = 0; j < model_meshes[i]->indices.size(); j+=3) {
             for (size_t k = 0; k < 3; k++) {
                 uint32_t index = model_meshes[i]->indices[j + k];
                 file.write(reinterpret_cast<char*>(&index), sizeof(uint32_t)); 
             } 
-            file.write(reinterpret_cast<char*>(&f), sizeof(unsigned short int));
         } 
-        file.write(reinterpret_cast<char*>(&f), sizeof(unsigned short int));
+        std::cout << "h" << std::endl;
+        file.write(reinterpret_cast<char*>(&i), sizeof(unsigned int));
         
 		//save materials
-        file.write(reinterpret_cast<char*>(&model_meshes[i]->mat_data), sizeof(MaterialsObject)); 
-
-        file.write(reinterpret_cast<char*>(&f), sizeof(unsigned short int));
-        file.write(reinterpret_cast<char*>(&f), sizeof(unsigned short int));
+        std::vector<float> floats = model_meshes[i]->mat_data.linearlize();
+        for (float& m : floats) {
+            file.write(reinterpret_cast<char*>(&m), sizeof(float));
+        }
 	}
 	file.close();
 }
@@ -160,7 +327,6 @@ std::vector<Vertex> Model::processVertices(uint32_t numOfVertices, aiVector3D* a
 	for (uint32_t i = 0; i < numOfVertices; i++) {
 		aiVector3D position = aiVertices[i];
 		aiVector3D normal = aiNormals[i];
-
 
 		//grab texture data?
 		glm::vec2 texCoord;

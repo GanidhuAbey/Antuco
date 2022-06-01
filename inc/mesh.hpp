@@ -28,6 +28,7 @@ public:
 
 private:
 	Mesh(std::vector<Vertex> newVertices, std::vector<uint32_t> newIndices, Material material);
+    Mesh(std::vector<Vertex> new_vertices, std::vector<uint32_t> new_indices, MaterialsObject mat_obj);
 public:
 	~Mesh();
 
