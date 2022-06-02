@@ -113,7 +113,7 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 			create_light_set(lbo);
 			//TODO: for some reason model_meshes or object_model does not exist
 			//      and the program crashes when it attempts to access the data here.
-			std::vector<Mesh*> meshes = game_objects[i]->object_model.model_meshes;
+			std::vector<std::shared_ptr<Mesh>> meshes = game_objects[i]->object_model.model_meshes;
 			//create texture data
 			create_texture_set(meshes.size());
 

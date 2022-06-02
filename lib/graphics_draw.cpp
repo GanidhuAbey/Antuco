@@ -1037,7 +1037,7 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
     for (size_t j = 0; j < game_objects.size(); j++) {
         if (!game_objects[j]->update) {
             for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
-                const Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
+                std::shared_ptr<Mesh> mesh_data = game_objects[j]->object_model.model_meshes[k];
                 uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
                 uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 
@@ -1167,7 +1167,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         for (size_t j = 0; j < game_objects.size(); j++) {
             if (!game_objects[j]->update) {
                 for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
-                    Mesh* mesh_data = game_objects[j]->object_model.model_meshes[k];
+                    std::shared_ptr<Mesh> mesh_data = game_objects[j]->object_model.model_meshes[k];
                     uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
                     uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 

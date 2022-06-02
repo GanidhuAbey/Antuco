@@ -54,7 +54,7 @@ Model::~Model() {}
 
 void Model::processScene(aiNode* node, aiMesh** const meshes, aiMaterial** materials) {
 	for (uint32_t i = 0; i < node->mNumMeshes; i++) {
-		Mesh* mesh = processMesh(meshes[node->mMeshes[i]], materials);
+        std::shared_ptr<Mesh> mesh = processMesh(meshes[node->mMeshes[i]], materials);
 		
 		if (mesh->is_transparent()) {
 			model_meshes.push_back(mesh);
@@ -99,7 +99,7 @@ void Model::read_from_file() {
 
         Mesh new_mesh(vertices, indices, materials);
 
-        model_meshes.push_back(&new_mesh);
+        model_meshes.push_back(std::make_unique<Mesh>(new_mesh));
     } 
 }
 
@@ -278,7 +278,7 @@ void Model::write_to_file() {
 	file.close();
 }
 
-Mesh* Model::processMesh(aiMesh* mesh, aiMaterial** materials) {
+std::shared_ptr<Mesh> Model::processMesh(aiMesh* mesh, aiMaterial** materials) {
 	//multithread this functionality
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
@@ -292,9 +292,9 @@ Mesh* Model::processMesh(aiMesh* mesh, aiMaterial** materials) {
 	indices = future_indices.get();
     material = future_material.get();
 
-	Mesh* new_mesh = new Mesh(vertices, indices, material);
+	Mesh new_mesh(vertices, indices, material);
 	
-	return new_mesh;
+	return std::make_shared<Mesh>(new_mesh);
 }
 
 std::vector<Vertex> Model::processVertices(uint32_t numOfVertices, aiVector3D* aiVertices, aiVector3D* aiNormals, aiVector3t<ai_real>** textureCoords) {
