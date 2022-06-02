@@ -236,7 +236,15 @@ std::vector<Vertex> Model::read_vertices(std::ifstream* file) {
 }
 
 bool Model::file_exists(std::string name) {
-	return true;
+    std::fstream file;
+	std::string file_name = name + ".bin";
+    file.open(file_name, std::ios::in);
+
+    if (file.is_open()) {
+        LOG(("file is open - " + file_name).c_str());
+    }
+
+    return file.is_open();
 }
 
 void Model::write_to_file() {

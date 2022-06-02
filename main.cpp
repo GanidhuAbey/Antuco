@@ -90,7 +90,7 @@ int main() {
 
 	
 #if defined(__APPLE__)
-	another->add_mesh(root_project + "/objects/antuco-files/mac/no_texture.obj", "different");
+	another->add_mesh(root_project + "/objects/antuco-files/mac/no_texture.obj", "no_texture");
 	another->scale(glm::vec3(5, 0.1, 5));
     another->translate(glm::vec3(0, 0.6, 0));
 
