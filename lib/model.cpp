@@ -94,13 +94,12 @@ void Model::read_from_file() {
         //std::cout << f << std::endl;
 
         std::vector<Vertex> vertices = read_vertices(&file);
-        break;
-        //std::vector<uint32_t> indices = read_indices(&file);
-        //MaterialsObject materials =  read_materials(&file);
+        std::vector<uint32_t> indices = read_indices(&file);
+        MaterialsObject materials =  read_materials(&file);
 
-        //Mesh new_mesh(vertices, indices, materials);
+        Mesh new_mesh(vertices, indices, materials);
 
-        //model_meshes.push_back(&new_mesh);
+        model_meshes.push_back(&new_mesh);
     } 
 }
 
@@ -108,11 +107,12 @@ std::vector<uint32_t> Model::read_indices(std::ifstream* file) {
     bool stop = false;
     uint32_t i;
     std::vector<uint32_t> indices;
-    while (!stop) {
+    while (!stop && file->peek() != EOF) {
         file->read(reinterpret_cast<char*>(&i), sizeof(uint32_t));
         indices.push_back(i);
 
-        if (i > 1e30) {
+        if (i == std::numeric_limits<uint32_t>::max()) {
+            stop = true;
             break;
         }
     }
@@ -131,62 +131,43 @@ MaterialsObject Model::read_materials(std::ifstream* file) {
 
     float f;
     file->read(reinterpret_cast<char*>(&f), sizeof(float));
+    t.x = f;
 
-    std::cout << f << std::endl;
+    file->read(reinterpret_cast<char*>(&f), sizeof(float));
+    t.y = f;
 
-    switch (read_state) {
-        case 0: t.x = f;
-                read_state++;
-                break;
+    file->read(reinterpret_cast<char*>(&f), sizeof(float));
+    a.x = f;
 
-        case 1: t.y = f;
-                read_state++;
-                break;
+    file->read(reinterpret_cast<char*>(&f), sizeof(float));
+    a.y = f;
 
-        case 3: a.x = f;
-                read_state++;
-                break;
+    file->read(reinterpret_cast<char*>(&f), sizeof(float));
+    a.z = f;
 
-        case 4: a.y = f;
-                read_state++;
-                break;
+    file->read(reinterpret_cast<char*>(&f), sizeof(float));
+    d.x = f;
 
-        case 5: a.z = f;
-                read_state++;
-                break;
+    file->read(reinterpret_cast<char*>(&f), sizeof(float));
+    d.y = f;
 
-        case 6: d.x = f;
-                read_state++;
-                break;
+    file->read(reinterpret_cast<char*>(&f), sizeof(float));
+    d.z = f;
 
-        case 7: d.y = f;
-                read_state++;
-                break;
+    file->read(reinterpret_cast<char*>(&f), sizeof(float));
+    s.x = f;
 
-        case 8: d.z = f;
-                read_state++;
-                break;
+    file->read(reinterpret_cast<char*>(&f), sizeof(float));
+    s.y = f;
 
-        case 9: s.x = f;
-                read_state++;
-                break;
+    file->read(reinterpret_cast<char*>(&f), sizeof(float));
+    s.z = f;
 
-        case 10: s.y = f;
-                read_state++;
-                break;
-
-        case 11: s.z = f;
-                read_state++;
-                break;
-
-        case 12: { //create scope to init variable
-                t.w = 0;
-                a.w = 0;
-                d.w = 0;
-                s.w = 0;
-                mat.init(t, a, d, s);
-                }
-    }
+    t.w = 0;
+    a.w = 0;
+    d.w = 0;
+    s.w = 0;
+    mat.init(t, a, d, s);
 
     return mat;
 }
@@ -205,13 +186,8 @@ std::vector<Vertex> Model::read_vertices(std::ifstream* file) {
         float f;
         file->read(reinterpret_cast<char*>(&f), sizeof(float));
 
-        std::cout << "----------" << std::endl;
-        std::cout << read_state << std::endl;
-        std::cout << f << std::endl;
-
         switch (read_state) {
             case 0: if (f > 3.4e10) {
-                        std::cout << "asd" << std::endl; 
                         stop = true;
                         break;
                     }
@@ -268,7 +244,7 @@ void Model::write_to_file() {
 	file.open(model_name + ".bin", std::ios::out | std::ios::binary);
 
 	//file.write(model_name.c_str(), sizeof(model_name.c_str())); 
-    unsigned int i = std::numeric_limits<float>::max();
+    uint32_t c = std::numeric_limits<uint32_t>::max();
     float f = std::numeric_limits<float>::max();
 	for (size_t i = 0; i < model_meshes.size(); i++) {
 		//save vertices
@@ -290,9 +266,8 @@ void Model::write_to_file() {
                 uint32_t index = model_meshes[i]->indices[j + k];
                 file.write(reinterpret_cast<char*>(&index), sizeof(uint32_t)); 
             } 
-        } 
-        std::cout << "h" << std::endl;
-        file.write(reinterpret_cast<char*>(&i), sizeof(unsigned int));
+        }
+        file.write(reinterpret_cast<char*>(&c), sizeof(uint32_t));
         
 		//save materials
         std::vector<float> floats = model_meshes[i]->mat_data.linearlize();
