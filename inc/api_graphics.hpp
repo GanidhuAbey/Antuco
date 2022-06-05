@@ -281,7 +281,7 @@ private:
 	void update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo);
     void update_materials(VkDeviceSize memory_offset, MaterialsObject mat);
     void copy_image_to_image(VkImage src_image, VkImageLayout src_layout, VkImage dst_image, VkImageLayout dst_layout, VkCommandBuffer command_buffer);
-	void create_texture_image(aiString texturePath, size_t object, size_t texture_set); 
+	void create_texture_image(std::string texturePath, size_t object, size_t texture_set); 
     void create_empty_image(size_t object, size_t texture_set);
 	void write_to_texture_set(VkDescriptorSet texture_set, VkImageView image_view);
 	void update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo);

@@ -1523,10 +1523,10 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
 }
 
 
-void GraphicsImpl::create_texture_image(aiString texturePath, size_t object, size_t texture_set) {
+void GraphicsImpl::create_texture_image(std::string texturePath, size_t object, size_t texture_set) {
     int imageWidth, imageHeight, imageChannels;
     //this is a char... why is that?
-    stbi_uc *pixels = stbi_load(texturePath.data, &imageWidth, &imageHeight, &imageChannels, STBI_rgb_alpha);
+    stbi_uc *pixels = stbi_load(texturePath.c_str(), &imageWidth, &imageHeight, &imageChannels, STBI_rgb_alpha);
 
     VkDeviceSize dataSize = 4 * (imageWidth * imageHeight);
     mem::BufferCreateInfo textureBufferInfo{};

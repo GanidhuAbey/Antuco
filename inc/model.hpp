@@ -48,6 +48,7 @@ private:
     std::vector<Vertex> read_vertices(std::ifstream* file);
     std::vector<uint32_t> read_indices(std::ifstream* file);
     MaterialsObject read_materials(std::ifstream* file);
+	std::string get_texture(std::ifstream* file);
 };
 
 }

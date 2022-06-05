@@ -72,7 +72,6 @@ void Model::processScene(aiNode* node, aiMesh** const meshes, aiMaterial** mater
 
 void Model::read_from_file() {
 	std::string file_name = model_name + ".bin";
-    std::cout << file_name << std::endl;
 	std::ifstream file(file_name, std::ios::in | std::ios::binary);
 	if (!file) {
 		LOG("doesn't open");
@@ -91,16 +90,33 @@ void Model::read_from_file() {
         //float f;
         //file.read(reinterpret_cast<char*>(&f), sizeof(float));
 
-        //std::cout << f << std::endl;
-
         std::vector<Vertex> vertices = read_vertices(&file);
         std::vector<uint32_t> indices = read_indices(&file);
         MaterialsObject materials =  read_materials(&file);
 
-        Mesh new_mesh(vertices, indices, materials);
+        std::string texture_path;
+        if (materials.texture_opacity.x == 1) {
+            texture_path = get_texture(&file);
+        }
+
+        Mesh new_mesh(vertices, indices, materials, texture_path);
 
         model_meshes.push_back(std::make_unique<Mesh>(new_mesh));
-    } 
+    }
+
+    file.close();
+}
+
+std::string Model::get_texture(std::ifstream* file) {
+    std::string texture_path;
+    while (file->peek() != EOF) {
+        char c;
+        file->read(&c, 1);
+
+        texture_path.push_back(c);
+    }
+
+    return texture_path;
 }
 
 std::vector<uint32_t> Model::read_indices(std::ifstream* file) {
@@ -109,12 +125,12 @@ std::vector<uint32_t> Model::read_indices(std::ifstream* file) {
     std::vector<uint32_t> indices;
     while (!stop && file->peek() != EOF) {
         file->read(reinterpret_cast<char*>(&i), sizeof(uint32_t));
-        indices.push_back(i);
 
         if (i == std::numeric_limits<uint32_t>::max()) {
             stop = true;
             break;
         }
+        indices.push_back(i);
     }
 
     return indices;
@@ -281,6 +297,12 @@ void Model::write_to_file() {
         std::vector<float> floats = model_meshes[i]->mat_data.linearlize();
         for (float& m : floats) {
             file.write(reinterpret_cast<char*>(&m), sizeof(float));
+        }
+
+        //save textures
+        if (model_meshes[i]->mat_data.texture_opacity.x == 1) {
+            std::string texture_path = std::string(model_meshes[i]->textures[0].data());
+            file.write(texture_path.c_str(), texture_path.size());
         }
 	}
 	file.close();

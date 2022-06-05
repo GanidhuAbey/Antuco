@@ -18,7 +18,7 @@ public:
 	//have any way to interact with these values even whilst they are in public
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
-	std::vector<aiString> textures;
+	std::vector<std::string> textures;
 
     MaterialsObject mat_data;
 
@@ -28,7 +28,7 @@ public:
 
 private:
 	Mesh(std::vector<Vertex> newVertices, std::vector<uint32_t> newIndices, Material material);
-    Mesh(std::vector<Vertex> new_vertices, std::vector<uint32_t> new_indices, MaterialsObject mat_obj);
+    Mesh(std::vector<Vertex> new_vertices, std::vector<uint32_t> new_indices, MaterialsObject mat_obj, std::string texture_path);
 public:
 	~Mesh();
 

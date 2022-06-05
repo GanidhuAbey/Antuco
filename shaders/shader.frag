@@ -1,4 +1,5 @@
 #version 450
+#extension GL_KHR_vulkan_glsl : enable
 
 layout(location=0) out vec4 outColor;
 layout(location=3) in vec3 surfaceNormal;
@@ -25,87 +26,91 @@ in vec4 gl_FragCoord;
 float bias = 5e-3;
 
 int LIGHT_FACTOR = 10;
-float SPECULAR_STRENGTH = 1.0f;
+float SPECULAR_STRENGTH = 0.5f;
 float AMBIENCE_FACTOR = 0.2f;
+
+//ok clearly we're not doing this right...
+float SCATTER_STRENGTH = 200.0f;
 
 //light perspective is now clamped from between the specified near plane and far plane
 //going to hard code this values to check for now but will edit them once the effect
 //is working as intended
 
 
-float pcf_shadow(vec4 light_view) {
-    float pd = light_view.z;
-
-    vec2 d = 1.0001 * 1 / textureSize(shadowmap, 0); //multiply by constant value, to make amplify softness of shadow
-
-    //sample 4 points of the shadowmap
-    float s1 = texture(shadowmap, vec2(light_view.s + d.x, light_view.t)).r;
-    float s2 = texture(shadowmap, vec2(light_view.s - d.x, light_view.t)).r;
-    float s3 = texture(shadowmap, vec2(light_view.s, light_view.t + d.y)).r;
-    float s4 = texture(shadowmap, vec2(light_view.s, light_view.t - d.y)).r;
-
-    //apply depth tests
-    float s1_test = ceil(s1 - pd);
-    float s2_test = ceil(s2 - pd);
-    float s3_test = ceil(s3 - pd);
-    float s4_test = ceil(s4 - pd);
-    float amb_val = 1.0f;
-    return ((s1_test + s2_test + s3_test + s4_test + amb_val) / 5);
-}
-
 //returns 0 if in shadow, otherwise 1
 float check_shadow(vec4 light_view) {
-	//light_view -= surfaceNormal * bias;
 	float pixel_depth = light_view.z;
-  	//check if pixel_depth can sample closest depth
-  	//then closest depth must be a valid value, so now we need to clamp to 0 or 1
 
   	float closest_depth = texture(shadowmap, light_view.st).r; 
   	
 	float in_shadow = ceil(closest_depth - pixel_depth);
+
+    float dist = closest_depth - pixel_depth;
+
+    if (abs(dist) < 2e-4) {
+        in_shadow = 0.1f;
+    }
+
   	return in_shadow;
+}
+
+
+float pcf_shadow(vec4 light_view) {
+    vec2 d = 1.0001 * 1 / textureSize(shadowmap, 0); //multiply by constant value, to make amplify softness of shadow
+
+    //sample 4 points of the shadowmap
+    float s1 = check_shadow(vec4(light_view.s + d.x, light_view.t, light_view.z, light_view.w));
+    float s2 = check_shadow(vec4(light_view.s - d.x, light_view.t, light_view.z, light_view.w));
+    float s3 = check_shadow(vec4(light_view.s, light_view.t + d.y, light_view.z, light_view.w));
+    float s4 = check_shadow(vec4(light_view.s, light_view.t - d.y, light_view.z, light_view.w));
+
+    float amb_val = 1.0f;
+    return ((s1 + s2 + s3 + s4 + amb_val) / 5);
+}
+
+
+
+vec3 get_scattering(vec4 light_view) {
+    float light_enter = texture(shadowmap, light_view.st).r;
+    float light_exit = light_view.z;
+
+    float surface_depth = light_exit - light_enter;
+
+    return mat.specular * exp(-surface_depth * SCATTER_STRENGTH) * vec3(0.11, 0.05, 0.05);
 }
 
 void main() {
     float dist = length(light_position - vec3(vPos));
 
-
     //get vector of light
     vec3 texture_component = vec3(texture(texture1, texCoord));
 
     vec3 lightToObject = normalize(light_position - vec3(vPos));
+
+
+    //diffuse model
     float diffuse_light = max(0.f, dot(lightToObject, surfaceNormal)) * LIGHT_FACTOR;
 
     vec3 diffuse_final = diffuse_light * mat.diffuse;
     //float mapIntensity = (lightIntensity/2) + 0.5;
-
-    //now sample the depth at that screen coordinate
-    
-    //specular lighting algorithm
-    // 1 - take light from source to object, and reflect is through normal vector
-    // 2 - take dot product between reflected vector and normal vector (clamp negatives to 0)
-    // 3 - add value to final colour
     
     vec3 reflected_light = reflect(lightToObject, surfaceNormal);
     //need to pass data on the location of the camera
     vec3 object_to_camera = normalize(camera_pos - vec3(vPos));
     float specular_value = pow(max(0.f, dot(reflected_light, object_to_camera)), 32);
-    vec3 specular_light = specular_value * mat.specular;
+    vec3 specular_light = specular_value * mat.specular * SPECULAR_STRENGTH;
 
     //analyze depth at the given coordinate of the object
     float light_dist = length(light_position - vec3(vPos));
-
-    //check z_buffer depth at this pixel locationS
-    //the actual problem now is that im not sampling the texture correctly
     
     vec4 sample_value = light_perspective * (1/light_perspective.w);
-    //float closest_to_light = (texture(shadowmap, sample_value.st)).r;
 
-    //just solve it first, and then solve it well
-    float shadow_factor = pcf_shadow(sample_value / sample_value.w);
+    float shadow_factor = pcf_shadow(sample_value);
     
     //lets add diffuse light back into the equation
     //if texture is always 1, then no impact on outcome of img
+
+    vec3 scattering = get_scattering(sample_value);
     
     //TODO: get rid of this if statement once everything works
     vec3 result;
