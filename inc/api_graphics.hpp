@@ -263,7 +263,7 @@ private:
 	void create_texture_pool();
 	void create_texture_set(size_t mesh_count);
 	void create_command_buffers(std::vector<GameObject*> game_objects);
-	void create_shadow_map(std::vector<GameObject*> game_objects, size_t command_index);
+	void create_shadow_map(std::vector<GameObject*> game_objects, size_t command_index, LightObject light);
 	void resolve_image_layers(size_t i);
 	void draw_frame();
 	void create_semaphores();

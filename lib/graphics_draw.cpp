@@ -689,6 +689,15 @@ void GraphicsImpl::create_shadowpass_pipeline() {
 
     std::vector<VkDescriptorSetLayout> layouts = { light_layout };
 
+    std::vector<VkPushConstantRange> push_ranges;
+
+    VkPushConstantRange pushRange{};
+    pushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pushRange.offset = 0;
+    pushRange.size = sizeof(LightObject) + sizeof(glm::vec4);
+
+    push_ranges.push_back(pushRange);
+
     PipelineConfig config{};
     config.vert_shader_path = SHADER_PATH + "shadow.vert";
     config.dynamic_states = dynamic_states;
@@ -698,6 +707,7 @@ void GraphicsImpl::create_shadowpass_pipeline() {
     config.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
     config.subpass_index = 0;
     config.depth_bias_enable = VK_TRUE;
+    config.push_ranges = push_ranges;
 
     shadowmap_pipeline.init(*p_device, config);
 }
@@ -980,7 +990,7 @@ void GraphicsImpl::free_command_buffers() {
     vkFreeCommandBuffers(*p_device, command_pool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
 }
 
-void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size_t command_index) {
+void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size_t command_index, LightObject light) {
     VkRenderPassBeginInfo shadowpass_info{};
 
     shadowpass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1033,6 +1043,8 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
     uint32_t total_vertices = 0;
 
     uint32_t* number;
+
+    vkCmdPushConstants(command_buffers[command_index], shadowmap_pipeline.get_api_layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(light), &light);
 
     for (size_t j = 0; j < game_objects.size(); j++) {
         if (!game_objects[j]->update) {
@@ -1092,7 +1104,13 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
             throw std::runtime_error("one of the command buffers failed to begin");
         }
 
-        create_shadow_map(game_objects, i);
+        LightObject light{};
+        light.position = light_data[0]->position;
+        light.direction = light_data[0]->target;
+        light.color = light_data[0]->color;
+        light.light_count = glm::vec4(MAX_SHADOW_CASTERS, 1, 1, 1);
+
+        create_shadow_map(game_objects, i, light);
          
 		VkRenderPassBeginInfo renderInfo{};
 		renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1150,11 +1168,6 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
 		//universal to every object so i can push the light constants before the for loop
 		//convert to light_object;
-		LightObject light{};
-		light.position = light_data[0]->position;
-		light.direction = light_data[0]->target;
-		light.color = light_data[0]->color;
-        light.light_count = glm::vec4(MAX_SHADOW_CASTERS, 1, 1, 1); //NOTE: will only pass into the shader with a vec4, don't ask me why it seems glsl really really values constant spacing
         
 		vkCmdPushConstants(command_buffers[i], graphics_pipeline.get_api_layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(light), &light);
         vkCmdPushConstants(command_buffers[i], graphics_pipeline.get_api_layout(), VK_SHADER_STAGE_VERTEX_BIT, sizeof(light), sizeof(glm::vec4), &camera_pos); 

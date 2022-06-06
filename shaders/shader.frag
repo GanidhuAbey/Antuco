@@ -43,13 +43,7 @@ float check_shadow(vec4 light_view) {
 
   	float closest_depth = texture(shadowmap, light_view.st).r; 
   	
-	float in_shadow = ceil(closest_depth - pixel_depth);
-
-    float dist = closest_depth - pixel_depth;
-
-    if (abs(dist) < 2e-4) {
-        in_shadow = 0.1f;
-    }
+	float in_shadow = ceil(closest_depth - pixel_depth) + 0.1;
 
   	return in_shadow;
 }
@@ -64,7 +58,7 @@ float pcf_shadow(vec4 light_view) {
     float s3 = check_shadow(vec4(light_view.s, light_view.t + d.y, light_view.z, light_view.w));
     float s4 = check_shadow(vec4(light_view.s, light_view.t - d.y, light_view.z, light_view.w));
 
-    float amb_val = 1.0f;
+    float amb_val = 1.2f;
     return ((s1 + s2 + s3 + s4 + amb_val) / 5);
 }
 
@@ -72,11 +66,12 @@ float pcf_shadow(vec4 light_view) {
 
 vec3 get_scattering(vec4 light_view) {
     float light_enter = texture(shadowmap, light_view.st).r;
+    
     float light_exit = light_view.z;
 
     float surface_depth = light_exit - light_enter;
 
-    return mat.specular * exp(-surface_depth * SCATTER_STRENGTH) * vec3(0.11, 0.05, 0.05);
+    return exp(-surface_depth * SCATTER_STRENGTH) * vec3(0.10f, 0.05f, 0.05f);
 }
 
 void main() {
