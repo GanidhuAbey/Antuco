@@ -70,7 +70,8 @@ int main() {
 	//create some light for the scene
 	//TODO: implement debug mode where we'll render light with mesh
 	//its kinda hard to determine a direction for a user, much easier for them to give a location to light
-	glm::vec3 light_position = glm::vec3(-9.69863f, 8.09271f, 9.89026f);
+    //|
+	glm::vec3 light_position = glm::vec3(-3.58448f, 7.69584f, 11.7122f);
 	glm::vec3 light_look_at = glm::vec3(0.0f, 0.0f, 0.0f);
 	tuco::Light* light = antuco.create_light(light_position, light_look_at, glm::vec3(1.0, 1.0, 1.0), glm::vec3(0.0, 1.0, 0.0), true);
 

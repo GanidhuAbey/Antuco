@@ -403,7 +403,11 @@ Material Model::processMaterial(uint32_t materialIndex, aiMaterial** materials) 
         LOG("[ERROR] - could not load materials opacity data");        
     }
 
-    
+    float roughness = 0.0f;
+    if (AI_SUCCESS !=mat->GetTexture(AI_MATKEY_ROUGHNESS_TEXTURE, &roughness)) {
+        LOG("[ERROR] - could not load material roughness");
+    }
+ 
 
     material.ambient = ambient;
     material.diffuse = diffuse;
