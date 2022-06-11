@@ -41,7 +41,7 @@ float SCATTER_STRENGTH = 200.0f;
 float check_shadow(vec4 light_view) {
 	float pixel_depth = light_view.z;
 
-  	float closest_depth = texture(shadowmap, light_view.st).r; 
+  	float closest_depth = texelFetch(shadowmap, ivec2(light_view.st), 0).r; 
   	
 	float in_shadow = ceil(closest_depth - pixel_depth) + 0.1;
 
@@ -95,10 +95,10 @@ void main() {
     float specular_value = pow(max(0.f, dot(reflected_light, object_to_camera)), 32);
     vec3 specular_light = specular_value * mat.specular * SPECULAR_STRENGTH;
 
-    //analyze depth at the given coordinate of the object
+    //analyze depth at the given coordinate of the object 
     float light_dist = length(light_position - vec3(vPos));
     
-    vec4 sample_value = light_perspective * (1/light_perspective.w);
+    vec4 sample_value = light_perspective; // / light_perspective.w;
 
     float shadow_factor = pcf_shadow(sample_value);
     

@@ -63,6 +63,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glm")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/stb")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/assimp/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/build/assimp/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/tinygltf")
 
 
 #engine composer

@@ -66,7 +66,7 @@ void main() {
 
     surfaceNormal = vec3(ubo.modelToWorld * vec4(inNormal, 1.0));
     vPos = ubo.modelToWorld * vec4(inPosition, 1.0);
-    light_perspective = (biasMat * lbo.projection * lbo.world_to_light * lbo.model_to_world) * vec4(inPosition, 1.0);
+    light_perspective = (/*biasMat * */lbo.projection * lbo.world_to_light * lbo.model_to_world) * vec4(inPosition, 1.0);
     texCoord = inTexCoord;
 
     light_position = pfc.lightPosition;
