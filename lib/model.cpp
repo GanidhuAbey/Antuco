@@ -405,6 +405,7 @@ Material Model::processMaterial(uint32_t materialIndex, aiMaterial** materials) 
 
     aiString roughness;
     
+    /*
     aiReturn result = mat->GetTexture(
             AI_MATKEY_ROUGHNESS_TEXTURE,
             &roughness);
@@ -415,6 +416,7 @@ Material Model::processMaterial(uint32_t materialIndex, aiMaterial** materials) 
     }
 
     printf("roughness: %s \n", roughness.data);
+    */
 
     material.ambient = ambient;
     material.diffuse = diffuse;

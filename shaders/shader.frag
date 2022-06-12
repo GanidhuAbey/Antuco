@@ -41,7 +41,8 @@ float SCATTER_STRENGTH = 200.0f;
 float check_shadow(vec4 light_view) {
 	float pixel_depth = light_view.z;
 
-  	float closest_depth = texelFetch(shadowmap, ivec2(light_view.st), 0).r; 
+  	//float closest_depth = texelFetch(shadowmap, ivec2(light_view.st), 0).r; 
+    float closest_depth = texture(shadowmap, vec2(light_view.st), 0).r; 
   	
 	float in_shadow = ceil(closest_depth - pixel_depth) + 0.1;
 
@@ -98,9 +99,9 @@ void main() {
     //analyze depth at the given coordinate of the object 
     float light_dist = length(light_position - vec3(vPos));
     
-    vec4 sample_value = light_perspective; // / light_perspective.w;
+    vec4 sample_value = light_perspective;
 
-    float shadow_factor = pcf_shadow(sample_value);
+    float shadow_factor = check_shadow(sample_value);
     
     //lets add diffuse light back into the equation
     //if texture is always 1, then no impact on outcome of img
@@ -115,5 +116,5 @@ void main() {
     
     result = (mat.ambient * AMBIENCE_FACTOR + diffuse_final + specular_light) * texture_component * shadow_factor;
 
-    outColor = vec4(result, mat.has_texture.g);
+    outColor = light_perspective ; //vec4(result, mat.has_texture.g);
 }

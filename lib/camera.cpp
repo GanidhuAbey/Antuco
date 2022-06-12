@@ -54,8 +54,8 @@ glm::mat4 Camera::construct_world_to_camera(glm::vec3 eye, glm::vec3 target, glm
 /// the camera viewport is modeled as a frustum (a pyramid that converges at the point of the camera). This viewport helps create the perspective illusion,
 /// and by using some trigonometry we can construct this matrix that defines the transformation from camera space to this thin screen.
 /// </summary>
-/// <param name="angle"> the angle between the top-end and the bottom-end of the window screen </param>
-/// <param name="aspect"> the aspect ratio of the window </param>
+/// <param name="angle"> the horizontal angle between the left and right of screen </param>
+/// <param name="aspect"> the aspect ratio (width/height) of the window </param>
 /// <param name="n"> the near plane (make this value slightly above 0 always) </param>
 /// <param name="f"> the far plane (determines how far the player can see) </param>
 /// <returns></returns>
@@ -64,8 +64,8 @@ glm::mat4 Camera::perspective_projection(float angle, float aspect, float n, flo
 
 	
 	glm::mat4 projection = {
-		c / aspect, 0, 0, 0,
-		0, c, 0, 0,
+		c, 0, 0, 0,
+		0, c*aspect, 0, 0,
 		0, 0, -(f + n) / (f - n), -(2 * f * n) / (f - n),
 		0, 0, -1, 0,
 	};

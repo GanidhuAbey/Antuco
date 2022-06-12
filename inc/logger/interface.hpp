@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <cstdio>
+
 #define FUNCTION_NAME '__FUNCTION__'
 
 /*

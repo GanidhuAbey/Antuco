@@ -374,7 +374,7 @@ void GraphicsImpl::create_image_layers() {
     data.image_info.extent.height = swapchain_extent.height;
     data.image_info.extent.depth = 1.0;
 
-    data.image_info.format = swapchain_format;
+    data.image_info.format = VK_FORMAT_R32G32B32A32_SFLOAT;
 
     data.image_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
@@ -394,7 +394,7 @@ void GraphicsImpl::create_image_layers() {
 
 void GraphicsImpl::create_render_pass() {
     ColourConfig config{};
-    config.format = swapchain_format;
+    config.format = VK_FORMAT_R32G32B32A32_SFLOAT; //swapchain_format;
     config.final_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
     std::vector<VkSubpassDependency> dependencies(2);
@@ -495,6 +495,38 @@ void GraphicsImpl::create_materials_set(uint32_t mesh_count) {
     } 
 }
 
+void GraphicsImpl::create_screen_pipeline() {
+    std::vector<VkDynamicState> dynamic_states = {
+    VK_DYNAMIC_STATE_VIEWPORT,
+    VK_DYNAMIC_STATE_SCISSOR,
+    VK_DYNAMIC_STATE_DEPTH_BIAS,
+    };
+
+    std::vector<VkDescriptorSetLayout> descriptor_layouts;
+
+    PipelineConfig config{};
+    config.vert_shader_path = SHADER_PATH + "quad.vert";
+    config.frag_shader_path = SHADER_PATH + "quad.frag";
+    config.dynamic_states = dynamic_states;
+    config.descriptor_layouts = descriptor_layouts;
+    config.pass = render_pass.get_api_pass();
+    config.subpass_index = 0;
+    config.screen_extent = swapchain_extent;
+    config.blend_colours = true;
+
+    screen_pipeline.init(*p_device, config);
+}
+
+void GraphicsImpl::create_screen_pass() {
+    ColourConfig config{};
+    config.format = swapchain_format;
+    //config.final_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+    screen_pass.add_colour(0, config);
+    screen_pass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, true, false);
+    screen_pass.build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);
+}
+
 
 void GraphicsImpl::create_ubo_layout() {
     /* UNIFORM BUFFER DESCRIPTOR SET */
@@ -586,6 +618,7 @@ void GraphicsImpl::create_shadowmap_set() {
 }
 
 void GraphicsImpl::create_texture_set(size_t mesh_count) {
+    /*
     std::vector<VkDescriptorSetLayout> texture_layouts(mesh_count, texture_layout);
 
     VkDescriptorSetAllocateInfo allocateInfo{};
@@ -603,6 +636,32 @@ void GraphicsImpl::create_texture_set(size_t mesh_count) {
         printf("[ERROR CODE %d] - could not allocate texture sets \n", result);
         throw new std::runtime_error("");
     }
+    */
+    size_t current_size = texture_sets.size();
+    texture_sets.resize(current_size + 1);
+    //texture_sets[current_size] = create_set(texture_layout, mesh_count, *texture_pool);
+    texture_sets[current_size].init(*p_device, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, texture_layout, mesh_count, *texture_pool);
+    texture_sets[current_size].create_set(mesh_count, texture_layout, *texture_pool);
+}
+
+std::vector<VkDescriptorSet> GraphicsImpl::create_set(VkDescriptorSetLayout layout, size_t set_count, mem::Pool& pool) {
+    std::vector<VkDescriptorSetLayout> layouts(set_count, layout);
+
+    VkDescriptorSetAllocateInfo allocateInfo{};
+    allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocateInfo.descriptorPool = pool.pools[pool.allocate(*p_device, set_count)];
+    allocateInfo.descriptorSetCount = set_count;
+    allocateInfo.pSetLayouts = layouts.data();
+
+    std::vector<VkDescriptorSet> sets(set_count);
+    VkResult result = vkAllocateDescriptorSets(*p_device, &allocateInfo, sets.data());
+
+    if (result != VK_SUCCESS) {
+        printf("[ERROR CODE %d] - could not allocate sets \n", result);
+        throw new std::runtime_error("");
+    }
+
+    return sets;
 }
 
 void GraphicsImpl::create_shadowmap_layout() {
@@ -925,6 +984,7 @@ void GraphicsImpl::create_swapchain() {
 
 
 void GraphicsImpl::create_light_set(UniformBufferObject lbo) { 
+    /*
     std::vector<VkDescriptorSetLayout> ubo_layouts(swapchain_images.size(), light_layout);
 
     VkDescriptorSetAllocateInfo allocateInfo{};
@@ -942,12 +1002,15 @@ void GraphicsImpl::create_light_set(UniformBufferObject lbo) {
     //descriptorSets.resize(currentSize + 1);
     //descriptorSets[currentSize].resize(swapChainImages.size()); 
     
-    size_t current_size = light_ubo.size();
-    light_ubo.resize(current_size + 1);
-    light_ubo[current_size].resize(swapchain_images.size());
+
     if (vkAllocateDescriptorSets(*p_device, &allocateInfo, light_ubo[current_size].data()) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
+    */
+
+    size_t current_size = light_ubo.size();
+    light_ubo.resize(current_size + 1);
+    light_ubo[current_size] = create_set(light_layout, swapchain_images.size(), *ubo_pool);
     
     //write to set
     VkDeviceSize offset = uniform_buffer.allocate(sizeof(UniformBufferObject));
@@ -1188,7 +1251,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                     //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
                    
                     //PROBLEM IS THAT texture set is not updated when the model/mesh we're dealing with has not texture
-                    VkDescriptorSet descriptors[5] = { light_ubo[j][i], ubo_sets[j][i], texture_sets[j][k], shadowmap_set, mat_sets[j][k] };
+                    VkDescriptorSet descriptors[5] = { light_ubo[j][i], ubo_sets[j][i], texture_sets[j].get_api_set(k), shadowmap_set, mat_sets[j][k] };
                     vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline.get_api_layout(), 0, 5, descriptors, 0, nullptr); 
 
                     vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
@@ -1199,11 +1262,12 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
             }
         }
 
+        //render_to_screen(i);
+
         vkCmdEndRenderPass(command_buffers[i]);
         //switch image back to depth stencil layout for the next render pass
 
-        resolve_image_layers(i);
-   
+        //resolve_image_layers(i);
         //end commands to go to execute stage
         if (vkEndCommandBuffer(command_buffers[i]) != VK_SUCCESS) {
             throw std::runtime_error("could not end command buffer");
@@ -1211,56 +1275,16 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
     }
 }
 
-void GraphicsImpl::resolve_image_layers(size_t i) {
-    //can use VkSubpassDependency to change layout of image_layers[0] automatically.
-    swapchain_images[i].transfer(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, graphics_queue, command_pool, command_buffers[i]);
-
-    VkImageCopy copy_info{};
-
-    VkImageSubresourceLayers src_subresource{};
-    src_subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    src_subresource.baseArrayLayer = 0;
-    src_subresource.layerCount = 1;
-    src_subresource.mipLevel = 0;
-
-    VkOffset3D src_offset{};
-    src_offset.x = 0;
-    src_offset.y = 0;
-    src_offset.z = 0;
-
-    VkImageSubresourceLayers dst_subresource{};
-    dst_subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    dst_subresource.baseArrayLayer = 0;
-    dst_subresource.layerCount = 1;
-    dst_subresource.mipLevel = 0;
-
-    VkOffset3D dst_offset{};
-    dst_offset.x = 0;
-    dst_offset.y = 0;
-    dst_offset.z = 0;
-
-    VkExtent3D size{};
-    size.depth = 1;
-    size.height = swapchain_extent.height;
-    size.width = swapchain_extent.width;
-
-    copy_info.extent = size;
-    copy_info.dstOffset = dst_offset;
-    copy_info.srcOffset = src_offset;
-    copy_info.srcSubresource = src_subresource;
-    copy_info.dstSubresource = dst_subresource;
-
-    vkCmdCopyImage(command_buffers[i],
-        image_layers[0].get_api_image(),
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        swapchain_images[i].get_api_image(),
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1,
-        &copy_info);
-
-
-    swapchain_images[i].transfer(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, graphics_queue, command_pool, command_buffers[i]);
+void GraphicsImpl::create_screen_set() {
+    screen_sets = create_set(texture_layout, swapchain_images.size(), *texture_pool);
 }
+
+void GraphicsImpl::render_to_screen(size_t i) {
+    //map to descriptor set
+
+
+}
+
 
 void GraphicsImpl::create_uniform_buffer() {
     mem::BufferCreateInfo buffer_info{};
@@ -1478,7 +1502,8 @@ void GraphicsImpl::write_to_shadowmap_set() {
     //shadowmap_atlas.transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool);
 }
 
-void GraphicsImpl::write_to_texture_set(VkDescriptorSet texture_set, VkImageView image_view) {
+void GraphicsImpl::write_to_texture_set(ResourceCollection texture_set, VkImageView image_view) {
+    /*
     VkDescriptorImageInfo imageInfo;
     imageInfo.sampler = texture_sampler;
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1494,6 +1519,11 @@ void GraphicsImpl::write_to_texture_set(VkDescriptorSet texture_set, VkImageView
     writeInfo.dstArrayElement = 0;
 
     vkUpdateDescriptorSets(*p_device, 1, &writeInfo, 0, nullptr);
+    */
+
+    texture_set.add_image(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image_view, texture_sampler);
+    texture_set.set_binding(0);
+    texture_set.update_set();
 }
 
 void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
@@ -1532,7 +1562,14 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
     //save texture image to mesh
 
     //write to texture set
-    write_to_texture_set(texture_sets[object][texture_set], texture_images[texture_images.size() - 1][0].get_api_image_view());    
+    write_to_texture_set(texture_sets[object], texture_images[texture_images.size() - 1][0].get_api_image_view());    
+
+    VkImageView image_view = texture_images[texture_images.size() - 1][0].get_api_image_view();
+    texture_sets[object].add_image(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        image_view,
+        texture_sampler);
+    texture_sets[object].set_binding(0);
+    texture_sets[object].update_set(texture_set);
 }
 
 
@@ -1610,7 +1647,12 @@ void GraphicsImpl::create_texture_image(std::string texturePath, size_t object, 
     image_dimensions.height = static_cast<uint32_t>(imageHeight);
 
     //write to texture set
-    write_to_texture_set(texture_sets[object][texture_set], texture_images[texture_images.size() - 1][0].get_api_image_view());
+    //write_to_texture_set(texture_sets[object][texture_set], texture_images[texture_images.size() - 1][0].get_api_image_view());
+    VkImageView image_view = texture_images[texture_images.size() - 1][0].get_api_image_view();
+    ResourceCollection set = texture_sets[object];
+    set.add_image(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image_view, texture_sampler);
+    set.set_binding(0);
+    set.update_set(texture_set);
 
     //free image
     stbi_image_free(pixels);

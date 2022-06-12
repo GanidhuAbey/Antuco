@@ -58,6 +58,8 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 
 	create_ubo_pool();
 	create_texture_pool();
+
+	create_screen_set();
 }
 
 GraphicsImpl::~GraphicsImpl() {

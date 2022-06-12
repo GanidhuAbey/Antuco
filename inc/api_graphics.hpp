@@ -21,6 +21,7 @@
 #include "mesh.hpp"
 #include "world_objects.hpp"
 #include "config.hpp"
+#include "descriptor_set.hpp"
 
 
 #include "pipeline.hpp"
@@ -120,6 +121,8 @@ private:
 private:
     TucoPipeline shadowmap_pipeline;
 
+	TucoPipeline screen_pipeline;
+
     //if oit is enabled, then we must disable depth testing in main pipeline?
     TucoPipeline graphics_pipeline;
 
@@ -131,16 +134,19 @@ private:
 private:
     void create_depth_pipeline();
     void create_oit_pipeline();
+	void create_screen_pipeline();
 
 //render passes
 private:
 	TucoPass render_pass;
+	TucoPass screen_pass;
 	TucoPass shadowpass;
     TucoPass geometry_pass;
     TucoPass oit_pass;
 
 private:
     void create_oit_pass();
+	void create_screen_pass();
 
 //draw	
 
@@ -179,8 +185,9 @@ private:
     std::vector<std::vector<VkDescriptorSet>> mat_sets; //model -> mesh
 	
 	//game object -> mesh -> swapchain image
-	std::vector<std::vector<VkDescriptorSet>> texture_sets;
+	std::vector<ResourceCollection> texture_sets;
 	VkDescriptorSet shadowmap_set;
+	std::vector<VkDescriptorSet> screen_sets;
 
 	VkCommandPool command_pool;
 	std::vector<VkCommandBuffer> command_buffers;
@@ -208,6 +215,7 @@ private:
 //shadow map -------------------------------------------------------------------------
 private:
     mem::Image shadowmap_atlas;
+
 	//this is way to large...
 	uint32_t shadowmap_atlas_width = SHADOWMAP_SIZE*sqrt(MAX_SHADOW_CASTERS);
 	uint32_t shadowmap_atlas_height = SHADOWMAP_SIZE*sqrt(MAX_SHADOW_CASTERS);
@@ -264,7 +272,9 @@ private:
 	void create_texture_set(size_t mesh_count);
 	void create_command_buffers(std::vector<GameObject*> game_objects);
 	void create_shadow_map(std::vector<GameObject*> game_objects, size_t command_index, LightObject light);
-	void resolve_image_layers(size_t i);
+	void render_to_screen(size_t i);
+	std::vector<VkDescriptorSet> create_set(VkDescriptorSetLayout layout, size_t set_count, mem::Pool& pool);
+	void create_screen_set();
 	void draw_frame();
 	void create_semaphores();
 	void create_fences();
@@ -283,7 +293,7 @@ private:
     void copy_image_to_image(VkImage src_image, VkImageLayout src_layout, VkImage dst_image, VkImageLayout dst_layout, VkCommandBuffer command_buffer);
 	void create_texture_image(std::string texturePath, size_t object, size_t texture_set); 
     void create_empty_image(size_t object, size_t texture_set);
-	void write_to_texture_set(VkDescriptorSet texture_set, VkImageView image_view);
+	void write_to_texture_set(ResourceCollection texture_set, VkImageView image_view);
 	void update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo);
 	void create_light_set(UniformBufferObject lbo);
 	void create_light_layout();
