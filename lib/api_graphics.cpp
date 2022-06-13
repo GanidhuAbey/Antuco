@@ -29,7 +29,7 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	//create_shadowmap_transfer_buffer();
 	create_depth_resources();
 	create_shadowpass_resources();
-    create_output_image();
+    create_output_images();
     create_render_pass();
     //create_geometry_pass();
 	create_shadowpass();
@@ -44,7 +44,7 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	create_shadowpass_pipeline();
 	create_texture_sampler();
 	create_shadowmap_sampler();
-	create_swapchain_buffers();
+	create_output_buffers();
 	create_shadowpass_buffer();
 	create_shadowmap_set();
 	write_to_shadowmap_set();
@@ -59,6 +59,9 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	create_ubo_pool();
 	create_texture_pool();
 
+    create_screen_pass();
+    create_screen_buffer();
+    create_screen_pipeline();
 	create_screen_set();
 }
 

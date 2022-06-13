@@ -1,7 +1,6 @@
 #include "pipeline.hpp"
 #include "shader_text.hpp"
 
-#include "data_structures.hpp"
 #include "logger/interface.hpp"
 
 #include <stdexcept>
@@ -132,16 +131,10 @@ void TucoPipeline::create_render_pipeline(PipelineConfig config) {
 
     VkPipelineVertexInputStateCreateInfo vertex_input_info{};
     vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertex_input_info.vertexBindingDescriptionCount = 1; 
-    //we probably won't ever need multiple vertex buffers....
-    VkVertexInputBindingDescription binding_descrip{};
-    binding_descrip.binding = 0;
-    binding_descrip.stride = sizeof(Vertex);
-    binding_descrip.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    vertex_input_info.pVertexBindingDescriptions = &binding_descrip;
+    vertex_input_info.vertexBindingDescriptionCount = config.binding_descriptions.size(); 
+    vertex_input_info.pVertexBindingDescriptions = config.binding_descriptions.data();
 
-    vertex_input_info.vertexAttributeDescriptionCount = 3;
-
+    vertex_input_info.vertexAttributeDescriptionCount = config.attribute_descriptions.size();
     vertex_input_info.pVertexAttributeDescriptions = config.attribute_descriptions.data();
 
     VkPipelineInputAssemblyStateCreateInfo input_assembly_info{};

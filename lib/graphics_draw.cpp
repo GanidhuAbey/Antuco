@@ -162,17 +162,23 @@ void GraphicsImpl::create_shadowpass_buffer() {
             &shadowpass_buffer);
 }
 
-void GraphicsImpl::create_swapchain_buffers() {
+void GraphicsImpl::create_output_buffers() {
     size_t image_num = swapchain_images.size();
-    swapchain_framebuffers.resize(image_num); 
+    output_buffers.resize(image_num); 
     
     for (size_t i = 0; i < swapchain_images.size(); i++) {
         VkImageView image_views[2] = { 
-            output_image.get_api_image_view(), 
+            output_images[i].get_api_image_view(), 
             depth_memory.imageView 
         };
 
-        create_frame_buffer(render_pass.get_api_pass(), 2, image_views, swapchain_extent.width, swapchain_extent.height, &swapchain_framebuffers[i]);
+        create_frame_buffer(
+                render_pass.get_api_pass(), 
+                2, 
+                image_views, 
+                swapchain_extent.width, 
+                swapchain_extent.height, 
+                &output_buffers[i]);
     }
 }
 
@@ -377,7 +383,7 @@ void GraphicsImpl::create_geometry_buffer() {
     //create_frame_buffer(&g_buffer);
 }
 
-void GraphicsImpl::create_output_image() {
+void GraphicsImpl::create_output_images() {
     mem::ImageData data{};
     data.image_info.extent.width = swapchain_extent.width;
     data.image_info.extent.height = swapchain_extent.height;
@@ -397,14 +403,18 @@ void GraphicsImpl::create_output_image() {
 
     data.image_view_info.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-    output_image.init(*p_physical_device, *p_device, data);
+    output_images.resize(swapchain_images.size());
+
+    for (mem::Image& image : output_images) {
+        image.init(*p_physical_device, *p_device, data);
+    }
 }
 
 void GraphicsImpl::create_render_pass() {
     ColourConfig config{};
-    config.format = VK_FORMAT_R32G32B32A32_SFLOAT; //swapchain_format;
-    config.final_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-
+    config.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    config.final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+ 
     std::vector<VkSubpassDependency> dependencies(2);
 
     dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -415,17 +425,17 @@ void GraphicsImpl::create_render_pass() {
     dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-    dependencies[1].srcSubpass = 0;
-    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    dependencies[1].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+    dependencies[2].srcSubpass = 0;
+    dependencies[2].dstSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[2].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependencies[2].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    dependencies[2].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependencies[2].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    dependencies[2].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
     render_pass.add_colour(0, config);
     render_pass.add_depth(1);
-    render_pass.add_dependency(dependencies);
+    //render_pass.add_dependency(dependencies);
     render_pass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, true, true);
     render_pass.build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);
 }
@@ -518,10 +528,12 @@ void GraphicsImpl::create_screen_pipeline() {
     config.frag_shader_path = SHADER_PATH + "quad.frag";
     config.dynamic_states = dynamic_states;
     config.descriptor_layouts = descriptor_layouts;
-    config.pass = render_pass.get_api_pass();
+    config.pass = screen_pass.get_api_pass();
     config.subpass_index = 0;
     config.screen_extent = swapchain_extent;
     config.blend_colours = true;
+    config.attribute_descriptions = {};
+    config.binding_descriptions = {};
 
     screen_pipeline.init(*p_device, config);
 }
@@ -529,11 +541,30 @@ void GraphicsImpl::create_screen_pipeline() {
 void GraphicsImpl::create_screen_pass() {
     ColourConfig config{};
     config.format = swapchain_format;
-    //config.final_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    config.final_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     screen_pass.add_colour(0, config);
     screen_pass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, true, false);
     screen_pass.build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);
+}
+
+void GraphicsImpl::create_screen_buffer() { 
+    size_t image_num = swapchain_images.size();
+    screen_buffers.resize(image_num); 
+    
+    for (size_t i = 0; i < swapchain_images.size(); i++) {
+        std::vector<VkImageView> image_views = { 
+            swapchain_images[i].get_api_image_view(),
+        };
+
+        create_frame_buffer(
+                screen_pass.get_api_pass(), 
+                image_views.size(), 
+                image_views.data(), 
+                swapchain_extent.width, 
+                swapchain_extent.height, 
+                &screen_buffers[i]);
+    }
 }
 
 
@@ -897,8 +928,8 @@ void GraphicsImpl::destroy_draw() {
     vkDestroySampler(*p_device, texture_sampler, nullptr);
     vkDestroySampler(*p_device, shadowmap_sampler, nullptr);
 
-    for (int i = 0; i < swapchain_framebuffers.size(); i++) {
-        vkDestroyFramebuffer(*p_device, swapchain_framebuffers[i], nullptr);
+    for (int i = 0; i < output_buffers.size(); i++) {
+        vkDestroyFramebuffer(*p_device, output_buffers[i], nullptr);
 
     }
     vkDestroyFramebuffer(*p_device, shadowpass_buffer, nullptr);
@@ -1064,13 +1095,6 @@ void GraphicsImpl::create_light_set(UniformBufferObject lbo) {
     update_uniform_buffer(offset, lbo);
 }
 
-// runs a single render pass to generate a texture
-/*
-void GraphicsImpl::run_shadow_pass(VkCommandBuffer command_buffer) {
-	//TODO: move shadow map generating code onto here to simplify create_command_buffers()
-}
-*/
-
 void GraphicsImpl::free_command_buffers() {
     if (command_buffers.size() == 0) return;
 
@@ -1102,7 +1126,10 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
     //for (size_t y = 0; y < glm::sqrt(MAX_SHADOW_CASTERS); y++) {
     //    for (size_t x = 0; x < glm::sqrt(MAX_SHADOW_CASTERS); x++) {
             //there is at least one light that is casting a shadow here
-    vkCmdBeginRenderPass(command_buffers[command_index], &shadowpass_info, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(
+            command_buffers[command_index], 
+            &shadowpass_info, 
+            VK_SUBPASS_CONTENTS_INLINE);
 
     VkViewport shadowpass_port = {};
     shadowpass_port.x = 0;
@@ -1199,7 +1226,7 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
 
 void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects) {
     //allocate memory for command buffer, you have to create a draw command for each image
-    command_buffers.resize(swapchain_framebuffers.size());
+    command_buffers.resize(swapchain_images.size());
 
     VkCommandBufferAllocateInfo bufferAllocate{};
     bufferAllocate.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1209,7 +1236,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
     uint32_t imageCount = static_cast<uint32_t>(command_buffers.size());
     bufferAllocate.commandBufferCount = imageCount;
 
-    if (vkAllocateCommandBuffers(*p_device, &bufferAllocate, command_buffers.data()) != VK_SUCCESS) {
+    if (vkAllocateCommandBuffers(*p_device,&bufferAllocate,command_buffers.data())!=VK_SUCCESS){
         throw std::runtime_error("could not allocate memory for command buffers");
     }
 
@@ -1234,7 +1261,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		VkRenderPassBeginInfo renderInfo{};
 		renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderInfo.renderPass = render_pass.get_api_pass();
-		renderInfo.framebuffer = swapchain_framebuffers[i];
+		renderInfo.framebuffer = output_buffers[i];
 
         VkRect2D render_area{};
 		render_area.offset = VkOffset2D{ 0, 0 };
@@ -1264,7 +1291,11 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);
 
 		//add commands to command buffer
-		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline.get_api_pipeline());
+
+		vkCmdBindPipeline(
+                command_buffers[i], 
+                VK_PIPELINE_BIND_POINT_GRAPHICS, 
+                graphics_pipeline.get_api_pipeline());
 
 		VkViewport newViewport{};
 		newViewport.x = 0;
@@ -1288,8 +1319,22 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		//universal to every object so i can push the light constants before the for loop
 		//convert to light_object;
         
-		vkCmdPushConstants(command_buffers[i], graphics_pipeline.get_api_layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(light), &light);
-        vkCmdPushConstants(command_buffers[i], graphics_pipeline.get_api_layout(), VK_SHADER_STAGE_VERTEX_BIT, sizeof(light), sizeof(glm::vec4), &camera_pos); 
+		vkCmdPushConstants(
+                command_buffers[i], 
+                graphics_pipeline.get_api_layout(), 
+                VK_SHADER_STAGE_VERTEX_BIT, 
+                0, 
+                sizeof(light), 
+                &light);
+
+        vkCmdPushConstants(
+                command_buffers[i], 
+                graphics_pipeline.get_api_layout(), 
+                VK_SHADER_STAGE_VERTEX_BIT, 
+                sizeof(light), 
+                sizeof(glm::vec4), 
+                &camera_pos); 
+
 		//draw first object (cube)
 		uint32_t total_indexes = 0;
 		uint32_t total_vertices = 0;
@@ -1299,24 +1344,28 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         for (size_t j = 0; j < game_objects.size(); j++) {
             if (!game_objects[j]->update) {
                 for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
-                    std::shared_ptr<Mesh> mesh_data = game_objects[j]->object_model.model_meshes[k];
+                    
+                    std::shared_ptr<Mesh> mesh_data = 
+                        game_objects[j]->object_model.model_meshes[k];
+
                     uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
                     uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 
-                    VkDescriptorSet descriptors[5] = { 
+                    std::vector<VkDescriptorSet> descriptors = { 
                         light_ubo[j].get_api_set(i), 
                         ubo_sets[j][i], 
                         texture_sets[j].get_api_set(k), 
                         shadowmap_set, 
-                        mat_sets[j][k] };
+                        mat_sets[j][k],
+                    };
 
                     vkCmdBindDescriptorSets(
                             command_buffers[i], 
                             VK_PIPELINE_BIND_POINT_GRAPHICS, 
                             graphics_pipeline.get_api_layout(), 
                             0, 
-                            5, 
-                            descriptors, 
+                            descriptors.size(), 
+                            descriptors.data(), 
                             0, 
                             nullptr); 
 
@@ -1334,9 +1383,10 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
             }
         }
 
-        //render_to_screen(i);
-
         vkCmdEndRenderPass(command_buffers[i]);
+        
+        render_to_screen(i);
+
         //switch image back to depth stencil layout for the next render pass
 
         //end commands to go to execute stage
@@ -1356,7 +1406,7 @@ void GraphicsImpl::create_screen_set() {
 
     screen_resource.add_image(
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            output_image,
+            output_images,
             texture_sampler);
 
     screen_resource.set_binding(0);
@@ -1365,11 +1415,54 @@ void GraphicsImpl::create_screen_set() {
 }
 
 void GraphicsImpl::render_to_screen(size_t i) {
+    VkRenderPassBeginInfo renderInfo{};
+    renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderInfo.renderPass = screen_pass.get_api_pass();
+    renderInfo.framebuffer = screen_buffers[i];
+
+    VkRect2D render_area{};
+    render_area.offset = VkOffset2D{ 0, 0 };
+    render_area.extent = swapchain_extent;
+    renderInfo.renderArea = render_area;
+
+	std::vector<VkClearValue> clear_values;
+   
+    VkClearValue color_clear;
+    color_clear.color = { 0.0f, 0.0f, 0.0f, 1.0 }; 
+
+	clear_values.push_back(color_clear);
+
+    renderInfo.clearValueCount = static_cast<uint32_t>(clear_values.size());
+    renderInfo.pClearValues = clear_values.data();
+    
+    vkCmdBeginRenderPass(
+            command_buffers[i],
+            &renderInfo,
+            VK_SUBPASS_CONTENTS_INLINE);
+
     //bind pipeline
+    vkCmdBindPipeline(
+            command_buffers[i],
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            screen_pipeline.get_api_pipeline());
+
+    VkDescriptorSet descriptors[1] = { 
+            screen_resource.get_api_set(0),
+    };
+    //bind descriptor set
+    vkCmdBindDescriptorSets(command_buffers[i],
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            screen_pipeline.get_api_layout(),
+            0,
+            1,
+            descriptors,
+            0,
+            nullptr);
     
     //render 3 vertices to vertex shader
-    
+    vkCmdDraw(command_buffers[i], 3, 1, 0, 0); 
 
+    vkCmdEndRenderPass(command_buffers[i]);
 }
 
 
@@ -1483,12 +1576,17 @@ void GraphicsImpl::update_uniform_buffer(VkDeviceSize memory_offset, UniformBuff
 void GraphicsImpl::cleanup_swapchain() {
     vkDeviceWaitIdle(*p_device);
 
-    for (const auto& frame_buffer : swapchain_framebuffers) {
-        vkDestroyFramebuffer(*p_device, frame_buffer, nullptr);
+    for (const auto& output_buffer : output_buffers) {
+        vkDestroyFramebuffer(*p_device, output_buffer, nullptr);
+    }
+
+    for (const auto& screen_buffer : screen_buffers) {
+        vkDestroyFramebuffer(*p_device, screen_buffer, nullptr);
     }
 
     mem::destroyImage(*p_device, depth_memory);
     render_pass.destroy();
+    screen_pass.destroy();
     vkDestroySwapchainKHR(*p_device, swapchain, nullptr);
 }
 
@@ -1499,7 +1597,9 @@ void GraphicsImpl::recreate_swapchain() {
     create_swapchain();
     create_depth_resources();
     create_render_pass();
-    create_swapchain_buffers();
+    create_screen_pass();
+    create_output_buffers();
+    create_screen_buffer();
         
     create_command_buffers(*recent_objects);
 }

@@ -2,7 +2,7 @@
 
 #extension GL_KHR_vulkan_glsl : enable
 
-layout(location=0) out vec2 uv;
+layout(location=1) out vec2 uv;
 
 void main() {
 	uv = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);

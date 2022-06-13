@@ -97,6 +97,8 @@ void TucoPass::create_render_pass(VkPipelineBindPoint bind_point) {
         LOG("at least one subpass is required to create render pass");
     }
 
+    msg::print_line("subpass count: " + std::to_string(subpasses.size()));
+
     VkRenderPassCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     info.pNext = nullptr;

@@ -116,5 +116,5 @@ void main() {
     
     result = (mat.ambient * AMBIENCE_FACTOR + diffuse_final + specular_light) * texture_component * shadow_factor;
 
-    outColor = light_perspective ; //vec4(result, mat.has_texture.g);
+    outColor = vec4(result, mat.has_texture.g);
 }

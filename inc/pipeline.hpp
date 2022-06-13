@@ -1,4 +1,6 @@
 //an api wrapper for vulkan pipeline
+//
+#include "data_structures.hpp"
 
 #include <memory>
 #include <vulkan/vulkan.h>
@@ -45,6 +47,10 @@ struct PipelineConfig {
     VkRenderPass pass;
     uint32_t subpass_index;
     bool blend_colours = VK_FALSE;
+
+    std::vector<VkVertexInputBindingDescription> binding_descriptions = {
+        {0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX},
+    };
 
     //attribute description
     std::vector<VkVertexInputAttributeDescription> attribute_descriptions = {

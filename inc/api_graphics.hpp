@@ -115,7 +115,7 @@ private:
 
 //images
 private:
-    mem::Image output_image;
+    std::vector<mem::Image> output_images;
 //vulkan pipelines
 private:
     TucoPipeline shadowmap_pipeline;
@@ -161,7 +161,8 @@ private:
 
 	VkSampler texture_sampler;
 
-	std::vector<VkFramebuffer> swapchain_framebuffers;
+	std::vector<VkFramebuffer> output_buffers;
+    std::vector<VkFramebuffer> screen_buffers;
 
 	std::vector<VkSemaphore> image_available_semaphores;
 	std::vector<VkSemaphore> render_finished_semaphores;
@@ -270,26 +271,47 @@ private:
 	void create_texture_pool();
 	void create_texture_set(size_t mesh_count);
 	void create_command_buffers(std::vector<GameObject*> game_objects);
-	void create_shadow_map(std::vector<GameObject*> game_objects, size_t command_index, LightObject light);
+	
+    void create_shadow_map(
+            std::vector<GameObject*> game_objects, 
+            size_t command_index, 
+            LightObject light);
+
 	void render_to_screen(size_t i);
-	std::vector<VkDescriptorSet> create_set(VkDescriptorSetLayout layout, size_t set_count, mem::Pool& pool);
+	
+    std::vector<VkDescriptorSet> create_set(
+            VkDescriptorSetLayout layout, 
+            size_t set_count, 
+            mem::Pool& pool);
+
 	void create_screen_set();
 	void draw_frame();
 	void create_semaphores();
 	void create_fences();
 	void create_swapchain();
 	void create_depth_resources();
-    void create_swapchain_buffers();
+    void create_output_buffers();
+    void create_screen_buffer();
 	void create_texture_sampler();
 	void create_render_pass();
-	void create_output_image();
+	void create_output_images();
 	VkShaderModule create_shader_module(std::vector<uint32_t> shaderCode);
-	VkPipelineShaderStageCreateInfo fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
-	void write_to_ubo();	
+
+	VkPipelineShaderStageCreateInfo fill_shader_stage_struct(
+            VkShaderStageFlagBits stage, 
+            VkShaderModule shaderModule);
+	
+    void write_to_ubo();	
     void write_to_materials();
 	void update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo);
     void update_materials(VkDeviceSize memory_offset, MaterialsObject mat);
-    void copy_image_to_image(VkImage src_image, VkImageLayout src_layout, VkImage dst_image, VkImageLayout dst_layout, VkCommandBuffer command_buffer);
+    void copy_image_to_image(
+            VkImage src_image, 
+            VkImageLayout src_layout, 
+            VkImage dst_image, 
+            VkImageLayout dst_layout, 
+            VkCommandBuffer command_buffer);
+
 	void create_texture_image(std::string texturePath, size_t object, size_t texture_set); 
     void create_empty_image(size_t object, size_t texture_set);
 	void write_to_texture_set(ResourceCollection texture_set, mem::Image image);
