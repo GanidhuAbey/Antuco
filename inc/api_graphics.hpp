@@ -115,8 +115,7 @@ private:
 
 //images
 private:
-	std::vector<mem::Image> image_layers;
-
+    mem::Image output_image;
 //vulkan pipelines
 private:
     TucoPipeline shadowmap_pipeline;
@@ -170,7 +169,7 @@ private:
 	std::vector<VkFence> in_flight_fences;
 	std::vector<VkFence> images_in_flight;
 
-	std::vector<std::vector<VkDescriptorSet>> light_ubo;
+	std::vector<ResourceCollection> light_ubo;
 	std::vector<uint32_t> light_offsets;
 
 	mem::Memory depth_memory;
@@ -187,7 +186,7 @@ private:
 	//game object -> mesh -> swapchain image
 	std::vector<ResourceCollection> texture_sets;
 	VkDescriptorSet shadowmap_set;
-	std::vector<VkDescriptorSet> screen_sets;
+	ResourceCollection screen_resource;
 
 	VkCommandPool command_pool;
 	std::vector<VkCommandBuffer> command_buffers;
@@ -283,7 +282,7 @@ private:
     void create_swapchain_buffers();
 	void create_texture_sampler();
 	void create_render_pass();
-	void create_image_layers();
+	void create_output_image();
 	VkShaderModule create_shader_module(std::vector<uint32_t> shaderCode);
 	VkPipelineShaderStageCreateInfo fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
 	void write_to_ubo();	
@@ -293,7 +292,7 @@ private:
     void copy_image_to_image(VkImage src_image, VkImageLayout src_layout, VkImage dst_image, VkImageLayout dst_layout, VkCommandBuffer command_buffer);
 	void create_texture_image(std::string texturePath, size_t object, size_t texture_set); 
     void create_empty_image(size_t object, size_t texture_set);
-	void write_to_texture_set(ResourceCollection texture_set, VkImageView image_view);
+	void write_to_texture_set(ResourceCollection texture_set, mem::Image image);
 	void update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo);
 	void create_light_set(UniformBufferObject lbo);
 	void create_light_layout();

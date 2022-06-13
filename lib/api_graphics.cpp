@@ -29,8 +29,8 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 	//create_shadowmap_transfer_buffer();
 	create_depth_resources();
 	create_shadowpass_resources();
-    create_image_layers();
-	create_render_pass();
+    create_output_image();
+    create_render_pass();
     //create_geometry_pass();
 	create_shadowpass();
 	create_ubo_layout();
@@ -113,9 +113,11 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 			write_to_ubo();
 			//will have to dynamically update the orientation to make the cross product returns a proper value 
 			create_light_set(lbo);
+            
 			//TODO: for some reason model_meshes or object_model does not exist
 			//      and the program crashes when it attempts to access the data here.
-			std::vector<std::shared_ptr<Mesh>> meshes = game_objects[i]->object_model.model_meshes;
+			std::vector<std::shared_ptr<Mesh>> meshes = 
+                game_objects[i]->object_model.model_meshes;
 			//create texture data
 			create_texture_set(meshes.size());
 
@@ -141,17 +143,16 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
                 }
 			}
 		}
-		
 		//update buffer data (for representing object information in shader)
 		update_uniform_buffer(ubo_offsets[i], ubo);
-		//update light data (used for generating shadow map)	
+
+        //update light data (used for generating shadow map)	
 		update_uniform_buffer(light_offsets[i], lbo);
+
 	}
 
 	if (!update_command_buffers) {
 		for (size_t i = 0; i < MAX_SHADOW_CASTERS; i++) {
-			//TODO: could apply some sort of sorting to light_data to add an order of importance or let the user choose what sources
-			//		could be possibly cast lights, etc.
 			if (light_data[shadow_caster_indices[i]]->generate_shadows) {
 				update_command_buffers = true;
 				break;

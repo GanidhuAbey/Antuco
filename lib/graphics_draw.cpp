@@ -153,7 +153,13 @@ void GraphicsImpl::create_shadowmap_sampler() {
 
 void GraphicsImpl::create_shadowpass_buffer() {  
     VkImageView image_views[1] = { shadow_pass_texture.get_api_image_view() };
-    create_frame_buffer(shadowpass.get_api_pass(), 1, image_views, shadowmap_width, shadowmap_height, &shadowpass_buffer);
+    create_frame_buffer(
+            shadowpass.get_api_pass(), 
+            1, 
+            image_views, 
+            shadowmap_width, 
+            shadowmap_height, 
+            &shadowpass_buffer);
 }
 
 void GraphicsImpl::create_swapchain_buffers() {
@@ -161,8 +167,11 @@ void GraphicsImpl::create_swapchain_buffers() {
     swapchain_framebuffers.resize(image_num); 
     
     for (size_t i = 0; i < swapchain_images.size(); i++) {
-        LOG("hi");
-        VkImageView image_views[2] = { image_layers[0].get_api_image_view(), depth_memory.imageView };
+        VkImageView image_views[2] = { 
+            output_image.get_api_image_view(), 
+            depth_memory.imageView 
+        };
+
         create_frame_buffer(render_pass.get_api_pass(), 2, image_views, swapchain_extent.width, swapchain_extent.height, &swapchain_framebuffers[i]);
     }
 }
@@ -368,7 +377,7 @@ void GraphicsImpl::create_geometry_buffer() {
     //create_frame_buffer(&g_buffer);
 }
 
-void GraphicsImpl::create_image_layers() {
+void GraphicsImpl::create_output_image() {
     mem::ImageData data{};
     data.image_info.extent.width = swapchain_extent.width;
     data.image_info.extent.height = swapchain_extent.height;
@@ -376,7 +385,10 @@ void GraphicsImpl::create_image_layers() {
 
     data.image_info.format = VK_FORMAT_R32G32B32A32_SFLOAT;
 
-    data.image_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    data.image_info.usage = 
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | 
+        VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+        VK_IMAGE_USAGE_SAMPLED_BIT;
 
     data.image_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
@@ -385,11 +397,7 @@ void GraphicsImpl::create_image_layers() {
 
     data.image_view_info.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-    image_layers.resize(oit_layers);
-
-    for (int i = 0; i < oit_layers; i++) {
-        image_layers[i].init(*p_physical_device, *p_device, data);
-    }
+    output_image.init(*p_physical_device, *p_device, data);
 }
 
 void GraphicsImpl::create_render_pass() {
@@ -503,6 +511,7 @@ void GraphicsImpl::create_screen_pipeline() {
     };
 
     std::vector<VkDescriptorSetLayout> descriptor_layouts;
+    descriptor_layouts.push_back(texture_layout);
 
     PipelineConfig config{};
     config.vert_shader_path = SHADER_PATH + "quad.vert";
@@ -640,8 +649,12 @@ void GraphicsImpl::create_texture_set(size_t mesh_count) {
     size_t current_size = texture_sets.size();
     texture_sets.resize(current_size + 1);
     //texture_sets[current_size] = create_set(texture_layout, mesh_count, *texture_pool);
-    texture_sets[current_size].init(*p_device, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, texture_layout, mesh_count, *texture_pool);
-    texture_sets[current_size].create_set(mesh_count, texture_layout, *texture_pool);
+    texture_sets[current_size].init(
+            *p_device, 
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
+            texture_layout, 
+            mesh_count, 
+            *texture_pool);
 }
 
 std::vector<VkDescriptorSet> GraphicsImpl::create_set(VkDescriptorSetLayout layout, size_t set_count, mem::Pool& pool) {
@@ -1003,18 +1016,30 @@ void GraphicsImpl::create_light_set(UniformBufferObject lbo) {
     //descriptorSets[currentSize].resize(swapChainImages.size()); 
     
 
-    if (vkAllocateDescriptorSets(*p_device, &allocateInfo, light_ubo[current_size].data()) != VK_SUCCESS) {
+    if (vkAllocateDescriptorSets(*p_devic, &allocateInfo, light_ubo[current_size].data()) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
     */
 
     size_t current_size = light_ubo.size();
     light_ubo.resize(current_size + 1);
-    light_ubo[current_size] = create_set(light_layout, swapchain_images.size(), *ubo_pool);
+    light_ubo[current_size].init(
+            *p_device,
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            light_layout,
+            swapchain_images.size(),
+            *ubo_pool);
     
     //write to set
     VkDeviceSize offset = uniform_buffer.allocate(sizeof(UniformBufferObject));
 
+    light_ubo[current_size].set_binding(1);
+    VkDeviceSize buffer_range = (VkDeviceSize)sizeof(UniformBufferObject);
+    light_ubo[current_size].add_buffer(uniform_buffer.buffer, offset, buffer_range);
+    light_ubo[current_size].update_set();
+ 
+    light_offsets.push_back(offset);
+    /*
     VkDescriptorBufferInfo buffer_info{};
     buffer_info.buffer = uniform_buffer.buffer;
     buffer_info.offset = offset;
@@ -1034,6 +1059,7 @@ void GraphicsImpl::create_light_set(UniformBufferObject lbo) {
 
         vkUpdateDescriptorSets(*p_device, 1, &writeInfo, 0, nullptr);
     }
+    */
 
     update_uniform_buffer(offset, lbo);
 }
@@ -1093,21 +1119,49 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
     shadowpass_scissor.extent.height = shadowmap_height;
     vkCmdSetScissor(command_buffers[command_index], 0, 1, &shadowpass_scissor);
 
-    vkCmdSetDepthBias(command_buffers[command_index], depth_bias_constant, 0.0f, depth_bias_slope);
+    vkCmdSetDepthBias(
+            command_buffers[command_index], 
+            depth_bias_constant, 
+            0.0f, 
+            depth_bias_slope);
 
-    vkCmdBindPipeline(command_buffers[command_index], VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmap_pipeline.get_api_pipeline());
+    vkCmdBindPipeline(
+            command_buffers[command_index], 
+            VK_PIPELINE_BIND_POINT_GRAPHICS, 
+            shadowmap_pipeline.get_api_pipeline());
 
     //time for the draw calls
-    const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
-    vkCmdBindVertexBuffers(command_buffers[command_index], 0, 1, &vertex_buffer.buffer, offsets);
-    vkCmdBindIndexBuffer(command_buffers[command_index], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    const VkDeviceSize offsets[] = { 
+        0, 
+        offsetof(Vertex, normal), 
+        offsetof(Vertex, tex_coord) 
+    };
+
+    vkCmdBindVertexBuffers(
+            command_buffers[command_index], 
+            0, 
+            1, 
+            &vertex_buffer.buffer, 
+            offsets);
+
+    vkCmdBindIndexBuffer(
+            command_buffers[command_index], 
+            index_buffer.buffer, 
+            0, 
+            VK_INDEX_TYPE_UINT32);
 
     uint32_t total_indexes = 0;
     uint32_t total_vertices = 0;
 
     uint32_t* number;
 
-    vkCmdPushConstants(command_buffers[command_index], shadowmap_pipeline.get_api_layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(light), &light);
+    vkCmdPushConstants(
+            command_buffers[command_index], 
+            shadowmap_pipeline.get_api_layout(), 
+            VK_SHADER_STAGE_VERTEX_BIT, 
+            0, 
+            sizeof(light), 
+            &light);
 
     for (size_t j = 0; j < game_objects.size(); j++) {
         if (!game_objects[j]->update) {
@@ -1116,7 +1170,8 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
                 uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
                 uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 
-                VkDescriptorSet descriptors[1] = { light_ubo[j][command_index] };
+                VkDescriptorSet descriptors[1] = { light_ubo[j].get_api_set(command_index) };
+
                 vkCmdBindDescriptorSets(command_buffers[command_index],
                     VK_PIPELINE_BIND_POINT_GRAPHICS,
                     shadowmap_pipeline.get_api_layout(),
@@ -1138,6 +1193,7 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
             }
         }
     }
+    
     vkCmdEndRenderPass(command_buffers[command_index]);
 }
 
@@ -1247,14 +1303,30 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                     uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
                     uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 
-                    //we're kinda phasing object colours out with the introduction of textures, so i'm probably not gonna need to push this
-                    //vkCmdPushConstants(command_buffer, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(light), sizeof(pfcs[i]), &pfcs[i]);
-                   
-                    //PROBLEM IS THAT texture set is not updated when the model/mesh we're dealing with has not texture
-                    VkDescriptorSet descriptors[5] = { light_ubo[j][i], ubo_sets[j][i], texture_sets[j].get_api_set(k), shadowmap_set, mat_sets[j][k] };
-                    vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline.get_api_layout(), 0, 5, descriptors, 0, nullptr); 
+                    VkDescriptorSet descriptors[5] = { 
+                        light_ubo[j].get_api_set(i), 
+                        ubo_sets[j][i], 
+                        texture_sets[j].get_api_set(k), 
+                        shadowmap_set, 
+                        mat_sets[j][k] };
 
-                    vkCmdDrawIndexed(command_buffers[i], index_count, 1, total_indexes, total_vertices, static_cast<uint32_t>(0));
+                    vkCmdBindDescriptorSets(
+                            command_buffers[i], 
+                            VK_PIPELINE_BIND_POINT_GRAPHICS, 
+                            graphics_pipeline.get_api_layout(), 
+                            0, 
+                            5, 
+                            descriptors, 
+                            0, 
+                            nullptr); 
+
+                    vkCmdDrawIndexed(
+                            command_buffers[i], 
+                            index_count, 
+                            1, 
+                            total_indexes, 
+                            total_vertices, 
+                            static_cast<uint32_t>(0));
 
                     total_indexes += index_count;
                     total_vertices += vertex_count;
@@ -1267,7 +1339,6 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         vkCmdEndRenderPass(command_buffers[i]);
         //switch image back to depth stencil layout for the next render pass
 
-        //resolve_image_layers(i);
         //end commands to go to execute stage
         if (vkEndCommandBuffer(command_buffers[i]) != VK_SUCCESS) {
             throw std::runtime_error("could not end command buffer");
@@ -1276,12 +1347,28 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 }
 
 void GraphicsImpl::create_screen_set() {
-    screen_sets = create_set(texture_layout, swapchain_images.size(), *texture_pool);
+    screen_resource.init(
+            *p_device,
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
+            texture_layout,
+            swapchain_images.size(), 
+            *texture_pool);
+
+    screen_resource.add_image(
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            output_image,
+            texture_sampler);
+
+    screen_resource.set_binding(0);
+
+    screen_resource.update_set(); 
 }
 
 void GraphicsImpl::render_to_screen(size_t i) {
-    //map to descriptor set
-
+    //bind pipeline
+    
+    //render 3 vertices to vertex shader
+    
 
 }
 
@@ -1502,7 +1589,7 @@ void GraphicsImpl::write_to_shadowmap_set() {
     //shadowmap_atlas.transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool);
 }
 
-void GraphicsImpl::write_to_texture_set(ResourceCollection texture_set, VkImageView image_view) {
+void GraphicsImpl::write_to_texture_set(ResourceCollection texture_set, mem::Image image) {
     /*
     VkDescriptorImageInfo imageInfo;
     imageInfo.sampler = texture_sampler;
@@ -1521,7 +1608,11 @@ void GraphicsImpl::write_to_texture_set(ResourceCollection texture_set, VkImageV
     vkUpdateDescriptorSets(*p_device, 1, &writeInfo, 0, nullptr);
     */
 
-    texture_set.add_image(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image_view, texture_sampler);
+    texture_set.add_image(
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+            image, 
+            texture_sampler);
+
     texture_set.set_binding(0);
     texture_set.update_set();
 }
@@ -1562,12 +1653,15 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
     //save texture image to mesh
 
     //write to texture set
-    write_to_texture_set(texture_sets[object], texture_images[texture_images.size() - 1][0].get_api_image_view());    
+    //write_to_texture_set(texture_sets[object], texture_images[texture_images.size() - 1][0].get_api_image_view());    
 
-    VkImageView image_view = texture_images[texture_images.size() - 1][0].get_api_image_view();
-    texture_sets[object].add_image(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        image_view,
-        texture_sampler);
+    mem::Image& image = texture_images[texture_images.size() - 1][0];
+   
+    texture_sets[object].add_image(
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            image,
+            texture_sampler);
+
     texture_sets[object].set_binding(0);
     texture_sets[object].update_set(texture_set);
 }
@@ -1648,9 +1742,9 @@ void GraphicsImpl::create_texture_image(std::string texturePath, size_t object, 
 
     //write to texture set
     //write_to_texture_set(texture_sets[object][texture_set], texture_images[texture_images.size() - 1][0].get_api_image_view());
-    VkImageView image_view = texture_images[texture_images.size() - 1][0].get_api_image_view();
+    mem::Image image = texture_images[texture_images.size() - 1][0];
     ResourceCollection set = texture_sets[object];
-    set.add_image(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image_view, texture_sampler);
+    set.add_image(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image, texture_sampler);
     set.set_binding(0);
     set.update_set(texture_set);
 

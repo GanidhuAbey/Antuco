@@ -142,28 +142,7 @@ void TucoPipeline::create_render_pipeline(PipelineConfig config) {
 
     vertex_input_info.vertexAttributeDescriptionCount = 3;
 
-    VkVertexInputAttributeDescription pos_attribute{};
-    pos_attribute.location = 0;
-    pos_attribute.binding = 0;
-    pos_attribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-    pos_attribute.offset = 0;
-
-    VkVertexInputAttributeDescription normal_attribute{};
-    normal_attribute.location = 1;
-    normal_attribute.binding = 0;
-    normal_attribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-    normal_attribute.offset = offsetof(Vertex, normal);
-
-    VkVertexInputAttributeDescription tex_attribute{};
-    tex_attribute.location = 2;
-    tex_attribute.binding = 0;
-    tex_attribute.format = VK_FORMAT_R32G32_SFLOAT;
-    tex_attribute.offset = offsetof(Vertex, tex_coord);
-
-
-    VkVertexInputAttributeDescription attribute_descriptions[] = { pos_attribute, normal_attribute, tex_attribute };
-
-    vertex_input_info.pVertexAttributeDescriptions = attribute_descriptions;
+    vertex_input_info.pVertexAttributeDescriptions = config.attribute_descriptions.data();
 
     VkPipelineInputAssemblyStateCreateInfo input_assembly_info{};
     input_assembly_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -213,7 +192,12 @@ void TucoPipeline::create_render_pipeline(PipelineConfig config) {
     multisampling.alphaToOneEnable = VK_FALSE; // Optional
     
     VkPipelineColorBlendAttachmentState color_blend_attachment{};
-    color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    color_blend_attachment.colorWriteMask = 
+        VK_COLOR_COMPONENT_R_BIT | 
+        VK_COLOR_COMPONENT_G_BIT | 
+        VK_COLOR_COMPONENT_B_BIT | 
+        VK_COLOR_COMPONENT_A_BIT;
+
     color_blend_attachment.blendEnable = VK_FALSE;
 
     if (config.blend_colours) {

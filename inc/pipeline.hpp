@@ -45,6 +45,13 @@ struct PipelineConfig {
     VkRenderPass pass;
     uint32_t subpass_index;
     bool blend_colours = VK_FALSE;
+
+    //attribute description
+    std::vector<VkVertexInputAttributeDescription> attribute_descriptions = {
+        {0, 0, VK_FORMAT_R32G32B32_SFLOAT}, //position
+        {1, 0, VK_FORMAT_R32G32B32_SFLOAT}, //normal
+        {2, 0, VK_FORMAT_R32G32_SFLOAT}, //texture coord
+    };
 };
 
 class TucoPipeline {

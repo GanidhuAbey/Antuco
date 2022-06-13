@@ -7,6 +7,7 @@
 #pragma once
 
 #include <cstdio>
+#include <string>
 
 #define FUNCTION_NAME '__FUNCTION__'
 
@@ -18,3 +19,11 @@
 
 #define LOG(m_msg) \
 	printf("[LOG] (fn - %s) : %s \n", __func__, m_msg);
+
+
+
+namespace msg {
+static void print_line(std::string msg) {
+    printf("%s \n", msg.c_str());
+}
+}
