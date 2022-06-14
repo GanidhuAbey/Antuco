@@ -8,9 +8,6 @@
 #include <map>
 #include <set>
 
-#include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>
-
 using namespace tuco;
 
 //debug callback function
@@ -300,7 +297,6 @@ void GraphicsImpl::create_command_pool() {
 		printf("[ERROR] - create_command_pool : could not create command pool");
 		throw std::runtime_error("");
 	}
-
 }
 
 bool GraphicsImpl::validation_layer_supported(std::vector<const char*> names) {

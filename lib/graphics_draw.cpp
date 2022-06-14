@@ -15,6 +15,8 @@
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
+#include "api_config.hpp"
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
@@ -54,7 +56,7 @@ void GraphicsImpl::create_shadowmap_transfer_buffer() {
 
     for (size_t i = 0; i < SHADOW_TRANSFER_BUFFERS; i++) {
         //create all required buffers
-        shadowmap_buffers[i].init(p_physical_device.get(), &*p_device, &command_pool, &buffer_info);
+        shadowmap_buffers[i].init(*p_physical_device, *p_device, command_pool, &buffer_info);
     } 
 }
 
@@ -169,7 +171,7 @@ void GraphicsImpl::create_output_buffers() {
     for (size_t i = 0; i < swapchain_images.size(); i++) {
         VkImageView image_views[2] = { 
             output_images[i].get_api_image_view(), 
-            depth_memory.imageView 
+            depth_image.get_api_image_view(),
         };
 
         create_frame_buffer(
@@ -317,34 +319,30 @@ void GraphicsImpl::create_depth_resources() {
     depth_image_info.queueFamilyIndexCount = 1;
     depth_image_info.pQueueFamilyIndices = &graphics_family;
     depth_image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-    //create memory for image
-    mem::createImage(*p_physical_device, *p_device, &depth_image_info, &depth_memory);
-
+    
     //create image view
     VkImageViewUsageCreateInfo usageInfo{};
     usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
     usageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
     //setup create struct for image views
-    mem::ImageViewCreateInfo createInfo{};
-    createInfo.pNext = &usageInfo;
-    createInfo.view_type = VK_IMAGE_VIEW_TYPE_2D;
-    createInfo.format = VK_FORMAT_D16_UNORM;
-
-
-    //this changes the colour output of the image, currently set to standard colours
-    createInfo.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    mem::ImageViewCreateInfo depth_image_view_info{};
+    depth_image_view_info.pNext = &usageInfo;
+    depth_image_view_info.format = VK_FORMAT_D16_UNORM;
 
     //deciding on how many layers are in the image, and if we're using any mipmap levels.
     //layers are used for steroscopic 3d applications in which you would provide multiple images to each eye, creating a 3D effect.
     //mipmap levels are an optimization made so that lower quality textures are used when further away to save resources.
-    createInfo.aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    depth_image_view_info.aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-    mem::createImageView(*p_device, createInfo, &depth_memory);
+    mem::ImageData data{};
+    data.image_info = depth_image_info;
+    data.image_view_info = depth_image_view_info;
+
+
+
+    //create memory for image
+    depth_image.init(*p_physical_device, *p_device, data);
 }
 
 void GraphicsImpl::create_shadowpass() {
@@ -425,13 +423,13 @@ void GraphicsImpl::create_render_pass() {
     dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-    dependencies[2].srcSubpass = 0;
-    dependencies[2].dstSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[2].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependencies[2].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    dependencies[2].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    dependencies[2].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    dependencies[2].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+    dependencies[1].srcSubpass = 0;
+    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
     render_pass.add_colour(0, config);
     render_pass.add_depth(1);
@@ -496,7 +494,7 @@ void GraphicsImpl::create_materials_set(uint32_t mesh_count) {
     VkDescriptorSetAllocateInfo allocateInfo{};
 
     VkDescriptorPool allocated_pool;
-    size_t pool_index = mat_pool->allocate(*p_device, mesh_count);
+    size_t pool_index = mat_pool->allocate(mesh_count);
 
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocateInfo.descriptorPool = mat_pool->pools[pool_index];
@@ -604,7 +602,7 @@ void GraphicsImpl::create_ubo_set() {
     VkDescriptorSetAllocateInfo allocateInfo{};
 
     VkDescriptorPool allocated_pool;
-    size_t pool_index = ubo_pool->allocate(*p_device, swapchain_images.size());
+    size_t pool_index = ubo_pool->allocate(swapchain_images.size());
 
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocateInfo.descriptorPool = ubo_pool->pools[pool_index];
@@ -644,7 +642,7 @@ void GraphicsImpl::create_texture_pool() {
 void GraphicsImpl::create_shadowmap_set() {
     VkDescriptorSetAllocateInfo allocateInfo{};
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.descriptorPool = shadowmap_pool->pools[shadowmap_pool->allocate(*p_device, 1)];
+    allocateInfo.descriptorPool = shadowmap_pool->pools[shadowmap_pool->allocate(1)];
     allocateInfo.descriptorSetCount = 1;
     allocateInfo.pSetLayouts = &shadowmap_layout;
 
@@ -693,7 +691,7 @@ std::vector<VkDescriptorSet> GraphicsImpl::create_set(VkDescriptorSetLayout layo
 
     VkDescriptorSetAllocateInfo allocateInfo{};
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.descriptorPool = pool.pools[pool.allocate(*p_device, set_count)];
+    allocateInfo.descriptorPool = pool.pools[pool.allocate(set_count)];
     allocateInfo.descriptorSetCount = set_count;
     allocateInfo.pSetLayouts = layouts.data();
 
@@ -852,7 +850,7 @@ void GraphicsImpl::create_graphics_pipeline() {
     config.screen_extent = swapchain_extent;
     config.blend_colours = true;
 
-    graphics_pipeline.init(*p_device, config);
+    //graphics_pipeline(*p_device, config);
 }
 
 
@@ -901,40 +899,72 @@ void GraphicsImpl::write_to_ubo() {
 
 void GraphicsImpl::destroy_draw() {
     vkDeviceWaitIdle(*p_device);
-    
+
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyFence(*p_device, in_flight_fences[i], nullptr);
 
         vkDestroySemaphore(*p_device, render_finished_semaphores[i], nullptr);
-    }
- 
-    for (auto& buffer_data : shadowmap_buffers) {
-        buffer_data.destroy(*p_device);
-    }
-    
-    ubo_pool->destroyPool(*p_device);
-    shadowmap_pool->destroyPool(*p_device);
-    texture_pool->destroyPool(*p_device);
 
-    uniform_buffer.destroy(*p_device);
-    
+        vkDestroySemaphore(*p_device, image_available_semaphores[i], nullptr);
+    }
+
+    uniform_buffer.destroy();
+    vertex_buffer.destroy();
+    index_buffer.destroy();
+
     vkDestroyCommandPool(*p_device, command_pool, nullptr);
-        
+
     vkDestroyDescriptorSetLayout(*p_device, ubo_layout, nullptr);
     vkDestroyDescriptorSetLayout(*p_device, light_layout, nullptr);
     vkDestroyDescriptorSetLayout(*p_device, shadowmap_layout, nullptr);
     vkDestroyDescriptorSetLayout(*p_device, texture_layout, nullptr);
+    vkDestroyDescriptorSetLayout(*p_device, mat_layout, nullptr);
 
     vkDestroySampler(*p_device, texture_sampler, nullptr);
     vkDestroySampler(*p_device, shadowmap_sampler, nullptr);
 
-    for (int i = 0; i < output_buffers.size(); i++) {
-        vkDestroyFramebuffer(*p_device, output_buffers[i], nullptr);
+    graphics_pipeline.destroy();
+    shadowmap_pipeline.destroy();
+    screen_pipeline.destroy();
+    
 
+    for (const auto& output_buffer : output_buffers) {
+        vkDestroyFramebuffer(*p_device, output_buffer, nullptr);
+    }
+
+    for (const auto& screen_buffer : screen_buffers) {
+        vkDestroyFramebuffer(*p_device, screen_buffer, nullptr);
     }
     vkDestroyFramebuffer(*p_device, shadowpass_buffer, nullptr);
 
-    mem::destroyImage(*p_device, depth_memory);
+    texture_pool.get()->destroyPool();
+    ubo_pool.get()->destroyPool();
+    mat_pool.get()->destroyPool();
+    shadowmap_pool.get()->destroyPool();
+
+    for (mem::Image& image : output_images) {
+        image.destroy();
+    }
+
+    depth_image.destroy();
+
+    for (mem::Image& image : swapchain_images) {
+        image.destroy_image_view();
+    }
+
+    for (size_t i = 0; i < texture_images.size(); i++) {
+        for (mem::Image& image : texture_images[i]) {
+            image.destroy();
+        }
+    }
+
+    shadow_pass_texture.destroy();
+
+
+    render_pass.destroy();
+    screen_pass.destroy();
+    shadowpass.destroy();
+
     vkDestroySwapchainKHR(*p_device, swapchain, nullptr);
 }
 
@@ -1487,7 +1517,7 @@ void GraphicsImpl::create_vertex_buffer() {
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    vertex_buffer.init(p_physical_device.get(), &*p_device, &command_pool, &buffer_info);
+    vertex_buffer.init(*p_physical_device, *p_device, command_pool, &buffer_info);
 }
 
 void GraphicsImpl::create_index_buffer() {
@@ -1499,7 +1529,7 @@ void GraphicsImpl::create_index_buffer() {
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     
-    index_buffer.init(&*p_physical_device, &*p_device, &command_pool, &buffer_info);
+    index_buffer.init(*p_physical_device, *p_device, command_pool, &buffer_info);
 }
 
 
@@ -1518,8 +1548,8 @@ int32_t GraphicsImpl::update_index_buffer(std::vector<uint32_t> indices_data) {
 
 //helper function to check if data exists or print warning if it doesnt
 bool GraphicsImpl::check_data(size_t data_size) {
+    //do not add data if its size is zero
     if (data_size == 0) {
-        printf("[WARNING] - attempted to allocate data of size 0, preserving previous state... \n");
         return true;
     }
 
@@ -1583,10 +1613,12 @@ void GraphicsImpl::cleanup_swapchain() {
     for (const auto& screen_buffer : screen_buffers) {
         vkDestroyFramebuffer(*p_device, screen_buffer, nullptr);
     }
-
-    mem::destroyImage(*p_device, depth_memory);
+    vkDestroyFramebuffer(*p_device, shadowpass_buffer, nullptr);
+    
+    depth_image.destroy();
     render_pass.destroy();
     screen_pass.destroy();
+
     vkDestroySwapchainKHR(*p_device, swapchain, nullptr);
 }
 
@@ -1842,8 +1874,8 @@ void GraphicsImpl::create_texture_image(std::string texturePath, size_t object, 
 
     //write to texture set
     //write_to_texture_set(texture_sets[object][texture_set], texture_images[texture_images.size() - 1][0].get_api_image_view());
-    mem::Image image = texture_images[texture_images.size() - 1][0];
-    ResourceCollection set = texture_sets[object];
+    mem::Image& image = texture_images[texture_images.size() - 1][0];
+    ResourceCollection& set = texture_sets[object];
     set.add_image(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image, texture_sampler);
     set.set_binding(0);
     set.update_set(texture_set);

@@ -2,7 +2,7 @@
 #include "vulkan/vulkan_core.h"
 #include "queue.hpp"
 #include "logger/interface.hpp"
-#include "config.hpp"
+#include "api_config.hpp"
 
 #include <bitset>
 #include <cstring>
@@ -13,9 +13,13 @@ using namespace mem;
 
 
 SearchBuffer::SearchBuffer() {}
-SearchBuffer::~SearchBuffer() {}
+SearchBuffer::~SearchBuffer() {
+    //destroy(api_device);
+}
 
-void SearchBuffer::init(VkPhysicalDevice physical_device, VkDevice device, BufferCreateInfo* p_buffer_info) { 
+void SearchBuffer::init(VkPhysicalDevice physical_device, VkDevice& device, BufferCreateInfo* p_buffer_info) { 
+    api_device = device;
+
     VkBufferCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     createInfo.pNext = p_buffer_info->pNext;
@@ -54,12 +58,12 @@ void SearchBuffer::init(VkPhysicalDevice physical_device, VkDevice device, Buffe
     memory_offset = 0;
 }
 
-void SearchBuffer::destroy(VkDevice device) {
-    vkDeviceWaitIdle(device);
+void SearchBuffer::destroy() {
+    vkDeviceWaitIdle(api_device);
 
-    vkFreeMemory(device, buffer_memory, nullptr);
+    vkFreeMemory(api_device, buffer_memory, nullptr);
 
-    vkDestroyBuffer(device, buffer, nullptr);
+    vkDestroyBuffer(api_device, buffer, nullptr);
 }
 
 VkDeviceSize SearchBuffer::allocate(VkDeviceSize allocation_size) {
@@ -88,24 +92,29 @@ void SearchBuffer::free(VkDeviceSize offset) {
 Image::Image() {}
 
 Image::~Image() {
-    destroy();
+    //destroy();
 }
 
 void Image::destroy() {
     LOG(data.name.c_str());
-    vkDestroyImageView(*p_device, image_view, nullptr);
-    vkDestroyImage(*p_device, image, nullptr);
+    destroy_image_view();
+    vkFreeMemory(device, memory, nullptr);
+    vkDestroyImage(device, image, nullptr);
+}
+
+void Image::destroy_image_view() {
+    vkDestroyImageView(device, image_view, nullptr);
 }
 
 VkImage Image::get_api_image() {
     return image;
 }
 
-void mem::Image::init(VkPhysicalDevice physical_device, VkDevice device, VkImage image, ImageData info) {
+void mem::Image::init(VkPhysicalDevice& physical_device, VkDevice& device, VkImage image, ImageData info) {
     data = info;
 
-    p_device = std::make_shared<VkDevice>(device);
-    p_phys_device = std::make_shared<VkPhysicalDevice>(physical_device);
+    Image::device = device;
+    Image::phys_device = physical_device;
 
     Image::image = image;
     create_image_view(info.image_view_info);
@@ -115,9 +124,9 @@ VkImageView Image::get_api_image_view() {
     return image_view;
 }
 
-void Image::init(VkPhysicalDevice physical_device, VkDevice device, ImageData info) {
-    p_device = std::make_shared<VkDevice>(device);
-    p_phys_device = std::make_shared<VkPhysicalDevice>(physical_device);
+void Image::init(VkPhysicalDevice& physical_device, VkDevice& device, ImageData info) {
+    Image::device = device;
+    Image::phys_device = physical_device;
     data = info;
 
     create_image(info.image_info);
@@ -142,7 +151,7 @@ void Image::create_image(ImageCreateInfo info) {
     image_info.pQueueFamilyIndices = info.pQueueFamilyIndices;
     image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    VkResult image_create = vkCreateImage(*p_device, &image_info, nullptr, &image);
+    VkResult image_create = vkCreateImage(device, &image_info, nullptr, &image);
 
     if (image_create != VK_SUCCESS) {
         printf("[ERROR %d] - could not create image \n", image_create);
@@ -150,7 +159,7 @@ void Image::create_image(ImageCreateInfo info) {
 
     //allocate memory
     VkMemoryRequirements memory_req{};
-    vkGetImageMemoryRequirements(*p_device, image, &memory_req);
+    vkGetImageMemoryRequirements(device, image, &memory_req);
 
     //create some memory for the image
     VkMemoryAllocateInfo memory_alloc{};
@@ -158,7 +167,7 @@ void Image::create_image(ImageCreateInfo info) {
     memory_alloc.allocationSize = memory_req.size;
 
     VkPhysicalDeviceMemoryProperties memoryProperties;
-    vkGetPhysicalDeviceMemoryProperties(*p_phys_device, &memoryProperties);
+    vkGetPhysicalDeviceMemoryProperties(phys_device, &memoryProperties);
 
     VkMemoryPropertyFlags properties = info.memoryProperties;
 
@@ -171,15 +180,15 @@ void Image::create_image(ImageCreateInfo info) {
         }
     }
 
-    memory_alloc.memoryTypeIndex = findMemoryType(*p_phys_device, memory_req.memoryTypeBits, info.memoryProperties);
+    memory_alloc.memoryTypeIndex = findMemoryType(phys_device, memory_req.memoryTypeBits, info.memoryProperties);
 
-    VkResult alloc_result = vkAllocateMemory(*p_device, &memory_alloc, nullptr, &memory);
+    VkResult alloc_result = vkAllocateMemory(device, &memory_alloc, nullptr, &memory);
 
     if (alloc_result != VK_SUCCESS) {
-        throw std::runtime_error("could not allocate memory for memory pool");
+        msg::print_line("[ERROR - " + std::to_string(alloc_result) + "] - could not allocate memory");
     }
 
-    if (vkBindImageMemory(*p_device, image, memory, 0) != VK_SUCCESS) {
+    if (vkBindImageMemory(device, image, memory, 0) != VK_SUCCESS) {
         throw std::runtime_error("could not bind memory to image");
     }
 }
@@ -198,7 +207,7 @@ void Image::copy_from_buffer(VkBuffer buffer, VkOffset3D image_offset, std::opti
     //create command buffer
     bool delete_buffer = false;
     if (!command_buffer.has_value()) {
-        command_buffer = begin_command_buffer(*p_device, command_pool);
+        command_buffer = begin_command_buffer(device, command_pool);
         delete_buffer = true;
     }
 
@@ -228,7 +237,7 @@ void Image::copy_from_buffer(VkBuffer buffer, VkOffset3D image_offset, std::opti
 
     //destroy transfer buffer, shouldnt need it after copying the data.
     if (delete_buffer) {
-        end_command_buffer(*p_device, queue, command_pool, command_buffer.value());
+        end_command_buffer(device, queue, command_pool, command_buffer.value());
     }
 }
 
@@ -240,7 +249,7 @@ void Image::copy_from_buffer(VkBuffer buffer, VkOffset3D image_offset, std::opti
 void Image::copy_to_buffer(VkBuffer buffer, VkDeviceSize dst_offset, VkQueue queue, VkCommandPool command_pool, std::optional<VkCommandBuffer> command_buffer)  {
     bool delete_buffer = false; 
     if (!command_buffer.has_value()) { 
-        command_buffer = begin_command_buffer(*p_device, command_pool);
+        command_buffer = begin_command_buffer(device, command_pool);
         delete_buffer = true;
     }
 
@@ -264,7 +273,7 @@ void Image::copy_to_buffer(VkBuffer buffer, VkDeviceSize dst_offset, VkQueue que
     vkCmdCopyImageToBuffer(command_buffer.value(), image, data.image_info.initialLayout, buffer, 1, &copy_data);
 
     if (delete_buffer) { 
-        end_command_buffer(*p_device, queue, command_pool, command_buffer.value());
+        end_command_buffer(device, queue, command_pool, command_buffer.value());
     }
 }
 
@@ -273,7 +282,7 @@ void Image::transfer(VkImageLayout output_layout, VkQueue queue, VkCommandPool p
     //begin command buffer
     bool delete_buffer = false;
     if (!command_buffer.has_value()) {
-        command_buffer = begin_command_buffer(*p_device, pool);
+        command_buffer = begin_command_buffer(device, pool);
         delete_buffer = true;
     }
 
@@ -431,7 +440,7 @@ void Image::transfer(VkImageLayout output_layout, VkQueue queue, VkCommandPool p
 
     //end command buffer
     if (delete_buffer) {
-        end_command_buffer(*p_device, queue, pool, command_buffer.value());
+        end_command_buffer(device, queue, pool, command_buffer.value());
     }
 }
 
@@ -439,7 +448,7 @@ void Image::create_image_view(ImageViewCreateInfo info) {
     VkImageViewCreateInfo view_info{};
 
     view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    view_info.pNext = nullptr;
+    view_info.pNext = info.pNext;
     view_info.flags = info.flags;
     view_info.format = data.image_info.format;
     if (info.format.has_value()) {
@@ -462,7 +471,7 @@ void Image::create_image_view(ImageViewCreateInfo info) {
     view_info.subresourceRange = subresource;
     view_info.viewType = info.view_type;
 
-    VkResult view_create = vkCreateImageView(*p_device, &view_info, nullptr, &image_view);
+    VkResult view_create = vkCreateImageView(device, &view_info, nullptr, &image_view);
 
     if (view_create != VK_SUCCESS) {
         printf("[ERROR %d] - could not create image view \n", view_create);
@@ -474,20 +483,20 @@ StackBuffer::StackBuffer() {}
 
 StackBuffer::~StackBuffer() {
     //destroy the buffer
-    destroy(*p_device);
+    //destroy();
 }
 
-void StackBuffer::destroy(VkDevice device) {
+void StackBuffer::destroy() {
     vkFreeMemory(device, inter_memory, nullptr);
     vkFreeMemory(device, buffer_memory, nullptr);
     vkDestroyBuffer(device, buffer, nullptr);
     vkDestroyBuffer(device, inter_buffer, nullptr);
 }
 
-void StackBuffer::init(VkPhysicalDevice* physical_device, VkDevice* device, VkCommandPool* command_pool, BufferCreateInfo* p_buffer_info) {
-    p_device = std::shared_ptr<VkDevice>(device);
-    p_phys_device = std::shared_ptr<VkPhysicalDevice>(physical_device);
-    p_command_pool = std::shared_ptr<VkCommandPool>(command_pool);
+void StackBuffer::init(VkPhysicalDevice& physical_device, VkDevice& device, VkCommandPool& command_pool, BufferCreateInfo* p_buffer_info) {
+    StackBuffer::device = device;
+    StackBuffer::phys_device = physical_device;
+    StackBuffer::command_pool = command_pool;
     //create buffer 
     VkBufferCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -499,28 +508,28 @@ void StackBuffer::init(VkPhysicalDevice* physical_device, VkDevice* device, VkCo
     createInfo.queueFamilyIndexCount = p_buffer_info->queueFamilyIndexCount;
     createInfo.pQueueFamilyIndices = p_buffer_info->pQueueFamilyIndices;
 
-    if (vkCreateBuffer(*device, &createInfo, nullptr, &buffer) != VK_SUCCESS) {
+    if (vkCreateBuffer(device, &createInfo, nullptr, &buffer) != VK_SUCCESS) {
         throw std::runtime_error("could not create buffer");
     };
 
     //allocate desired memory to buffer
     VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(*device, buffer, &memRequirements);
+    vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
 
     //allocate memory for buffer
     VkMemoryAllocateInfo memoryInfo{};
     memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memoryInfo.allocationSize = memRequirements.size;
     //too lazy to even check if this exists will do later TODO
-    memoryInfo.memoryTypeIndex = findMemoryType(*physical_device, memRequirements.memoryTypeBits, p_buffer_info->memoryProperties);
+    memoryInfo.memoryTypeIndex = findMemoryType(physical_device, memRequirements.memoryTypeBits, p_buffer_info->memoryProperties);
 
-    VkResult allocResult = vkAllocateMemory(*device, &memoryInfo, nullptr, &buffer_memory);
+    VkResult allocResult = vkAllocateMemory(device, &memoryInfo, nullptr, &buffer_memory);
 
     if (allocResult != VK_SUCCESS) {
         throw std::runtime_error("could not allocate memory for memory pool");
     }
 
-    if (vkBindBufferMemory(*device, buffer, buffer_memory, 0) != VK_SUCCESS) {
+    if (vkBindBufferMemory(device, buffer, buffer_memory, 0) != VK_SUCCESS) {
         throw std::runtime_error("could not bind allocated memory to buffer");
     }
 
@@ -534,10 +543,10 @@ void StackBuffer::init(VkPhysicalDevice* physical_device, VkDevice* device, VkCo
 
 
 void StackBuffer::setup_queues() {
-    tuco::QueueData indices(*p_phys_device);
+    tuco::QueueData indices(phys_device);
     transfer_family = indices.transferFamily.value();
 
-    vkGetDeviceQueue(*p_device, transfer_family, 0, &transfer_queue);
+    vkGetDeviceQueue(device, transfer_family, 0, &transfer_queue);
 }
 
 void StackBuffer::create_inter_buffer(VkDeviceSize buffer_size, VkMemoryPropertyFlags memory_properties, VkBuffer* buffer, VkDeviceMemory* memory) {
@@ -549,23 +558,23 @@ void StackBuffer::create_inter_buffer(VkDeviceSize buffer_size, VkMemoryProperty
     createInfo.size = buffer_size;
     createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    if (vkCreateBuffer(*p_device, &createInfo, nullptr, buffer) != VK_SUCCESS) {
+    if (vkCreateBuffer(device, &createInfo, nullptr, buffer) != VK_SUCCESS) {
         throw std::runtime_error("could not create buffer");
     };
 
     VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(*p_device, *buffer, &memRequirements);
+    vkGetBufferMemoryRequirements(device, *buffer, &memRequirements);
 
     //allocate memory for buffer
     VkMemoryAllocateInfo memoryInfo{};
     memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memoryInfo.allocationSize = memRequirements.size;
     //too lazy to even check if this exists will do later TODO
-    memoryInfo.memoryTypeIndex = findMemoryType(*p_phys_device, memRequirements.memoryTypeBits, memory_properties);
+    memoryInfo.memoryTypeIndex = findMemoryType(phys_device, memRequirements.memoryTypeBits, memory_properties);
 
-    VkResult allocResult = vkAllocateMemory(*p_device, &memoryInfo, nullptr, memory);
+    VkResult allocResult = vkAllocateMemory(device, &memoryInfo, nullptr, memory);
 
-    if (vkBindBufferMemory(*p_device, *buffer, *memory, 0) != VK_SUCCESS) {
+    if (vkBindBufferMemory(device, *buffer, *memory, 0) != VK_SUCCESS) {
         throw std::runtime_error("could not bind allocated memory to buffer");
     }
 
@@ -598,11 +607,11 @@ void StackBuffer::sort() {
  
     VkCommandBufferAllocateInfo bufferAllocate{};
     bufferAllocate.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    bufferAllocate.commandPool = *p_command_pool;
+    bufferAllocate.commandPool = command_pool;
     bufferAllocate.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     bufferAllocate.commandBufferCount = 1;
     
-    if (vkAllocateCommandBuffers(*p_device, &bufferAllocate, &transfer_buffer) != VK_SUCCESS) {
+    if (vkAllocateCommandBuffers(device, &bufferAllocate, &transfer_buffer) != VK_SUCCESS) {
         throw std::runtime_error("could not allocate memory for transfer buffer");
     }
 
@@ -669,7 +678,7 @@ void StackBuffer::sort() {
     vkQueueSubmit(transfer_queue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(transfer_queue);
 
-    vkFreeCommandBuffers(*p_device, *p_command_pool, 1, &transfer_buffer);
+    vkFreeCommandBuffers(device, command_pool, 1, &transfer_buffer);
 }
 
 VkDeviceSize StackBuffer::allocate(VkDeviceSize allocation_size) {
@@ -697,11 +706,11 @@ VkCommandBuffer StackBuffer::begin_command_buffer() {
 
     VkCommandBufferAllocateInfo bufferAllocate{};
     bufferAllocate.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    bufferAllocate.commandPool = *p_command_pool;
+    bufferAllocate.commandPool = command_pool;
     bufferAllocate.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     bufferAllocate.commandBufferCount = 1;
 
-    if (vkAllocateCommandBuffers(*p_device, &bufferAllocate, &transferBuffer) != VK_SUCCESS) {
+    if (vkAllocateCommandBuffers(device, &bufferAllocate, &transferBuffer) != VK_SUCCESS) {
         throw std::runtime_error("could not allocate memory for transfer buffer");
     }
 
@@ -734,7 +743,7 @@ void StackBuffer::end_command_buffer(VkCommandBuffer commandBuffer) {
     vkQueueSubmit(transfer_queue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(transfer_queue);
 
-    vkFreeCommandBuffers(*p_device, *p_command_pool, 1, &commandBuffer);
+    vkFreeCommandBuffers(device, command_pool, 1, &commandBuffer);
 }
 
 //EFFECTS: maps a given chunk of data to this buffer and returns the memory location of where it was mapped
@@ -746,7 +755,7 @@ VkDeviceSize StackBuffer::map(VkDeviceSize data_size, void* data) {
     create_inter_buffer(data_size, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &temp_buffer, &temp_memory);
 
     void* pData;
-    if (vkMapMemory(*p_device, temp_memory, 0, data_size, 0, &pData) != VK_SUCCESS) {
+    if (vkMapMemory(device, temp_memory, 0, data_size, 0, &pData) != VK_SUCCESS) {
         throw std::runtime_error("could not map data to memory");
     }
     memcpy(pData, data, data_size);
@@ -755,11 +764,11 @@ VkDeviceSize StackBuffer::map(VkDeviceSize data_size, void* data) {
     copy_buffer(temp_buffer, buffer, memory_loc, data_size);
     
 
-    vkUnmapMemory(*p_device, temp_memory);
+    vkUnmapMemory(device, temp_memory);
 
     //TODO: should minimize the amount of temp buffers created, having one at a set size only recreating a new temp buffer if our previous one was too small.
-    vkFreeMemory(*p_device, temp_memory, nullptr);
-    vkDestroyBuffer(*p_device, temp_buffer, nullptr);
+    vkFreeMemory(device, temp_memory, nullptr);
+    vkDestroyBuffer(device, temp_buffer, nullptr);
 
     return memory_loc;
 }
@@ -799,21 +808,24 @@ void StackBuffer::free(VkDeviceSize delete_offset) {
     }
 }
 
-Pool::Pool(VkDevice device, PoolCreateInfo create_info) {
+Pool::Pool(VkDevice& device, PoolCreateInfo create_info) {
+    api_device = device;
     pool_create_info = create_info;
-    createPool(device, create_info);
+    createPool(create_info);
 }
 
 Pool::~Pool() {
+    //msg::print_line("deleting buffer...");
+    //destroyPool();
 }
 
-void Pool::destroyPool(VkDevice device) {
+void Pool::destroyPool() {
     for (size_t i = 0; i < pools.size(); i++) {
-        vkDestroyDescriptorPool(device, pools[i], nullptr);
+        vkDestroyDescriptorPool(api_device, pools[i], nullptr);
     }
 }
 
-void Pool::createPool(VkDevice device, PoolCreateInfo create_info) {
+void Pool::createPool(PoolCreateInfo create_info) {
     //create pool described by pool_info
     VkDescriptorPoolSize pool_size{};
     pool_size.type = create_info.set_type;
@@ -827,11 +839,11 @@ void Pool::createPool(VkDevice device, PoolCreateInfo create_info) {
 
     size_t current_size = pools.size();
     pools.resize(current_size + 1);
-    vkCreateDescriptorPool(device, &pool_info, nullptr, &pools[current_size]);
+    vkCreateDescriptorPool(api_device, &pool_info, nullptr, &pools[current_size]);
     allocations.push_back(create_info.pool_size);
 }
 
-size_t Pool::allocate(VkDevice device, VkDeviceSize allocation_size) {
+size_t Pool::allocate(VkDeviceSize allocation_size) {
     //check if we can allocate to a pool
     bool allocate = false;
     size_t pool_to_allocate = 0;
@@ -845,7 +857,7 @@ size_t Pool::allocate(VkDevice device, VkDeviceSize allocation_size) {
 
     if (!allocate) {
         pool_create_info.pool_size = int(std::max(std::pow(pool_create_info.pool_size, 2), (double)allocation_size));
-        createPool(device, pool_create_info);
+        createPool(pool_create_info);
         pool_to_allocate = allocations.size() - 1;
     }
 

@@ -20,7 +20,7 @@ class GraphicsImpl;
 
 class Graphics {
 private:
-	GraphicsImpl* pGraphics;
+	std::unique_ptr<GraphicsImpl> p_graphics;
 public:
 	Graphics(Window* pWindow);
 	~Graphics();

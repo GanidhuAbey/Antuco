@@ -6,7 +6,6 @@
 #pragma once
 
 #include "assimp/types.h"
-#include <vulkan/vulkan.h>
 #include <glm/glm.hpp>
 #include <vector>
 #include <optional>

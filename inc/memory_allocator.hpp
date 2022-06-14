@@ -87,8 +87,9 @@ struct ImageData {
 
 class Image {
 private:
-    std::shared_ptr<VkDevice> p_device;
-    std::shared_ptr<VkPhysicalDevice> p_phys_device;
+    VkDevice device;
+    VkPhysicalDevice phys_device;
+
     ImageData data;
 
     VkImage image;
@@ -97,10 +98,11 @@ private:
 public:
     Image();
     ~Image();
-    void init(VkPhysicalDevice physical_device, VkDevice device, ImageData info);
-    void init(VkPhysicalDevice physical_device, VkDevice device, VkImage image, ImageData info);
+    void init(VkPhysicalDevice& physical_device, VkDevice& device, ImageData info);
+    void init(VkPhysicalDevice& physical_device, VkDevice& device, VkImage image, ImageData info);
     //can only be called after init()
     void destroy();
+    void destroy_image_view();
     VkImage get_api_image();
     VkImageView get_api_image_view();
 
@@ -118,14 +120,16 @@ private:
     std::vector<VkDeviceSize> memory_locations;
     VkDeviceSize memory_offset;
     VkDeviceMemory buffer_memory;
+
+    VkDevice api_device;
 public:
     VkBuffer buffer;
 public:
     SearchBuffer();
     ~SearchBuffer();
 public:
-    void init(VkPhysicalDevice physical_device, VkDevice device, BufferCreateInfo* p_buffer_info);
-    void destroy(VkDevice device);
+    void init(VkPhysicalDevice physical_device, VkDevice& device, BufferCreateInfo* p_buffer_info);
+    void destroy();
     void write(VkDevice device, VkDeviceSize offset, VkDeviceSize data_size, void* p_data);
     VkDeviceSize allocate(VkDeviceSize allocation_size);
     void free(VkDeviceSize offset);
@@ -138,9 +142,7 @@ private:
     VkDeviceSize offset;
     VkDeviceMemory buffer_memory;
     //i need a shared pointer of the device...
-    std::shared_ptr<VkDevice> p_device; //hopefully this doesn't just disappear...
-    std::shared_ptr<VkPhysicalDevice> p_phys_device;
-    std::shared_ptr<VkCommandPool> p_command_pool;
+    VkCommandPool command_pool;
     //pair with allocation size and offset? 
     std::vector<std::pair<VkDeviceSize, VkDeviceSize>> allocations;
 
@@ -150,6 +152,9 @@ private:
     VkBuffer inter_buffer;
     VkDeviceMemory inter_memory;
 
+    VkDevice device;
+    VkPhysicalDevice phys_device;
+
 public:
     VkBuffer buffer;
 
@@ -158,9 +163,9 @@ public:
     ~StackBuffer();
 
 public:
-    void init(VkPhysicalDevice* physical_device, VkDevice* device, VkCommandPool* command_pool, BufferCreateInfo* p_buffer_info);
+    void init(VkPhysicalDevice& physical_device, VkDevice& device, VkCommandPool& command_pool, BufferCreateInfo* p_buffer_info);
     VkDeviceSize map(VkDeviceSize data_size, void* data);
-    void destroy(VkDevice device);
+    void destroy();
     void free(VkDeviceSize delete_offset);
     void sort();
     
@@ -188,17 +193,19 @@ private:
     //handle a vector of all the pools we'll be allocating
     std::vector<uint32_t> allocations;
     PoolCreateInfo pool_create_info;
+    
+    VkDevice api_device;
 
 
 public:
-    Pool(VkDevice device, PoolCreateInfo create_info);
+    Pool(VkDevice& device, PoolCreateInfo create_info);
     ~Pool();
 public:   
     std::vector<VkDescriptorPool> pools;
     
-    size_t allocate(VkDevice device, VkDeviceSize allocationSize);
-    void destroyPool(VkDevice device);
-    void createPool(VkDevice device, PoolCreateInfo create_info);
+    size_t allocate(VkDeviceSize allocationSize);
+    void destroyPool();
+    void createPool(PoolCreateInfo create_info);
     void reset();
     void freeDescriptorSets();
 };

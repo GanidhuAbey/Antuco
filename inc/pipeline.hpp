@@ -65,7 +65,7 @@ class TucoPipeline {
         VkPipeline pipeline;
         VkPipelineLayout layout;
 
-        std::shared_ptr<VkDevice> p_device;
+        VkDevice api_device;
     public:
         void init(VkDevice device, PipelineConfig config);
         TucoPipeline();
@@ -73,6 +73,8 @@ class TucoPipeline {
 
         VkPipeline get_api_pipeline();
         VkPipelineLayout get_api_layout();
+
+        void destroy();
 
     private:
         void create_render_pipeline(PipelineConfig config);

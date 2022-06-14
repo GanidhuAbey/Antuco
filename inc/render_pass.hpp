@@ -19,6 +19,8 @@ struct ColourConfig {
 
 class TucoPass {
     private:
+        VkDevice api_device;
+
         VkRenderPass render_pass;
         bool built = false;
 
@@ -46,7 +48,7 @@ class TucoPass {
         ~TucoPass();
 
         VkRenderPass get_api_pass();
-        void build(VkDevice device, VkPipelineBindPoint bind_point);
+        void build(VkDevice& device, VkPipelineBindPoint bind_point);
         void add_depth(uint32_t attachment, DepthConfig config = DepthConfig{});
         void add_colour(uint32_t attachment, ColourConfig config);
         void add_dependency(std::vector<VkSubpassDependency> d);

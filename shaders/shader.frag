@@ -21,11 +21,9 @@ layout(set=4, binding=0) uniform Materials {
     vec3 specular; //Ks
 } mat;
 
-in vec4 gl_FragCoord;
-
 float bias = 5e-3;
 
-int LIGHT_FACTOR = 10;
+int LIGHT_FACTOR = 1;
 float SPECULAR_STRENGTH = 0.5f;
 float AMBIENCE_FACTOR = 0.2f;
 
@@ -81,14 +79,13 @@ void main() {
     //get vector of light
     vec3 texture_component = vec3(texture(texture1, texCoord));
 
-    vec3 lightToObject = normalize(light_position - vec3(vPos));
+    vec3 lightToObject = light_position - vec3(vPos);
 
 
     //diffuse model
-    float diffuse_light = max(0.f, dot(lightToObject, surfaceNormal)) * LIGHT_FACTOR;
+    float diffuse_light = max(0.2f, dot(normalize(lightToObject), normalize(surfaceNormal))) * LIGHT_FACTOR;
 
     vec3 diffuse_final = diffuse_light * mat.diffuse;
-    //float mapIntensity = (lightIntensity/2) + 0.5;
     
     vec3 reflected_light = reflect(lightToObject, surfaceNormal);
     //need to pass data on the location of the camera
@@ -101,7 +98,7 @@ void main() {
     
     vec4 sample_value = light_perspective;
 
-    float shadow_factor = check_shadow(sample_value);
+    float shadow_factor = pcf_shadow(sample_value);
     
     //lets add diffuse light back into the equation
     //if texture is always 1, then no impact on outcome of img
@@ -114,7 +111,7 @@ void main() {
         texture_component = vec3(1);
     }
     
-    result = (mat.ambient * AMBIENCE_FACTOR + diffuse_final + specular_light) * texture_component * shadow_factor;
+    result = (mat.ambient * AMBIENCE_FACTOR) + diffuse_final; // + specular_light) * texture_component * shadow_factor;
 
     outColor = vec4(result, mat.has_texture.g);
 }

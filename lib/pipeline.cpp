@@ -12,7 +12,7 @@ using namespace tuco;
 //PARAMETERS:
 //<PipelineConfig config> - configuration settings for pipeline
 void TucoPipeline::init(VkDevice device, PipelineConfig config) {
-    p_device = std::make_shared<VkDevice>(device);
+    api_device = device;
 
     //distinguish render/compute pipeline
     if (config.compute_shader_path.has_value()) {
@@ -26,10 +26,12 @@ void TucoPipeline::init(VkDevice device, PipelineConfig config) {
 TucoPipeline::TucoPipeline() {}
 
 TucoPipeline::~TucoPipeline() {
-    if (p_device) return;
+    //if (api_device != VK_NULL_HANDLE) destroy();
+}
 
-    vkDestroyPipeline(*p_device, pipeline, nullptr);
-    vkDestroyPipelineLayout(*p_device, layout, nullptr);
+void TucoPipeline::destroy() {
+    vkDestroyPipeline(api_device, pipeline, nullptr);
+    vkDestroyPipelineLayout(api_device, layout, nullptr);
 }
 
 VkPipeline TucoPipeline::get_api_pipeline() {
@@ -50,7 +52,7 @@ VkShaderModule TucoPipeline::create_shader_module(std::vector<uint32_t> shaderCo
 
     createInfo.pCode = shaderCode.data();
 
-    if (vkCreateShaderModule(*p_device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+    if (vkCreateShaderModule(api_device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
         throw std::runtime_error("could not create shader module");
     }
 
@@ -87,7 +89,7 @@ void TucoPipeline::create_compute_pipeline(PipelineConfig config) {
     pipeline_info.basePipelineIndex = -1;
 
 
-    if (vkCreateComputePipelines(*p_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline) != VK_SUCCESS) {
+    if (vkCreateComputePipelines(api_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline) != VK_SUCCESS) {
         LOG("could not create compute shader");
     }
 
@@ -242,15 +244,15 @@ void TucoPipeline::create_render_pipeline(PipelineConfig config) {
     create_pipeline_info.renderPass = config.pass;
     create_pipeline_info.subpass = config.subpass_index;
     
-    VkResult result = vkCreateGraphicsPipelines(*p_device, VK_NULL_HANDLE, 1, &create_pipeline_info, nullptr, &pipeline);
+    VkResult result = vkCreateGraphicsPipelines(api_device, VK_NULL_HANDLE, 1, &create_pipeline_info, nullptr, &pipeline);
     
     if (result != VK_SUCCESS) {
         throw std::runtime_error("could not create graphics pipeline");
     }
 
     //destroy the used shader object
-    if (config.vert_shader_path.has_value()) vkDestroyShaderModule(*p_device, vert_shader, nullptr);
-    if (config.frag_shader_path.has_value()) vkDestroyShaderModule(*p_device, frag_shader, nullptr);
+    if (config.vert_shader_path.has_value()) vkDestroyShaderModule(api_device, vert_shader, nullptr);
+    if (config.frag_shader_path.has_value()) vkDestroyShaderModule(api_device, frag_shader, nullptr);
 
 }
 
@@ -265,7 +267,7 @@ void TucoPipeline::create_pipeline_layout(std::vector<VkDescriptorSetLayout> des
     pipeline_layout_info.pushConstantRangeCount = static_cast<uint32_t>(push_ranges.size());
     pipeline_layout_info.pPushConstantRanges = push_ranges.data();
 
-    if (vkCreatePipelineLayout(*p_device, &pipeline_layout_info, nullptr, layout) != VK_SUCCESS) {
+    if (vkCreatePipelineLayout(api_device, &pipeline_layout_info, nullptr, layout) != VK_SUCCESS) {
         throw std::runtime_error("could not create pipeline layout");
     }
 }

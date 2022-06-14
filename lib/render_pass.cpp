@@ -10,15 +10,15 @@ using namespace tuco;
 
 TucoPass::TucoPass() {}
 TucoPass::~TucoPass() {
-    destroy();
+    //destroy();
 }
 
 void TucoPass::destroy() {
-    vkDestroyRenderPass(*p_device, render_pass, nullptr);
+    vkDestroyRenderPass(api_device, render_pass, nullptr);
 }
 
-void TucoPass::build(VkDevice device, VkPipelineBindPoint bind_point) {
-    p_device = std::make_shared<VkDevice>(device);
+void TucoPass::build(VkDevice& device, VkPipelineBindPoint bind_point) {
+    api_device = device;
     
     create_render_pass(bind_point);
 }
@@ -112,7 +112,7 @@ void TucoPass::create_render_pass(VkPipelineBindPoint bind_point) {
     info.dependencyCount = dependencies.size();
     info.pDependencies = dependencies.data();
 
-    VkResult result = vkCreateRenderPass(*p_device, &info, nullptr, &render_pass);
+    VkResult result = vkCreateRenderPass(api_device, &info, nullptr, &render_pass);
 
     if (result != VK_SUCCESS) {
         printf("[ERROR - %d] could not create render pass \n", result);    

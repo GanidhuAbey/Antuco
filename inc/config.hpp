@@ -8,9 +8,6 @@
 #include <cstdint>
 #include <vector>
 
-#include "vulkan/vulkan.h"
-#include "vulkan/vulkan_core.h"
-
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
 #if defined(TARGET_OS_MAC) && defined(TARGET_CPU_ARM)
@@ -45,7 +42,3 @@ extern std::string get_project_root(std::string);
 //REQUIRES: filename must refer to text file within PROJECT_ROOT
 //EFFECTS: returns the contents within file
 extern std::vector<char> read_file(const std::string& filename);
-
-extern VkCommandBuffer begin_command_buffer(VkDevice device, VkCommandPool command_pool);
-
-extern void end_command_buffer(VkDevice device, VkQueue queue, VkCommandPool command_pool, VkCommandBuffer commandBuffer);

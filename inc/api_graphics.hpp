@@ -48,9 +48,7 @@ const uint32_t SHADOW_TRANSFER_BUFFERS = MAX_SHADOW_CASTERS;
 const uint32_t BUFFER_SIZE = 2e8;
 
 //CHANGING THIS IS NOT RECOMMENDED
-//shader assumes that shadowmap size is 2048, i could pass in the shadowmap size into the shader but thats a waste of 
-//performance for something that realistically will never need to change
-const uint32_t SHADOWMAP_SIZE=4096;
+const uint32_t SHADOWMAP_SIZE=2048;
 
 const std::vector<const char*> validation_layers = {"VK_LAYER_KHRONOS_validation"};
 
@@ -125,11 +123,6 @@ private:
     //if oit is enabled, then we must disable depth testing in main pipeline?
     TucoPipeline graphics_pipeline;
 
-    //extract just the depth information from the scene.
-    TucoPipeline depth_pipeline;
-    //compute pipeline, draw texture based on depth texture
-    TucoPipeline oit_pipeline;
-
 private:
     void create_depth_pipeline();
     void create_oit_pipeline();
@@ -140,7 +133,6 @@ private:
 	TucoPass render_pass;
 	TucoPass screen_pass;
 	TucoPass shadowpass;
-    TucoPass geometry_pass;
     TucoPass oit_pass;
 
 private:
@@ -153,6 +145,7 @@ private:
 	VkDescriptorSetLayout ubo_layout;
 	VkDescriptorSetLayout texture_layout;
     VkDescriptorSetLayout mat_layout;
+	VkDescriptorSetLayout light_layout;
 
 	VkSwapchainKHR swapchain;
 	VkExtent2D swapchain_extent;
@@ -173,7 +166,7 @@ private:
 	std::vector<ResourceCollection> light_ubo;
 	std::vector<uint32_t> light_offsets;
 
-	mem::Memory depth_memory;
+	mem::Image depth_image;
 
 	//this will be the shadowmap atlas that will contain all the shadowmap data for the scene
 
@@ -199,8 +192,6 @@ private:
 
 	size_t current_frame = 0;
 	size_t submitted_frame = 0;
-
-	VkDescriptorSetLayout light_layout;
 
 	bool not_created;
 

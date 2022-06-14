@@ -29,12 +29,16 @@ VkDescriptorSet ResourceCollection::get_api_set(size_t i) {
     return sets[i];
 }
 
+void ResourceCollection::destroy() {
+}
+
 void ResourceCollection::create_set(VkDescriptorSetLayout layout, mem::Pool& pool) {
     std::vector<VkDescriptorSetLayout> layouts(sets.size(), layout);
 
     VkDescriptorSetAllocateInfo allocateInfo{};
+    api_pool = pool.pools[pool.allocate(sets.size())];
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.descriptorPool = pool.pools[pool.allocate(p_device, sets.size())];
+    allocateInfo.descriptorPool = api_pool;
     allocateInfo.descriptorSetCount = sets.size();
     allocateInfo.pSetLayouts = layouts.data();
 

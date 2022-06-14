@@ -22,7 +22,11 @@ private:
 
 	VkDescriptorType descriptor_type;
 
+	VkDescriptorPool api_pool;
+
 	uint32_t binding;
+
+	bool built = false;
 
 public:
 	void init(
@@ -33,7 +37,9 @@ public:
             mem::Pool& pool);
 
 	ResourceCollection() {}
-	~ResourceCollection() {}
+	~ResourceCollection() {
+		destroy();
+	}
 
 	void update_set();
 	void update_set(size_t i);
@@ -57,5 +63,7 @@ public:
 private:
 	void create_set(VkDescriptorSetLayout layout, mem::Pool& pool);
 	bool check_size(size_t i);
+
+	void destroy();
 };
 }
