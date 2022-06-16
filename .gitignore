@@ -23,7 +23,7 @@ mono_crash.*
 build/
 
 # Ignore Object Files
-objects/
+# objects/
 
 # VS and CLion files
 .vscode/
