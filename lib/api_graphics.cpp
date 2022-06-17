@@ -8,7 +8,9 @@
 
 using namespace tuco;
 
-GraphicsImpl::GraphicsImpl(Window* pWindow) {
+GraphicsImpl::GraphicsImpl(Window* pWindow)
+    : instance(pWindow->get_title(), VK_MAKE_API_VERSION(0, 1, 2, 0)),
+      physical_device(instance) {
 	not_created = true;
 	raytracing = false; //set this as an option in the pre-configuration settings.
 	oit_layers = 1;
@@ -17,9 +19,7 @@ GraphicsImpl::GraphicsImpl(Window* pWindow) {
 #ifdef APPLE_M1
     raytracing = false;
 #endif
-	create_instance(pWindow->get_title());
 	pWindow->pWindow->create_vulkan_surface(instance, &surface); //it aint pretty, but it'll get er done.
-	pick_physical_device();
 	create_logical_device();
 	create_command_pool();
 

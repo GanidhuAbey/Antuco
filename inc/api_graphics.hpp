@@ -8,7 +8,8 @@
 
 #pragma once
 
-#include "vulkan/vulkan_core.h"
+#include <vulkan/vulkan.hpp>
+
 #include "window.hpp"
 
 #include <memory>
@@ -23,6 +24,8 @@
 #include "config.hpp"
 #include "descriptor_set.hpp"
 
+#include "vulkan_wrapper/instance.hpp"
+#include "vulkan_wrapper/physical_device.hpp"
 
 #include "pipeline.hpp"
 #include "render_pass.hpp"
@@ -30,14 +33,6 @@
 #include <vector>
 #include <optional>
 #include <math.h>
-
-#ifdef NDEBUG 
-const bool enableValidationLayers = false;
-#else
-const bool enableValidationLayers = true;
-#endif
-
-
 
 const uint32_t API_VERSION_1_0 = 0;
 
@@ -74,9 +69,9 @@ private:
 
 //initialize data
 private:
-	VkInstance instance;
+    v::Instance instance; 
 	VkSurfaceKHR surface;
-    std::shared_ptr<VkPhysicalDevice> p_physical_device;
+    v::PhysicalDevice physical_device;
     std::shared_ptr<VkDevice> p_device;
 	VkDebugUtilsMessengerEXT debug_messenger;
 

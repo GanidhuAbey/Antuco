@@ -4,8 +4,7 @@
 */
 #pragma once
 
-#include "vulkan/vulkan_core.h"
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 
 //#include "engine_graphics.hpp"
@@ -98,8 +97,8 @@ private:
 public:
     Image();
     ~Image();
-    void init(VkPhysicalDevice& physical_device, VkDevice& device, ImageData info);
-    void init(VkPhysicalDevice& physical_device, VkDevice& device, VkImage image, ImageData info);
+    void init(vk::PhysicalDevice& physical_device, VkDevice& device, ImageData info);
+    void init(vk::PhysicalDevice& physical_device, VkDevice& device, VkImage image, ImageData info);
     //can only be called after init()
     void destroy();
     void destroy_image_view();
@@ -163,7 +162,7 @@ public:
     ~StackBuffer();
 
 public:
-    void init(VkPhysicalDevice& physical_device, VkDevice& device, VkCommandPool& command_pool, BufferCreateInfo* p_buffer_info);
+    void init(vk::PhysicalDevice& physical_device, VkDevice& device, VkCommandPool& command_pool, BufferCreateInfo* p_buffer_info);
     VkDeviceSize map(VkDeviceSize data_size, void* data);
     void destroy();
     void free(VkDeviceSize delete_offset);

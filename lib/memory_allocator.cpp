@@ -110,7 +110,7 @@ VkImage Image::get_api_image() {
     return image;
 }
 
-void mem::Image::init(VkPhysicalDevice& physical_device, VkDevice& device, VkImage image, ImageData info) {
+void mem::Image::init(vk::PhysicalDevice& physical_device, VkDevice& device, VkImage image, ImageData info) {
     data = info;
 
     Image::device = device;
@@ -124,7 +124,7 @@ VkImageView Image::get_api_image_view() {
     return image_view;
 }
 
-void Image::init(VkPhysicalDevice& physical_device, VkDevice& device, ImageData info) {
+void Image::init(vk::PhysicalDevice& physical_device, VkDevice& device, ImageData info) {
     Image::device = device;
     Image::phys_device = physical_device;
     data = info;
@@ -493,7 +493,7 @@ void StackBuffer::destroy() {
     vkDestroyBuffer(device, inter_buffer, nullptr);
 }
 
-void StackBuffer::init(VkPhysicalDevice& physical_device, VkDevice& device, VkCommandPool& command_pool, BufferCreateInfo* p_buffer_info) {
+void StackBuffer::init(vk::PhysicalDevice& physical_device, VkDevice& device, VkCommandPool& command_pool, BufferCreateInfo* p_buffer_info) {
     StackBuffer::device = device;
     StackBuffer::phys_device = physical_device;
     StackBuffer::command_pool = command_pool;

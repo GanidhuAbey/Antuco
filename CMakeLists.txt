@@ -34,7 +34,7 @@ include_directories(inc/)
 
 
 #finds all my internal dependencies and adds it to a single variable for linking, if needed you can add the file path of each individual .cpp file being linked here
-file(GLOB SOURCES lib/*.cpp)
+file(GLOB SOURCES lib/*.cpp lib/vulkan_wrapper/*.cpp)
 
 set(SHADERC_SKIP_TESTS ON)
 

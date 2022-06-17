@@ -1,5 +1,6 @@
 #version 450
-#extension GL_KHR_vulkan_glsl : enable
+#extension GL_EXT_debug_printf : enable
+#extension GL_EXT_spirv_intrinsics : enable
 
 layout(location=0) out vec4 outColor;
 layout(location=3) in vec3 surfaceNormal;
@@ -98,6 +99,8 @@ void main() {
     
     vec4 sample_value = light_perspective;
 
+    debugPrintfEXT("hello");
+
     float shadow_factor = pcf_shadow(sample_value);
     
     //lets add diffuse light back into the equation
@@ -111,7 +114,7 @@ void main() {
         texture_component = vec3(1);
     }
     
-    result = (mat.ambient * AMBIENCE_FACTOR) + diffuse_final; // + specular_light) * texture_component * shadow_factor;
+    result = (mat.ambient * AMBIENCE_FACTOR) + diffuse_final;
 
     outColor = vec4(result, mat.has_texture.g);
 }

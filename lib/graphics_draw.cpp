@@ -56,7 +56,7 @@ void GraphicsImpl::create_shadowmap_transfer_buffer() {
 
     for (size_t i = 0; i < SHADOW_TRANSFER_BUFFERS; i++) {
         //create all required buffers
-        shadowmap_buffers[i].init(*p_physical_device, *p_device, command_pool, &buffer_info);
+        shadowmap_buffers[i].init(physical_device.get(), *p_device, command_pool, &buffer_info);
     } 
 }
 
@@ -100,7 +100,7 @@ void GraphicsImpl::create_shadowmap_atlas() {
     data.image_info = shadow_image_info;
     data.image_view_info = createInfo;
 
-    shadowmap_atlas.init(*p_physical_device, *p_device, data);
+    shadowmap_atlas.init(physical_device.get(), *p_device, data);
 }
 
 void GraphicsImpl::create_texture_sampler() {
@@ -250,7 +250,7 @@ void GraphicsImpl::create_shadowpass_resources() {
     data.image_info = shadow_image_info;
     data.image_view_info = createInfo;
 
-    shadow_pass_texture.init(*p_physical_device, *p_device, data); 
+    shadow_pass_texture.init(physical_device.get(), *p_device, data); 
 }
 
 void GraphicsImpl::create_oit_pipeline() {
@@ -342,7 +342,7 @@ void GraphicsImpl::create_depth_resources() {
 
 
     //create memory for image
-    depth_image.init(*p_physical_device, *p_device, data);
+    depth_image.init(physical_device.get(), *p_device, data);
 }
 
 void GraphicsImpl::create_shadowpass() {
@@ -404,7 +404,7 @@ void GraphicsImpl::create_output_images() {
     output_images.resize(swapchain_images.size());
 
     for (mem::Image& image : output_images) {
-        image.init(*p_physical_device, *p_device, data);
+        image.init(physical_device.get(), *p_device, data);
     }
 }
 
@@ -985,15 +985,15 @@ VkSurfaceFormatKHR choose_best_format(std::vector<VkSurfaceFormatKHR> formats) {
 void GraphicsImpl::create_swapchain() {
     //query the surface capabilities
     VkSurfaceCapabilitiesKHR capabilities;
-    if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(*p_physical_device, surface, &capabilities) != VK_SUCCESS) {
+    if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device.get(), surface, &capabilities) != VK_SUCCESS) {
         LOG("[ERROR] - create_swapchain : could not query the surface capabilities");
         throw std::runtime_error("");
     }
 
     uint32_t format_count = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(*p_physical_device, surface, &format_count, nullptr);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device.get(), surface, &format_count, nullptr);
     std::vector<VkSurfaceFormatKHR> formats(format_count);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(*p_physical_device, surface, &format_count, formats.data());
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device.get(), surface, &format_count, formats.data());
 
     VkSurfaceFormatKHR best_format = choose_best_format(formats);
 
@@ -1050,7 +1050,7 @@ void GraphicsImpl::create_swapchain() {
 
     //transfer swapchain to present layout
     for (size_t i = 0; i < swapchain_image_count; i++) {
-        swapchain_images[i].init(*p_physical_device, *p_device, images[i], data);
+        swapchain_images[i].init(physical_device.get(), *p_device, images[i], data);
         swapchain_images[i].transfer(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, graphics_queue, command_pool);
     }
 }
@@ -1505,7 +1505,7 @@ void GraphicsImpl::create_uniform_buffer() {
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    uniform_buffer.init(*p_physical_device, *p_device, &buffer_info);
+    uniform_buffer.init(physical_device.get(), *p_device, &buffer_info);
 }
 
 void GraphicsImpl::create_vertex_buffer() {
@@ -1517,7 +1517,7 @@ void GraphicsImpl::create_vertex_buffer() {
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    vertex_buffer.init(*p_physical_device, *p_device, command_pool, &buffer_info);
+    vertex_buffer.init(physical_device.get(), *p_device, command_pool, &buffer_info);
 }
 
 void GraphicsImpl::create_index_buffer() {
@@ -1529,7 +1529,7 @@ void GraphicsImpl::create_index_buffer() {
     buffer_info.pQueueFamilyIndices = &graphics_family;
     buffer_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     
-    index_buffer.init(*p_physical_device, *p_device, command_pool, &buffer_info);
+    index_buffer.init(physical_device.get(), *p_device, command_pool, &buffer_info);
 }
 
 
@@ -1776,7 +1776,7 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
     data.image_info = imageInfo;
     data.image_view_info = viewInfo;
  
-    texture_images[texture_images.size() - 1][0].init(*p_physical_device, *p_device, data);
+    texture_images[texture_images.size() - 1][0].init(physical_device.get(), *p_device, data);
 
     //transfer the image again to a more optimal layout for texture sampling?
     texture_images[texture_images.size() - 1][0].transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool);
@@ -1815,7 +1815,7 @@ void GraphicsImpl::create_texture_image(std::string texturePath, size_t object, 
 
     //TODO: make buffer at runtime specifically for transfer commands
     mem::Memory newBuffer;
-    mem::createBuffer(*p_physical_device, *p_device, &textureBufferInfo, &newBuffer);
+    mem::createBuffer(physical_device, *p_device, &textureBufferInfo, &newBuffer);
     
     mem::allocateMemory(dataSize, &newBuffer);
     mem::mapMemory(*p_device, dataSize, &newBuffer, pixels);
@@ -1851,7 +1851,7 @@ void GraphicsImpl::create_texture_image(std::string texturePath, size_t object, 
     data.image_info = imageInfo;
     data.image_view_info = viewInfo;
 
-    texture_images[texture_images.size() - 1][0].init(*p_physical_device, *p_device, data);
+    texture_images[texture_images.size() - 1][0].init(physical_device.get(), *p_device, data);
     
 
     //mem::maAllocateMemory(dataSize, &newTextureImage);
