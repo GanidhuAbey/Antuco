@@ -72,11 +72,10 @@ void GraphicsImpl::create_logical_device() {
 	deviceInfo.pQueueCreateInfos = queue_data.data();
 
 #ifdef APPLE_M1
-    device_extensions.push_back("VK_KHR_portability_subset");
+    device_extensions.push_back("VK_KHR_portability_subset");	
 #endif
 
-    //shader print debug extension
-    //device_extensions.push_back("VK_KHR_shader_non_semantic_info");
+	device_extensions.push_back("VK_KHR_shader_non_semantic_info"); //shader print debug extension
 
     //enable raytracing support (RT)
 	if (raytracing) {

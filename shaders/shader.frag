@@ -1,6 +1,5 @@
 #version 450
 #extension GL_EXT_debug_printf : enable
-#extension GL_EXT_spirv_intrinsics : enable
 
 layout(location=0) out vec4 outColor;
 layout(location=3) in vec3 surfaceNormal;
@@ -99,7 +98,7 @@ void main() {
     
     vec4 sample_value = light_perspective;
 
-    debugPrintfEXT("hello");
+    debugPrintfEXT("%f \n", light_dist);
 
     float shadow_factor = pcf_shadow(sample_value);
     

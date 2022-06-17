@@ -9,7 +9,7 @@
 using namespace tuco;
 
 GraphicsImpl::GraphicsImpl(Window* pWindow)
-    : instance(pWindow->get_title(), VK_MAKE_API_VERSION(0, 1, 2, 0)),
+    : instance(pWindow->get_title(), VK_MAKE_API_VERSION(0, 1, 1, 0)),
       physical_device(instance) {
 	not_created = true;
 	raytracing = false; //set this as an option in the pre-configuration settings.
