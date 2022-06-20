@@ -20,21 +20,6 @@ const bool enableValidationLayers = true;
 #endif
 	vkDestroyDevice(*p_device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
-	
-	if (enableValidationLayers) {
-		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-
-		if (func != nullptr) {
-			//why dont I need messengar?
-			func(instance, debug_messenger, nullptr);
-		}
-		else {
-			printf("[ERROR] - destroy_initialize : could not destroy debug_messenger \n");
-			throw std::runtime_error("");
-		}
-	}
-
-	vkDestroyInstance(instance, nullptr);
 }
 
 

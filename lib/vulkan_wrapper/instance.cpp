@@ -1,5 +1,4 @@
 #include "vulkan_wrapper/instance.hpp"
-#include "vulkan/vulkan_core.h"
 
 #include <cstdio>
 #include <iostream>
@@ -20,11 +19,21 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 
 
 Instance::Instance(std::string app_name, uint32_t api_version) {
+#ifdef NDEBUG 
+	enable_validation = false;
+#endif
     create_instance(app_name.c_str(), api_version);
 }
 
 Instance::~Instance() {
+	if (enable_validation) {
+		auto vkDestroyDebugUtilsMessengerEXT_ = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+			instance.getProcAddr("vkDestroyDebugUtilsMessengerEXT"));
 
+		vkDestroyDebugUtilsMessengerEXT_(instance, messenger, nullptr); //pls work
+	}
+	
+	instance.destroy();
 }
 
 
@@ -56,12 +65,6 @@ bool Instance::validation_layer_supported(std::vector<const char*> names) {
 
 
 void Instance::create_instance(const char* app_name, uint32_t api_version) {  
-#ifdef NDEBUG 
-const bool enableValidationLayers = false;
-#else
-const bool enableValidationLayers = true;
-#endif
-
     vk::ApplicationInfo app_info(app_name, 1, "Antuco", 1, api_version);
 
     std::vector<const char*> layers;
@@ -76,13 +79,13 @@ const bool enableValidationLayers = true;
             &debug_callback);
 
 	//determine layer count (we only really care about the debug validation layers)
-	if (enableValidationLayers && validation_layer_supported(validation_layers)) {
+	if (enable_validation && validation_layer_supported(validation_layers)) {
 		printf("[DEBUG] - VALIDATION LAYERS ENABLED \n");	
         layers = validation_layers;
 		next = (VkDebugUtilsMessengerCreateInfoEXT*)&debug_info;
 	}
 	else {
-		if (enableValidationLayers) printf("[WARNING] - could not enable validation layers \n");
+		if (enable_validation) printf("[WARNING] - could not enable validation layers \n");
     }
     
 	//determine extensions

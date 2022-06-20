@@ -2,13 +2,13 @@
 
 using namespace v;
 
-PhysicalDevice::PhysicalDevice(Instance instance) {
+PhysicalDevice::PhysicalDevice(Instance& instance) {
     pick_physical_device(instance);
 }
 
 PhysicalDevice::~PhysicalDevice() {}
 
-void PhysicalDevice::pick_physical_device(Instance instance) {
+void PhysicalDevice::pick_physical_device(Instance& instance) {
 #ifdef NDEBUG 
 const bool enableValidationLayers = false;
 #else

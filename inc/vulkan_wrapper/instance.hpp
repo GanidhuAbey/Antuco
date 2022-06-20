@@ -1,8 +1,6 @@
 #pragma once
 
 #include <vulkan/vulkan.hpp>
-#include "vulkan/vulkan_enums.hpp"
-#include "vulkan/vulkan_handles.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -12,6 +10,7 @@ private:
     std::vector<const char*> validation_layers = {"VK_LAYER_KHRONOS_validation"};
     vk::Instance instance;
     vk::DebugUtilsMessengerEXT messenger;
+    bool enable_validation = true;
 
 public:
     Instance(std::string app_name, uint32_t api_version);

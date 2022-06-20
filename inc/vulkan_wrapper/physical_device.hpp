@@ -12,11 +12,11 @@ class PhysicalDevice {
 private:
     vk::PhysicalDevice physical_device;
    
-    void pick_physical_device(Instance instance);
+    void pick_physical_device(Instance& instance);
     uint32_t score_physical_device(vk::PhysicalDevice);
 
 public:
-    PhysicalDevice(Instance instance);
+    PhysicalDevice(Instance& instance);
     ~PhysicalDevice();
 
     vk::PhysicalDevice& get() { return physical_device; }
