@@ -79,11 +79,10 @@ void main() {
     //get vector of light
     vec3 texture_component = vec3(texture(texture1, texCoord));
 
-    vec3 lightToObject = light_position - vec3(vPos);
-
-
-    //diffuse model
-    float diffuse_light = max(0.2f, dot(normalize(lightToObject), normalize(surfaceNormal))) * LIGHT_FACTOR;
+    //this code treats a directional light as a point light...
+    vec3 lightToObject = (light_position - vec3(vPos));
+    //when the dot product should be at its highest, it seems to be at its lowest, and vice versa.
+    float diffuse_light = max(0.2f, dot(normalize(lightToObject), normalize(surfaceNormal)));
 
     vec3 diffuse_final = diffuse_light * mat.diffuse;
     
@@ -98,7 +97,11 @@ void main() {
     
     vec4 sample_value = light_perspective;
 
-    debugPrintfEXT("%f \n", light_dist);
+    
+    //debugPrintfEXT("<%f, %f, %f> * <%f, %f, %f> = %f \n", 
+    //    lightToObject.x, lightToObject.y, lightToObject.z,
+    //    surfaceNormal.x, surfaceNormal.y, surfaceNormal.z,
+    //   diffuse_light);
 
     float shadow_factor = pcf_shadow(sample_value);
     

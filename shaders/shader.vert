@@ -47,13 +47,9 @@ layout(location = 9) out vec3 camera_pos;
 //now i know the size length
 float mapping_value = (1/sqrt(pfc.light_count.x))*0.5;
 
-//TODO: we have to change our light_view vector so that we sample from a quarter of the shadow map.
-//      biasMat maps the vector from light space to texture space so we need to change matrix to account for the corner
-
-//NOTE: MATRICES IN GLSL ARE READ AS ROW MAJOR, AND NOT COLUMN MAJOR!!!!!
-
 void main() {
 
+    //matrix in row-major
     mat4 biasMat = mat4( 
         0.5, 0.0, 0.0, 0.0,
         0.0, 0.5, 0.0, 0.0,
@@ -64,7 +60,7 @@ void main() {
    
     gl_Position = ubo.projection * ubo.worldToCamera * ubo.modelToWorld * vec4(inPosition, 1.0); //opengl automatically divids the components of the vector by 'w'
 
-    surfaceNormal = vec3(ubo.modelToWorld * vec4(inNormal, 1.0));
+    surfaceNormal = inNormal;
     vPos = ubo.modelToWorld * vec4(inPosition, 1.0);
     light_perspective = (/*biasMat */ lbo.projection * lbo.world_to_light * lbo.model_to_world) * vec4(inPosition, 1.0);
     texCoord = inTexCoord;

@@ -38,7 +38,7 @@ private:
             glm::vec3 up=glm::vec3(0.0,1.0,0.0));
 public:
 	~DirectionalLight();
-	void update(glm::vec3 new_position);
+	void update(glm::vec3 new_position, glm::vec3 new_direction=glm::vec3(0, 0, 0));
 };
 
 class PointLight {

@@ -24,9 +24,9 @@ DirectionalLight::DirectionalLight(glm::vec3 light_pos, glm::vec3 light_target, 
 	world_to_light = glm::lookAt(glm::vec3(position), glm::vec3(target), orientation);
 }
 
-void DirectionalLight::update(glm::vec3 new_position) {
+//when new_direction = vec3(0, 0, 0) this means that the direction of the light source won't change.
+void DirectionalLight::update(glm::vec3 new_position, glm::vec3 new_target) {
 	position = glm::vec4(new_position, 0.0);
-
 	//update mvp matrix
 	world_to_light = glm::lookAt(glm::vec3(position), glm::vec3(target), orientation);
 }

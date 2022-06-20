@@ -17,6 +17,7 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
 	oit_layers = 1;
 	depth_bias_constant = 7.0f;
 	depth_bias_slope = 9.0f;
+	print_debug = true;
 #ifdef APPLE_M1
     print_debug = false;
     raytracing = false;

@@ -262,12 +262,12 @@ void GraphicsImpl::create_oit_pipeline() {
     
     //TEX
     std::vector<VkDescriptorSetLayout> descriptor_layouts = { 
-
         light_layout, 
         ubo_layout, 
         texture_layout, 
         shadowmap_layout,
-        mat_layout};
+        mat_layout
+    };
 
     std::vector<VkPushConstantRange> push_ranges;
 
@@ -823,7 +823,6 @@ void GraphicsImpl::create_graphics_pipeline() {
     
     //TEX
     std::vector<VkDescriptorSetLayout> descriptor_layouts = { 
-
         light_layout, 
         ubo_layout, 
         texture_layout, 

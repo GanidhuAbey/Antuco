@@ -56,7 +56,7 @@ int main() {
 	//in order to create a scene we need a camera, a light, and a object right?
 
 	//create camera
-	glm::vec3 camera_pos = glm::vec3(-2.0, 0.2, 1.0);
+	glm::vec3 camera_pos = glm::vec3(0.0, 1.0, 0.0);
 	//the direction the camera is looking at
 	//think of the camera_pos moving away from the center, inorder to look at the center then
 	//you need to look in the negative z axis to "look back" at the center.
@@ -72,7 +72,7 @@ int main() {
 	//create some light for the scene
 	glm::vec3 light_position = glm::vec3(-3.58448f, 7.69584f, 11.7122f);
 	glm::vec3 light_look_at = glm::vec3(0.0f, 0.0f, 0.0f);
-	tuco::DirectionalLight light = antuco.create_spotlight(
+	tuco::DirectionalLight& light = antuco.create_spotlight(
             light_position, 
             light_look_at, 
             glm::vec3(1.0, 1.0, 1.0), 
@@ -83,7 +83,7 @@ int main() {
 
 	//create a simple game object
 	tuco::GameObject* another = antuco.create_object();
-	tuco::GameObject* some_object = antuco.create_object();
+	//tuco::GameObject* some_object = antuco.create_object();
 	//tuco::GameObject* light_mesh = antuco.create_object();
 
 	//light_mesh->add_mesh("objects/test_object/white.obj");
@@ -98,14 +98,14 @@ int main() {
 	some_object->add_mesh(root_project + "/objects/antuco-files/mac/bmw.obj", "bmw");
 	
 #elif defined(_WIN32) || defined(_WIN64)
-	another->add_mesh(root_project + "\\objects\\antuco-files\\windows\\surface.obj", "surface");
-	some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.obj", "bmw");
+	another->add_mesh(root_project + "\\objects\\antuco-files\\windows\\grey_cube.obj", "grey_cube");
+	//some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.obj", "bmw");
 #endif
 
 	another->scale(glm::vec3(5, 0.1, 5));
 	another->translate(glm::vec3(0, 0.6, 0));
 
-	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
+	//some_object->scale(glm::vec3(0.2, 0.2, 0.2));
 
 	another->translate(glm::vec3(0, -1, 0));	
 	auto t2 = TIME_IT;
@@ -153,11 +153,6 @@ int main() {
 
 		camera_face = glm::normalize(camera_face);
 
-		//take some input
-		if (window->get_key_state(tuco::WindowInput::X)) {
-			std::cout << camera_pos.x << "|" << camera_pos.y << "|" << camera_pos.z << std::endl;
-			light.update(camera_pos);
-		}
 		//handle movement
 		if (window->get_key_state(tuco::WindowInput::W)) {
 			camera_pos += PLAYER_SPEED * camera_face * (float)delta;
@@ -172,17 +167,10 @@ int main() {
 			camera_pos -= PLAYER_SPEED * camera_face * (float)delta;
 		}
 
-		//update light_position
-		//
-
-		//update light
-		//
-		
-		//there seems to be a very glitchy looking shadow that pops for a frame or two right when the 
-		//light goes off the surface and right when its about to re-enter. My assumption is that this is occuring
-		//right when the light source is at its boundary in the near plane and is beginning to see everythin at the same depth.
-		//it might be helpful to incease our depth bias constant to compensate for this.
-		//light->update(glm::vec3(0.0f, 5.0f, 0.0f));
+		if (window->get_key_state(tuco::WindowInput::X)) {
+			//std::cout << camera_pos.x << "|" << camera_pos.y << "|" << camera_pos.z << std::endl;
+			light.update(camera_pos);
+		}
 		
 		//render the objects onto the screen
 		main_camera->update(camera_pos, camera_face);
