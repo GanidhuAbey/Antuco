@@ -63,15 +63,20 @@ int main() {
 	glm::vec3 camera_face = glm::vec3(0.0, 0.0, -1.0);
 	glm::vec3 camera_orientation = glm::vec3(0.0, -1.0, 0.0);
 
-	tuco::Camera* main_camera = antuco.create_camera(camera_pos, camera_face, camera_orientation, glm::radians(45.0f), 0.1f, 150.0f);
+	tuco::Camera* main_camera = antuco.create_camera(
+            camera_pos, 
+            camera_face, 
+            camera_orientation, 
+            glm::radians(45.0f), 0.1f, 150.0f);
 		
 	//create some light for the scene
-	//TODO: implement debug mode where we'll render light with mesh
-	//its kinda hard to determine a direction for a user, much easier for them to give a location to light
-    //|
 	glm::vec3 light_position = glm::vec3(-3.58448f, 7.69584f, 11.7122f);
 	glm::vec3 light_look_at = glm::vec3(0.0f, 0.0f, 0.0f);
-	tuco::Light* light = antuco.create_light(light_position, light_look_at, glm::vec3(1.0, 1.0, 1.0), glm::vec3(0.0, 1.0, 0.0), true);
+	tuco::DirectionalLight light = antuco.create_spotlight(
+            light_position, 
+            light_look_at, 
+            glm::vec3(1.0, 1.0, 1.0), 
+            glm::vec3(0.0, 1.0, 0.0), true);
 
 	//tuco::Light* another_light = antuco.create_light(glm::vec3(0.0, 8.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
   
@@ -127,7 +132,7 @@ int main() {
 
 
 	//update light position
-	light->update(light_position);
+	light.update(light_position);
 
 	while (game_loop) {
 		//cut the y axis to analze the rotation from two dimensions.
@@ -151,7 +156,7 @@ int main() {
 		//take some input
 		if (window->get_key_state(tuco::WindowInput::X)) {
 			std::cout << camera_pos.x << "|" << camera_pos.y << "|" << camera_pos.z << std::endl;
-			light->update(camera_pos);
+			light.update(camera_pos);
 		}
 		//handle movement
 		if (window->get_key_state(tuco::WindowInput::W)) {

@@ -17,6 +17,7 @@
 namespace tuco {
 
 class WindowImpl {
+friend class GraphicsImpl;
 private:
 	GLFWwindow* apiWindow;
 public:

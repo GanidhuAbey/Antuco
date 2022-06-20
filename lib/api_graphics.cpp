@@ -10,16 +10,17 @@ using namespace tuco;
 
 GraphicsImpl::GraphicsImpl(Window* pWindow)
     : instance(pWindow->get_title(), VK_MAKE_API_VERSION(0, 1, 1, 0)),
-      physical_device(instance) {
+      physical_device(instance),
+      surface(instance, pWindow->pWindow->apiWindow) {
 	not_created = true;
 	raytracing = false; //set this as an option in the pre-configuration settings.
 	oit_layers = 1;
 	depth_bias_constant = 7.0f;
 	depth_bias_slope = 9.0f;
 #ifdef APPLE_M1
+    print_debug = false;
     raytracing = false;
 #endif
-	pWindow->pWindow->create_vulkan_surface(instance, &surface); //it aint pretty, but it'll get er done.
 	create_logical_device();
 	create_command_pool();
 
@@ -79,7 +80,7 @@ void GraphicsImpl::update_camera(glm::mat4 world_to_camera, glm::mat4 projection
     camera_pos = eye;
 }
 
-void GraphicsImpl::update_light(std::vector<Light*> lights, std::vector<int> shadow_casters) {
+void GraphicsImpl::update_light(std::vector<DirectionalLight> lights, std::vector<int> shadow_casters) {
 	light_data = lights;
 	shadow_caster_indices = shadow_casters;
 }
@@ -108,8 +109,8 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		//		it will make the whole thing more elegant once we have more light data to deal with
 		UniformBufferObject lbo;
 		lbo.modelToWorld = game_objects[i]->transform;
-		lbo.worldToCamera = light_data[0]->world_to_light;
-		lbo.projection = light_data[0]->perspective;
+		lbo.worldToCamera = light_data[0].world_to_light;
+		lbo.projection = light_data[0].perspective;
 
 		if (game_objects[i]->update) {
 			update_command_buffers = true;
@@ -158,7 +159,7 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 
 	if (!update_command_buffers) {
 		for (size_t i = 0; i < MAX_SHADOW_CASTERS; i++) {
-			if (light_data[shadow_caster_indices[i]]->generate_shadows) {
+			if (light_data[shadow_caster_indices[i]].generate_shadows) {
 				update_command_buffers = true;
 				break;
 			}

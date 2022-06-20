@@ -26,6 +26,7 @@
 
 #include "vulkan_wrapper/instance.hpp"
 #include "vulkan_wrapper/physical_device.hpp"
+#include "vulkan_wrapper/surface.hpp"
 
 #include "pipeline.hpp"
 #include "render_pass.hpp"
@@ -56,7 +57,7 @@ public:
 	~GraphicsImpl();
 
 	void update_camera(glm::mat4 world_to_camera, glm::mat4 projection, glm::vec4 eye);
-	void update_light(std::vector<Light*> lights, std::vector<int> shadow_casters);
+	void update_light(std::vector<DirectionalLight> lights, std::vector<int> shadow_casters);
 	void update_draw(std::vector<GameObject*> game_objects);
 
 private:
@@ -64,16 +65,17 @@ private:
 	glm::mat4 camera_projection;
     glm::vec4 camera_pos;
 
-	std::vector<Light*> light_data; //a reference to all the light data we need.
+	std::vector<DirectionalLight> light_data; //a reference to all the light data we need.
 	std::vector<int> shadow_caster_indices;
 
 //initialize data
 private:
     v::Instance instance; 
-	VkSurfaceKHR surface;
+    v::Surface surface;
     v::PhysicalDevice physical_device;
     std::shared_ptr<VkDevice> p_device;
 	VkDebugUtilsMessengerEXT debug_messenger;
+    bool print_debug = true;
 
 	uint32_t graphics_family;
 	uint32_t present_family;

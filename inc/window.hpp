@@ -24,6 +24,7 @@ private:
 private:
 	WindowImpl* pWindow;
 	Window(int w, int h, const char* title);
+
 public:
 	~Window();
 

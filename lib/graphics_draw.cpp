@@ -1058,30 +1058,6 @@ void GraphicsImpl::create_swapchain() {
 
 
 void GraphicsImpl::create_light_set(UniformBufferObject lbo) { 
-    /*
-    std::vector<VkDescriptorSetLayout> ubo_layouts(swapchain_images.size(), light_layout);
-
-    VkDescriptorSetAllocateInfo allocateInfo{};
-
-    VkDescriptorPool allocated_pool;
-    size_t pool_index = ubo_pool->allocate(*p_device, swapchain_images.size());
-
-    allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.descriptorPool = ubo_pool->pools[pool_index];
-    allocateInfo.descriptorSetCount = swapchain_images.size();
-    allocateInfo.pSetLayouts = ubo_layouts.data();
-
-
-    //size_t currentSize = descriptorSets.size();
-    //descriptorSets.resize(currentSize + 1);
-    //descriptorSets[currentSize].resize(swapChainImages.size()); 
-    
-
-    if (vkAllocateDescriptorSets(*p_devic, &allocateInfo, light_ubo[current_size].data()) != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate descriptor sets!");
-    }
-    */
-
     size_t current_size = light_ubo.size();
     light_ubo.resize(current_size + 1);
     light_ubo[current_size].init(
@@ -1281,9 +1257,9 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         }
 
         LightObject light{};
-        light.position = light_data[0]->position;
-        light.direction = light_data[0]->target;
-        light.color = light_data[0]->color;
+        light.position = light_data[0].position;
+        light.direction = light_data[0].target;
+        light.color = light_data[0].color;
         light.light_count = glm::vec4(MAX_SHADOW_CASTERS, 1, 1, 1);
 
         create_shadow_map(game_objects, i, light);

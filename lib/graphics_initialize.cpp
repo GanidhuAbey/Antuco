@@ -1,4 +1,5 @@
 #include "api_graphics.hpp"
+#include "logger/interface.hpp"
 #include "queue.hpp"
 
 #include <stdint.h>
@@ -38,6 +39,12 @@ const bool enableValidationLayers = true;
 
 
 void GraphicsImpl::create_logical_device() {
+
+#ifdef NDEBUG 
+const bool enableValidationLayers = false;
+#else
+const bool enableValidationLayers = true;
+#endif
 	//first we need to retrieve queue data from the computer
 	QueueData indices(physical_device, surface);
 
@@ -74,8 +81,9 @@ void GraphicsImpl::create_logical_device() {
 #ifdef APPLE_M1
     device_extensions.push_back("VK_KHR_portability_subset");	
 #endif
-
-	device_extensions.push_back("VK_KHR_shader_non_semantic_info"); //shader print debug extension
+    if (enableValidationLayers && print_debug) {
+	    device_extensions.push_back("VK_KHR_shader_non_semantic_info");
+    }
 
     //enable raytracing support (RT)
 	if (raytracing) {

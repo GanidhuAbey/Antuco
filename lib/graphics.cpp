@@ -17,7 +17,7 @@ void Graphics::update_camera(glm::mat4 world_to_camera, glm::mat4 projection, gl
 	p_graphics->update_camera(world_to_camera, projection, pos);
 }
 
-void Graphics::update_light(std::vector<Light*> lights, std::vector<int> shadow_indices) {
+void Graphics::update_light(std::vector<DirectionalLight> lights, std::vector<int> shadow_indices) {
 	//TODO: we aren't dealing with lighting all that seriously right now so we are just gonna disable this while we work on shadowmaps
 	//		leaving this todo to comeback to this after i implemented multiple shadowmaps
 	p_graphics->update_light(lights, shadow_indices);

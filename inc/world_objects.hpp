@@ -14,7 +14,7 @@
 namespace tuco {
 
 //RESTRICTION: the light has a aspect ratio of 1.0f, when generating the depth map from the light source, this has to be reflected in the texture size
-class Light {
+class DirectionalLight {
 	friend class Antuco;
 	friend class GraphicsImpl;
 private:
@@ -31,10 +31,26 @@ private:
 	bool generate_shadows = true;
 
 private:
-	Light(glm::vec3 light_pos, glm::vec3 light_target, glm::vec3 light_color, glm::vec3 up=glm::vec3(0.0,1.0,0.0));
+	DirectionalLight(
+            glm::vec3 light_pos, 
+            glm::vec3 light_target, 
+            glm::vec3 light_color, 
+            glm::vec3 up=glm::vec3(0.0,1.0,0.0));
 public:
-	~Light();
+	~DirectionalLight();
 	void update(glm::vec3 new_position);
+};
+
+class PointLight {
+private:
+    glm::vec3 pos;
+    glm::vec3 colour;
+    //TODO: brightness?
+
+public:
+    PointLight(glm::vec3 position, glm::vec3 colour);
+    ~PointLight();
+
 };
 
 class Camera {

@@ -26,7 +26,8 @@ private:
 	
 	/* World Objects */
 public:
-	Light* create_light(glm::vec3 light_pos, glm::vec3 light_target, glm::vec3 light_color,  glm::vec3 up, bool cast_shadows=false);
+	DirectionalLight& create_spotlight(glm::vec3 light_pos, glm::vec3 light_target, glm::vec3 light_color,  glm::vec3 up, bool cast_shadows=false);
+    PointLight& create_point_light(glm::vec3 pos, glm::vec3 colour);
 	Camera* create_camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up, float yfov, float near, float far);
 	GameObject* create_object();
 
@@ -41,7 +42,8 @@ private:
 	//the camera at the zeroth index will always be the "main camera"
 	std::vector<Camera*> cameras;
 
-	std::vector<Light*> lights; //lights unable to cast shadows
+	std::vector<DirectionalLight> directional_lights;
+    std::vector<PointLight> point_lights;
 	std::vector<int> shadow_casters;
 	/* Antuco Initalization */
 public:
