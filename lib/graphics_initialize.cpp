@@ -13,13 +13,7 @@ using namespace tuco;
 
 
 void GraphicsImpl::destroy_initialize() {
-#ifdef NDEBUG 
-const bool enableValidationLayers = false;
-#else
-const bool enableValidationLayers = true;
-#endif
 	vkDestroyDevice(*p_device, nullptr);
-	vkDestroySurfaceKHR(instance, surface, nullptr);
 }
 
 
