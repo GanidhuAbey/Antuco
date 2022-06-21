@@ -266,6 +266,7 @@ private:
             LightObject light);
 
 	void render_to_screen(size_t i);
+	void copy_to_swapchain(size_t i);
 	
     std::vector<VkDescriptorSet> create_set(
             VkDescriptorSetLayout layout, 

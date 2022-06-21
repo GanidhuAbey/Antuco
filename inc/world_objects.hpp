@@ -90,6 +90,7 @@ public:
 	void add_mesh(const std::string& fileName, std::optional<std::string> name = std::nullopt);
 	void scale(glm::vec3 scale_vector);
 	void translate(glm::vec3 t);
+	void set_position(glm::vec3 t);
 };
 
 }

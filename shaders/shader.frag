@@ -25,7 +25,8 @@ float bias = 5e-3;
 
 int LIGHT_FACTOR = 1;
 float SPECULAR_STRENGTH = 0.5f;
-float AMBIENCE_FACTOR = 0.2f;
+float AMBIENCE_FACTOR = 0.001f;
+float DIFFUSE_STRENGTH = 0.5f;
 
 //ok clearly we're not doing this right...
 float SCATTER_STRENGTH = 200.0f;
@@ -82,9 +83,8 @@ void main() {
     //this code treats a directional light as a point light...
     vec3 lightToObject = (light_position - vec3(vPos));
     //when the dot product should be at its highest, it seems to be at its lowest, and vice versa.
-    float diffuse_light = max(0.2f, dot(normalize(lightToObject), normalize(surfaceNormal)));
-
-    vec3 diffuse_final = diffuse_light * mat.diffuse;
+    float diffuse_light = max(0.00f, dot(normalize(lightToObject), normalize(surfaceNormal))) / 3.14;
+    vec3 diffuse_final = diffuse_light * normalize(mat.diffuse);
     
     vec3 reflected_light = reflect(lightToObject, surfaceNormal);
     //need to pass data on the location of the camera
@@ -97,16 +97,7 @@ void main() {
     
     vec4 sample_value = light_perspective;
 
-    
-    //debugPrintfEXT("<%f, %f, %f> * <%f, %f, %f> = %f \n", 
-    //    lightToObject.x, lightToObject.y, lightToObject.z,
-    //    surfaceNormal.x, surfaceNormal.y, surfaceNormal.z,
-    //   diffuse_light);
-
     float shadow_factor = pcf_shadow(sample_value);
-    
-    //lets add diffuse light back into the equation
-    //if texture is always 1, then no impact on outcome of img
 
     vec3 scattering = get_scattering(sample_value);
     

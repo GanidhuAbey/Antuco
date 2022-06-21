@@ -7,5 +7,6 @@ layout(location=1) in vec2 uv;
 layout(location=0) out vec4 out_color;
 
 void main() {
-    out_color = texture(output_texture, uv);
+    vec4 lin_col = texture(output_texture, uv);
+    out_color = lin_col;
 }

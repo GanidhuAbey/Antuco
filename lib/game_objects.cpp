@@ -31,6 +31,15 @@ void GameObject::translate(glm::vec3 t) {
 	transform = glm::transpose(translation) * transform;
 }
 
+void GameObject::set_position(glm::vec3 t) {
+	glm::mat4 translation = {
+		1, 0, 0, t.x,
+		0, 1, 0, t.y,
+		0, 0, 1, t.z,
+		0, 0, 0, 1
+	};
+}
+
 void GameObject::scale(glm::vec3 scale_vector) {
 	glm::mat4 scale_mat = {
 		scale_vector.x, 0, 0, 0,

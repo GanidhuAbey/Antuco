@@ -253,7 +253,7 @@ void GraphicsImpl::create_shadowpass_resources() {
     shadow_pass_texture.init(physical_device.get(), *p_device, data); 
 }
 
-void GraphicsImpl::create_oit_pipeline() {
+void GraphicsImpl::create_graphics_pipeline() {
     std::vector<VkDynamicState> dynamic_states = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR,
@@ -529,9 +529,11 @@ void GraphicsImpl::create_screen_pipeline() {
     config.pass = screen_pass.get_api_pass();
     config.subpass_index = 0;
     config.screen_extent = swapchain_extent;
-    config.blend_colours = true;
+    config.blend_colours = false;
     config.attribute_descriptions = {};
     config.binding_descriptions = {};
+    config.cull_mode = VK_CULL_MODE_FRONT_BIT;
+    config.front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
     screen_pipeline.init(*p_device, config);
 }
@@ -812,46 +814,6 @@ void GraphicsImpl::create_shadowpass_pipeline() {
 
     shadowmap_pipeline.init(*p_device, config);
 }
-
-
-void GraphicsImpl::create_graphics_pipeline() {
-    std::vector<VkDynamicState> dynamic_states = {
-        VK_DYNAMIC_STATE_VIEWPORT,
-        VK_DYNAMIC_STATE_SCISSOR,
-        VK_DYNAMIC_STATE_DEPTH_BIAS,
-    };
-    
-    //TEX
-    std::vector<VkDescriptorSetLayout> descriptor_layouts = { 
-        light_layout, 
-        ubo_layout, 
-        texture_layout, 
-        shadowmap_layout,
-        mat_layout};
-
-    std::vector<VkPushConstantRange> push_ranges;
-
-    VkPushConstantRange pushRange{};
-    pushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    pushRange.offset = 0;
-    pushRange.size = sizeof(LightObject) + sizeof(glm::vec4);
-
-    push_ranges.push_back(pushRange);
-
-    PipelineConfig config{};
-    config.vert_shader_path = SHADER_PATH + "shader.vert";
-    config.frag_shader_path = SHADER_PATH + "shader.frag";
-    config.dynamic_states = dynamic_states;
-    config.descriptor_layouts = descriptor_layouts;
-    config.push_ranges = push_ranges;
-    config.pass = render_pass.get_api_pass();
-    config.subpass_index = 0;
-    config.screen_extent = swapchain_extent;
-    config.blend_colours = true;
-
-    //graphics_pipeline(*p_device, config);
-}
-
 
 VkDescriptorBufferInfo GraphicsImpl::setup_descriptor_set_buffer(uint32_t set_size) {
     VkDeviceSize offset = uniform_buffer.allocate(set_size);
@@ -1390,6 +1352,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
         vkCmdEndRenderPass(command_buffers[i]);
         
+        //copy_to_swapchain(i);
         render_to_screen(i);
 
         //switch image back to depth stencil layout for the next render pass
@@ -1399,6 +1362,52 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
             throw std::runtime_error("could not end command buffer");
         }
     }
+}
+
+void GraphicsImpl::copy_to_swapchain(size_t i) {
+    swapchain_images[i].transfer(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, graphics_queue, command_pool, command_buffers[i]);
+
+    VkImageSubresourceLayers src_res{};
+    VkOffset3D src_offset{};
+    VkImageSubresourceLayers dst_res{};
+    VkOffset3D dst_offset{};
+
+    VkExtent3D extent = { swapchain_extent.width, swapchain_extent.height, 1 };
+
+    src_res.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    src_res.baseArrayLayer = 0;
+    src_res.layerCount = 1;
+    src_res.mipLevel = 0;
+
+    src_offset.x = 0;
+    src_offset.y = 0;
+    src_offset.z = 0;
+
+    dst_res.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    dst_res.baseArrayLayer = 0;
+    dst_res.layerCount = 1;
+    dst_res.mipLevel = 0;
+
+    dst_offset.x = 0;
+    dst_offset.y = 0;
+    dst_offset.z = 0;
+
+    VkImageCopy copy_info{};
+    copy_info.srcSubresource = src_res;
+    copy_info.dstSubresource = dst_res;
+    copy_info.srcOffset = src_offset;
+    copy_info.dstOffset = dst_offset;
+    copy_info.extent = extent;
+
+    vkCmdCopyImage(
+        command_buffers[i], 
+        output_images[i].get_api_image(), 
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+        swapchain_images[i].get_api_image(), 
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+        1, &copy_info);
+
+    swapchain_images[i].transfer(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, graphics_queue, command_pool, command_buffers[i]);
 }
 
 void GraphicsImpl::create_screen_set() {

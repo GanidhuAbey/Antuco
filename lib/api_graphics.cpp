@@ -53,8 +53,6 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
 	create_semaphores();
 	create_fences();
 
-	create_oit_pipeline();
-
 	//create some buffers now
 	create_vertex_buffer();
 	create_index_buffer();

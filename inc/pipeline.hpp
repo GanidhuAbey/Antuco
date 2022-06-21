@@ -54,10 +54,13 @@ struct PipelineConfig {
 
     //attribute description
     std::vector<VkVertexInputAttributeDescription> attribute_descriptions = {
-        {0, 0, VK_FORMAT_R32G32B32_SFLOAT}, //position
-        {1, 0, VK_FORMAT_R32G32B32_SFLOAT}, //normal
-        {2, 0, VK_FORMAT_R32G32_SFLOAT}, //texture coord
+        {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, position)}, //position
+        {1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, normal)}, //normal
+        {2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, tex_coord)}, //texture coord
     };
+
+    VkCullModeFlags cull_mode = VK_CULL_MODE_BACK_BIT;
+    VkFrontFace front_face = VK_FRONT_FACE_CLOCKWISE;
 };
 
 class TucoPipeline {
