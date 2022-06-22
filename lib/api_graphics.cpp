@@ -17,7 +17,7 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
 	oit_layers = 1;
 	depth_bias_constant = 7.0f;
 	depth_bias_slope = 9.0f;
-	print_debug = true;
+	print_debug = false;
 #ifdef APPLE_M1
     print_debug = false;
     raytracing = false;
@@ -38,6 +38,7 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
 	create_ubo_layout();
 	create_light_layout();
     create_materials_layout();
+	create_output_layout();
     create_materials_pool();
 	create_texture_layout();
 	create_shadowmap_layout();
@@ -45,6 +46,7 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
 	create_graphics_pipeline();
 	create_shadowpass_pipeline();
 	create_texture_sampler();
+	create_output_sampler();
 	create_shadowmap_sampler();
 	create_output_buffers();
 	create_shadowpass_buffer();

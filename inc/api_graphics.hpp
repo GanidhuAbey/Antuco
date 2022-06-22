@@ -141,6 +141,7 @@ private:
 private:
 	VkDescriptorSetLayout ubo_layout;
 	VkDescriptorSetLayout texture_layout;
+	VkDescriptorSetLayout output_layout;
     VkDescriptorSetLayout mat_layout;
 	VkDescriptorSetLayout light_layout;
 
@@ -150,6 +151,7 @@ private:
 	std::vector<mem::Image> swapchain_images;
 
 	VkSampler texture_sampler;
+	VkSampler output_sampler;
 
 	std::vector<VkFramebuffer> output_buffers;
     std::vector<VkFramebuffer> screen_buffers;
@@ -282,6 +284,8 @@ private:
     void create_output_buffers();
     void create_screen_buffer();
 	void create_texture_sampler();
+	void create_output_sampler();
+	void create_output_layout();
 	void create_render_pass();
 	void create_output_images();
 	VkShaderModule create_shader_module(std::vector<uint32_t> shaderCode);

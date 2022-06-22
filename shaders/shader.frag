@@ -109,5 +109,5 @@ void main() {
     
     result = (mat.ambient * AMBIENCE_FACTOR) + diffuse_final;
 
-    outColor = vec4(result, mat.has_texture.g);
+    outColor = vec4(result, 1.0f);
 }

@@ -287,7 +287,7 @@ void GraphicsImpl::create_graphics_pipeline() {
     config.pass = render_pass.get_api_pass();
     config.subpass_index = 0;
     config.screen_extent = swapchain_extent;
-    config.blend_colours = true;
+    config.blend_colours = false;
 
     graphics_pipeline.init(*p_device, config);
 }
@@ -511,6 +511,26 @@ void GraphicsImpl::create_materials_set(uint32_t mesh_count) {
     } 
 }
 
+void GraphicsImpl::create_output_layout() {
+    /* SAMPLED IMAGE DESCRIPTOR SET (FOR TEXTURING) */
+    VkDescriptorSetLayoutBinding texture_layout_binding{};
+    texture_layout_binding.binding = 0;
+    texture_layout_binding.descriptorCount = 1;
+    texture_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    texture_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    texture_layout_binding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo layout_info{};
+    layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+
+    layout_info.bindingCount = 1;
+    layout_info.pBindings = &texture_layout_binding;
+
+    if (vkCreateDescriptorSetLayout(*p_device, &layout_info, nullptr, &output_layout) != VK_SUCCESS) {
+        throw std::runtime_error("could not create texture layout");
+    }
+}
+
 void GraphicsImpl::create_screen_pipeline() {
     std::vector<VkDynamicState> dynamic_states = {
     VK_DYNAMIC_STATE_VIEWPORT,
@@ -519,7 +539,7 @@ void GraphicsImpl::create_screen_pipeline() {
     };
 
     std::vector<VkDescriptorSetLayout> descriptor_layouts;
-    descriptor_layouts.push_back(texture_layout);
+    descriptor_layouts.push_back(output_layout);
 
     PipelineConfig config{};
     config.vert_shader_path = SHADER_PATH + "quad.vert";
@@ -543,7 +563,19 @@ void GraphicsImpl::create_screen_pass() {
     config.format = swapchain_format;
     config.final_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
+    std::vector<VkSubpassDependency> dependencies(1);
+
+    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[0].dstSubpass = 0;
+    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT; 
+    dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependencies[0].srcAccessMask = VK_ACCESS_NONE;
+    dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+
     screen_pass.add_colour(0, config);
+    screen_pass.add_dependency(dependencies);
     screen_pass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, true, false);
     screen_pass.build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);
 }
@@ -1414,14 +1446,14 @@ void GraphicsImpl::create_screen_set() {
     screen_resource.init(
             *p_device,
             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
-            texture_layout,
+            output_layout,
             swapchain_images.size(), 
             *texture_pool);
 
     screen_resource.add_image(
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             output_images,
-            texture_sampler);
+            output_sampler);
 
     screen_resource.set_binding(0);
 
@@ -1620,6 +1652,30 @@ void GraphicsImpl::recreate_swapchain() {
     create_command_buffers(*recent_objects);
 }
 
+void GraphicsImpl::create_output_sampler() {
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.pNext = nullptr;
+    samplerInfo.flags = 0;
+    samplerInfo.magFilter = VK_FILTER_NEAREST;
+    samplerInfo.minFilter = VK_FILTER_NEAREST;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.mipLodBias = 0.0f;
+    samplerInfo.anisotropyEnable = VK_FALSE;
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.minLod = 0.0f;
+    samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
+    samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+
+    if (vkCreateSampler(*p_device, &samplerInfo, nullptr, &output_sampler) != VK_SUCCESS) {
+        LOG("[ERROR] - createTextureSampler() : failed to create sampler object");
+    }
+}
+
 //TODO: need to make better use of cpu-cores
 void GraphicsImpl::draw_frame() {
     //make sure that the current frame thats being drawn in parallel is available
@@ -1629,9 +1685,11 @@ void GraphicsImpl::draw_frame() {
 
     VkResult result = vkAcquireNextImageKHR(*p_device, swapchain, UINT64_MAX, image_available_semaphores[current_frame], VK_NULL_HANDLE, &nextImage);
 
+    /*
     if (result != VK_SUCCESS) {
         throw std::runtime_error("could not aquire image from swapchain");
     }
+    */
 
     if (images_in_flight[nextImage] != VK_NULL_HANDLE) {
         vkWaitForFences(*p_device, 1, &images_in_flight[nextImage], VK_TRUE, UINT64_MAX);

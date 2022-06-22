@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <chrono>
+#include <thread>
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -188,8 +189,6 @@ int main() {
 		//frame time 
 	    delta_time = t2 - t1;
 		delta = delta_time.count() * 0.001;
-			
-
 		game_loop = !window->check_window_status(tuco::WindowStatus::CLOSE_REQUEST);
 	}
 }
