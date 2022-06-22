@@ -1383,7 +1383,25 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         }
 
         vkCmdEndRenderPass(command_buffers[i]);
+
+        VkMemoryBarrier memory_barrier{};
+        memory_barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+        memory_barrier.pNext = nullptr;
+        memory_barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+        memory_barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
         
+        vkCmdPipelineBarrier(
+            command_buffers[i],
+            VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+            VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+            VK_DEPENDENCY_BY_REGION_BIT,
+            1, &memory_barrier,
+            0, nullptr,
+            0, nullptr
+        );
+
+        
+
         //copy_to_swapchain(i);
         render_to_screen(i);
 
