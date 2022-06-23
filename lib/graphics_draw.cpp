@@ -413,7 +413,7 @@ void GraphicsImpl::create_render_pass() {
     config.format = VK_FORMAT_R32G32B32A32_SFLOAT;
     config.final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
  
-    std::vector<VkSubpassDependency> dependencies(2);
+    std::vector<VkSubpassDependency> dependencies(3);
 
     dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
     dependencies[0].dstSubpass = 0;
@@ -430,6 +430,15 @@ void GraphicsImpl::create_render_pass() {
     dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+    //depth image dependency
+    dependencies[2].srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[2].dstSubpass = 0;
+    dependencies[2].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    dependencies[2].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependencies[2].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    dependencies[2].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    dependencies[2].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
     render_pass.add_colour(0, config);
     render_pass.add_depth(1);
