@@ -278,15 +278,15 @@ void Image::copy_to_buffer(VkBuffer buffer, VkDeviceSize dst_offset, VkQueue que
 }
 
 
-void Image::transfer(VkImageLayout output_layout, VkQueue queue, VkCommandPool pool, std::optional<VkCommandBuffer> command_buffer) {
+void Image::transfer(VkImageLayout output_layout, VkQueue queue, VkCommandPool pool, std::optional<VkCommandBuffer> command_buffer, VkImageLayout current_layout) {
     //begin command buffer
     bool delete_buffer = false;
     if (!command_buffer.has_value()) {
         command_buffer = begin_command_buffer(device, pool);
         delete_buffer = true;
     }
-
     VkImageLayout initial_layout = data.image_info.initialLayout;
+    if (current_layout != VK_IMAGE_LAYOUT_UNDEFINED) initial_layout = current_layout;
     data.image_info.initialLayout = output_layout;
 
     //transfer image layout
@@ -320,6 +320,20 @@ void Image::transfer(VkImageLayout output_layout, VkQueue queue, VkCommandPool p
 
         sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    }
+    else if (output_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+        imageTransfer.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        imageTransfer.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+    else if (output_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        imageTransfer.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        imageTransfer.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     }
     else if (output_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR && initial_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
         imageTransfer.srcAccessMask = 0;
@@ -432,12 +446,11 @@ void Image::transfer(VkImageLayout output_layout, VkQueue queue, VkCommandPool p
         command_buffer.value(),
         sourceStage,
         destinationStage,
-        0,
+        VK_DEPENDENCY_BY_REGION_BIT,
         0, nullptr,
         0, nullptr,
         1, &imageTransfer
     );
-
     //end command buffer
     if (delete_buffer) {
         end_command_buffer(device, queue, pool, command_buffer.value());

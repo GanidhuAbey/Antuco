@@ -433,7 +433,7 @@ void GraphicsImpl::create_render_pass() {
 
     render_pass.add_colour(0, config);
     render_pass.add_depth(1);
-    //render_pass.add_dependency(dependencies);
+    render_pass.add_dependency(dependencies);
     render_pass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, true, true);
     render_pass.build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);
 }
@@ -542,6 +542,24 @@ void GraphicsImpl::create_screen_pass() {
     ColourConfig config{};
     config.format = swapchain_format;
     config.final_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    std::vector<VkSubpassDependency> dependencies(2);
+
+    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[0].dstSubpass = 0;
+    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependencies[0].srcAccessMask = VK_ACCESS_NONE;
+    dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+    dependencies[1].srcSubpass = 0;
+    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
     screen_pass.add_colour(0, config);
     screen_pass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, true, false);
@@ -1311,57 +1329,76 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
         for (size_t j = 0; j < game_objects.size(); j++) {
             if (!game_objects[j]->update) {
                 for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
-                    
-                    std::shared_ptr<Mesh> mesh_data = 
+
+                    std::shared_ptr<Mesh> mesh_data =
                         game_objects[j]->object_model.model_meshes[k];
 
                     uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
                     uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
 
-                    std::vector<VkDescriptorSet> descriptors = { 
-                        light_ubo[j].get_api_set(i), 
-                        ubo_sets[j][i], 
-                        texture_sets[j].get_api_set(k), 
-                        shadowmap_set, 
+                    std::vector<VkDescriptorSet> descriptors = {
+                        light_ubo[j].get_api_set(i),
+                        ubo_sets[j][i],
+                        texture_sets[j].get_api_set(k),
+                        shadowmap_set,
                         mat_sets[j][k],
                     };
 
                     vkCmdBindDescriptorSets(
-                            command_buffers[i], 
-                            VK_PIPELINE_BIND_POINT_GRAPHICS, 
-                            graphics_pipeline.get_api_layout(), 
-                            0, 
-                            descriptors.size(), 
-                            descriptors.data(), 
-                            0, 
-                            nullptr); 
+                        command_buffers[i],
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        graphics_pipeline.get_api_layout(),
+                        0,
+                        descriptors.size(),
+                        descriptors.data(),
+                        0,
+                        nullptr);
 
                     vkCmdDrawIndexed(
-                            command_buffers[i], 
-                            index_count, 
-                            1, 
-                            total_indexes, 
-                            total_vertices, 
-                            static_cast<uint32_t>(0));
+                        command_buffers[i],
+                        index_count,
+                        1,
+                        total_indexes,
+                        total_vertices,
+                        static_cast<uint32_t>(0));
 
                     total_indexes += index_count;
                     total_vertices += vertex_count;
                 }
             }
         }
-
         vkCmdEndRenderPass(command_buffers[i]);
-        
+
+        //memory_dependency(i, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
+
         //copy_to_swapchain(i);
         render_to_screen(i);
 
-        //switch image back to depth stencil layout for the next render pass
-
+        //switch image back to depth stencil layout for the next render pa
         //end commands to go to execute stage
         if (vkEndCommandBuffer(command_buffers[i]) != VK_SUCCESS) {
             throw std::runtime_error("could not end command buffer");
         }
     }
+}
+
+//creates memory dependency which ensures that the data in some is properly written to before being read.
+void GraphicsImpl::memory_dependency(size_t i, VkAccessFlags src_a, VkAccessFlags dst_a, VkPipelineStageFlags src_p, VkPipelineStageFlags dst_p) {
+    VkMemoryBarrier mem_barrier{};
+    mem_barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    mem_barrier.pNext = nullptr;
+    mem_barrier.srcAccessMask = src_a;
+    mem_barrier.dstAccessMask = dst_a;
+
+    //initiate pipeline barrier
+    vkCmdPipelineBarrier(
+        command_buffers[i],
+        src_p,
+        dst_p,
+        VK_DEPENDENCY_BY_REGION_BIT,
+        1, &mem_barrier,
+        0, nullptr,
+        0, nullptr);
 }
 
 void GraphicsImpl::copy_to_swapchain(size_t i) {

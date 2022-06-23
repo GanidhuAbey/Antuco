@@ -13,7 +13,6 @@
 #include "window.hpp"
 
 #include <memory>
-#include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
@@ -320,6 +319,12 @@ private:
     VkDescriptorBufferInfo setup_descriptor_set_buffer(uint32_t set_size);
     void update_descriptor_set(VkDescriptorBufferInfo buffer_info, uint32_t dst_binding, VkDescriptorSet set);
 	void create_frame_buffer(VkRenderPass pass, uint32_t attachment_count, VkImageView* p_attachments, uint32_t width, uint32_t height, VkFramebuffer* frame_buffer);
+	void memory_dependency(
+		size_t i,
+		VkAccessFlags src_a = VK_ACCESS_MEMORY_WRITE_BIT,
+		VkAccessFlags dst_a = VK_ACCESS_MEMORY_READ_BIT,
+		VkPipelineStageFlags src_p = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		VkPipelineStageFlags dst_p = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
 
 
 //vulkan initialization
