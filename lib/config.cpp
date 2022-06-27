@@ -70,3 +70,16 @@ std::vector<char> read_file(const std::string& filename) {
     return buffer;
 }
 
+std::string get_extension_from_file_path(const std::string& filepath) {
+    //get current file
+    std::string filename = get_current_dir_name(filepath);
+    
+    //get location of "." seperating extension
+    size_t index = filename.rfind(".");
+
+    //get substring of extension from file name
+    std::string extension = filename.substr(index+1, filename.size());
+
+    return extension;
+}
+

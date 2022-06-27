@@ -2,10 +2,6 @@
 
 #include "data_structures.hpp"
 
-#include <assimp/Importer.hpp>      // C++ importer interface
-#include <assimp/scene.h>           // Output data structure
-#include <assimp/postprocess.h>     // Post processing flags
-
 #include <vector>
 
 namespace tuco {

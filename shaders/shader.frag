@@ -87,7 +87,7 @@ void main() {
     vec3 diffuse_final = diffuse_light * normalize(mat.diffuse);
     
     vec3 reflected_light = reflect(lightToObject, surfaceNormal);
-    //need to pass data on the location of the camera
+   //need to pass data on the location of the camera
     vec3 object_to_camera = normalize(camera_pos - vec3(vPos));
     float specular_value = pow(max(0.f, dot(reflected_light, object_to_camera)), 32);
     vec3 specular_light = specular_value * mat.specular * SPECULAR_STRENGTH;

@@ -17,9 +17,23 @@ Mesh::Mesh(std::vector<Vertex> newVertices, std::vector<uint32_t> newIndices, Ma
         texture_opacity = glm::vec4(0.0, material.opacity, 0.0, 0.0); 
     }
 
-    glm::vec4 ambient_colour = glm::vec4(material.ambient.r,material.ambient.b,material.ambient.g, 0.0);
-    glm::vec4 diffuse_colour = glm::vec4(material.diffuse.r,material.diffuse.b,material.diffuse.g, 0.0);
-    glm::vec4 specular_colour = glm::vec4(material.specular.r,material.specular.b,material.specular.g, 0.0);
+    glm::vec4 ambient_colour = glm::vec4(
+            material.ambient.r,
+            material.ambient.b,
+            material.ambient.g, 
+            0.0);
+
+    glm::vec4 diffuse_colour = glm::vec4(
+            material.diffuse.r,
+            material.diffuse.b,
+            material.diffuse.g, 
+            0.0);
+
+    glm::vec4 specular_colour = glm::vec4(
+            material.specular.r,
+            material.specular.b,
+            material.specular.g, 
+            0.0);
 
     mat_data.init(texture_opacity, ambient_colour, diffuse_colour, specular_colour);
 }

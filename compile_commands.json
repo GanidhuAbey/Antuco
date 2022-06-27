@@ -86,6 +86,11 @@
 },
 {
   "directory": "/Users/ganidhu/Antuco/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/ganidhu/Antuco/inc -I/usr/local/include -I/Users/ganidhu/Antuco/external/include/glfw/include -I/Users/ganidhu/Antuco/external/include/glm -I/Users/ganidhu/Antuco/external/include/stb -I/Users/ganidhu/Antuco/external/include/assimp/include -I/Users/ganidhu/Antuco/external/build/assimp/include -I/Users/ganidhu/Antuco/external/include/tinygltf  -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.1.sdk -std=gnu++17 -o CMakeFiles/REQUIRED_LIBRARIES.dir/lib/point_light.cpp.o -c /Users/ganidhu/Antuco/lib/point_light.cpp",
+  "file": "/Users/ganidhu/Antuco/lib/point_light.cpp"
+},
+{
+  "directory": "/Users/ganidhu/Antuco/build",
   "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/ganidhu/Antuco/inc -I/usr/local/include -I/Users/ganidhu/Antuco/external/include/glfw/include -I/Users/ganidhu/Antuco/external/include/glm -I/Users/ganidhu/Antuco/external/include/stb -I/Users/ganidhu/Antuco/external/include/assimp/include -I/Users/ganidhu/Antuco/external/build/assimp/include -I/Users/ganidhu/Antuco/external/include/tinygltf  -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.1.sdk -std=gnu++17 -o CMakeFiles/REQUIRED_LIBRARIES.dir/lib/render_pass.cpp.o -c /Users/ganidhu/Antuco/lib/render_pass.cpp",
   "file": "/Users/ganidhu/Antuco/lib/render_pass.cpp"
 },
@@ -108,6 +113,11 @@
   "directory": "/Users/ganidhu/Antuco/build",
   "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/ganidhu/Antuco/inc -I/usr/local/include -I/Users/ganidhu/Antuco/external/include/glfw/include -I/Users/ganidhu/Antuco/external/include/glm -I/Users/ganidhu/Antuco/external/include/stb -I/Users/ganidhu/Antuco/external/include/assimp/include -I/Users/ganidhu/Antuco/external/build/assimp/include -I/Users/ganidhu/Antuco/external/include/tinygltf  -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.1.sdk -std=gnu++17 -o CMakeFiles/REQUIRED_LIBRARIES.dir/lib/vulkan_wrapper/physical_device.cpp.o -c /Users/ganidhu/Antuco/lib/vulkan_wrapper/physical_device.cpp",
   "file": "/Users/ganidhu/Antuco/lib/vulkan_wrapper/physical_device.cpp"
+},
+{
+  "directory": "/Users/ganidhu/Antuco/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/ganidhu/Antuco/inc -I/usr/local/include -I/Users/ganidhu/Antuco/external/include/glfw/include -I/Users/ganidhu/Antuco/external/include/glm -I/Users/ganidhu/Antuco/external/include/stb -I/Users/ganidhu/Antuco/external/include/assimp/include -I/Users/ganidhu/Antuco/external/build/assimp/include -I/Users/ganidhu/Antuco/external/include/tinygltf  -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.1.sdk -std=gnu++17 -o CMakeFiles/REQUIRED_LIBRARIES.dir/lib/vulkan_wrapper/surface.cpp.o -c /Users/ganidhu/Antuco/lib/vulkan_wrapper/surface.cpp",
+  "file": "/Users/ganidhu/Antuco/lib/vulkan_wrapper/surface.cpp"
 },
 {
   "directory": "/Users/ganidhu/Antuco/build",

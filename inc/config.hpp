@@ -42,3 +42,7 @@ extern std::string get_project_root(std::string);
 //REQUIRES: filename must refer to text file within PROJECT_ROOT
 //EFFECTS: returns the contents within file
 extern std::vector<char> read_file(const std::string& filename);
+
+//REQUIRES: filename should be a string representing a path to a file
+//EFFECTS: returns the extension of the file given
+extern std::string get_extension_from_file_path(const std::string& filename);

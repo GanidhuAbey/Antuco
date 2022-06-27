@@ -50,6 +50,13 @@ struct LightBufferObject {
 	glm::mat4 projection;
 };
 
+struct Primitive {
+    uint32_t index_start;
+    uint32_t index_count;
+    uint32_t mat_index;
+    uint32_t image_index;
+};
+
 class MaterialsObject {
 public:
     glm::vec4 texture_opacity;
@@ -64,11 +71,17 @@ public:
     std::vector<float> linearlize();
 };
 
-struct Material {
+struct ImageBuffer {
+    unsigned char* buffer = nullptr;
+    size_t buffer_size = 0;
+};
+
+struct Material { 
+    uint32_t image_index;
     std::optional<aiString> texturePath;
-    aiColor3D ambient; //Ka
-    aiColor3D diffuse; //Kd
-    aiColor3D specular; //Ks
+    glm::vec4 ambient; //Ka
+    glm::vec4 diffuse; //Kd
+    glm::vec4 specular; //Ks
     float opacity;
 };
 

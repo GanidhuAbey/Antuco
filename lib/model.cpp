@@ -1,8 +1,9 @@
 //the implementation of the Model class
 #include "model.hpp"
 
+#include "glm/gtc/type_ptr.hpp"
 #include "logger/interface.hpp"
-
+#include "config.hpp"
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
@@ -10,12 +11,267 @@
 
 using namespace tuco;
 
+bool Model::check_gltf(const std::string& filepath) {
+    std::string ext = get_extension_from_file_path(filepath);
+
+    if (ext == "glb" || ext == "gltf") {
+        return true;
+    }
+    return false;
+}
+
+void Model::add_gltf_model(const std::string& filepath) {
+    tinygltf::Model model;
+    tinygltf::TinyGLTF loader;
+    std::string warn;
+    std::string err;
+
+    std::string ext = get_extension_from_file_path(filepath);
+
+    bool ret;
+    if (ext == "gltf") ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
+    else ret = loader.LoadBinaryFromFile(&model, &err, &warn, filepath);
+
+    //print any warnings/errors
+    if (!warn.empty()) {
+        LOG(warn.c_str());
+    }
+    if (!err.empty()) {
+        LOG(err.c_str());
+    }
+    if (!ret) {
+        LOG("something went wrong while trying to import GLTF model");
+    }
+
+    //get scene
+    const tinygltf::Scene& scene = model.scenes[0]; //use model.defaultScene?
+    //process nodes
+    for (size_t i = 0; i < scene.nodes.size(); i++) {
+        process_gltf_nodes(model.nodes[scene.nodes[i]], model);
+    }
+}
+
+void Model::process_gltf_nodes(
+     tinygltf::Node node,
+     tinygltf::Model model) {
+
+    if (node.mesh <= -1) {
+        return;
+    }
+    
+    const tinygltf::Mesh mesh = model.meshes[node.mesh];
+    
+    uint32_t index_point = model_indices.size();
+    uint32_t vertex_point = model_vertices.size();
+    uint32_t index_count = 0;
+
+    //process materials 
+    process_gltf_materials(
+            model,
+            model_materials
+    );
+
+    //process images
+    process_gltf_textures(model, model_images);
+
+
+    for (size_t i = 0; i < mesh.primitives.size(); i++) {
+        const tinygltf::Primitive& primitive = mesh.primitives[i];
+        //process vertices
+        process_gltf_vertices(model, primitive, model_vertices); 
+
+        //process indices
+        process_gltf_indices(
+                model, 
+                primitive, 
+                index_count, 
+                model_indices, 
+                index_point, 
+                vertex_point);
+
+        //assign material to mesh
+        Primitive prim{};
+        prim.index_start = index_point;
+        prim.index_count = index_count;
+        prim.mat_index = primitive.material;
+        prim.image_index = model_materials[i].image_index; 
+        primitives.push_back(prim);
+    }
+}    
+
+//NOTE: assumes model.images.size() == model.textures.size();
+void Model::process_gltf_textures(tinygltf::Model model,
+std::vector<ImageBuffer>& images) {
+    images.resize(model.images.size());
+
+    for (size_t i = 0; i < images.size(); i++) {
+        tinygltf::Image& image = model.images[i];
+        uint32_t index = model.textures[i].source;
+        if (image.component == 3) {
+                images[index].buffer_size = image.width * image.height * 4;
+			    images[index].buffer = new unsigned char[images[i].buffer_size];
+				unsigned char* rgba = images[i].buffer;
+				unsigned char* rgb = &image.image[0];
+				for (size_t i = 0; i < image.width * image.height; i++) {
+					memcpy(rgba, rgb, sizeof(unsigned char) * 3);
+					rgba += 4;
+					rgb += 3;
+				}
+        } 
+        else {
+            images[index].buffer = &image.image[0];
+            images[index].buffer_size = image.image.size();
+        }
+    }
+}
+
+void Model::process_gltf_materials(tinygltf::Model model,
+std::vector<Material>& materials) {
+    materials.resize(model.materials.size());
+
+    for (size_t i = 0; i < materials.size(); i++) {
+        tinygltf::Material mat = model.materials[i];
+
+        //load alpha
+        float alpha = 1.0f;
+        glm::vec4 base_colour;
+        if (mat.values.find("baseColorFactor") != mat.values.end()) {
+			base_colour = glm::make_vec4(mat.values["baseColorFactor"].ColorFactor().data());
+		}
+        if (mat.alphaMode == "OPAQUE") {     
+            base_colour.w = alpha;
+        }
+        materials[i].opacity = base_colour.w;
+
+        //load ambient
+        materials[i].ambient = base_colour;
+
+        //load diffuse
+        glm::vec3 diffuse;
+        if (mat.values.find("emissiveFactor") != mat.values.end()) {
+            diffuse = glm::make_vec3(mat.values["emissiveFactor"].ColorFactor().data());
+        }
+        materials[i].diffuse = glm::vec4(diffuse, 1.0f);
+
+        //load roughness
+        if (mat.values.find("roughnessFactor") != mat.values.end()) {
+            materials[i].specular.r = mat.values["roughnessFactor"].Factor();
+        }
+
+        //get texture data
+        if (mat.values.find("baseColorTexture") != mat.values.end()) {
+            materials[i].image_index = mat.values["baseColorTexture"].TextureIndex();
+        }
+        else {
+            materials[i].image_index = std::numeric_limits<uint32_t>::max();
+        }
+    }
+}
+
+void Model::process_gltf_indices(tinygltf::Model model,
+const tinygltf::Primitive& primitive,
+uint32_t& index_count,
+std::vector<uint32_t>& indices,
+uint32_t& index_start,
+uint32_t& vertex_start) {
+    const tinygltf::Accessor& accessor = model.accessors[primitive.indices];
+	const tinygltf::BufferView& buffer_view = model.bufferViews[accessor.bufferView];
+	const tinygltf::Buffer& buffer = model.buffers[buffer_view.buffer];
+
+    index_count += static_cast<uint32_t>(accessor.count);
+
+    switch (accessor.componentType) {
+		case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT: {
+			const uint32_t* buf = reinterpret_cast<const uint32_t*>(
+                    &buffer.data[accessor.byteOffset + buffer_view.byteOffset]);
+			for (size_t index = 0; index < accessor.count; index++) {
+				indices.push_back(buf[index] + vertex_start);
+			}
+			break;
+			}
+		case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT: {
+			const uint16_t* buf = reinterpret_cast<const uint16_t*>(
+                    &buffer.data[accessor.byteOffset + buffer_view.byteOffset]);
+			for (size_t index = 0; index < accessor.count; index++) {
+				indices.push_back(buf[index] + vertex_start);
+			}
+		    break;
+		}
+		case TINYGLTF_PARAMETER_TYPE_UNSIGNED_BYTE: {
+			const uint8_t* buf = reinterpret_cast<const uint8_t*>(
+                    &buffer.data[accessor.byteOffset + buffer_view.byteOffset]);
+			for (size_t index = 0; index < accessor.count; index++) {
+			    indices.push_back(buf[index] + vertex_start);
+			}
+			break;
+		}
+		default:
+			std::cerr << 
+                "Index component type " << accessor.componentType << " not supported!"
+            << std::endl;
+			break;
+		}
+}
+
+void Model::process_gltf_vertices(tinygltf::Model model, 
+const tinygltf::Primitive& primitive,
+std::vector<Vertex>& vertices) {
+    const float* position_buffer = nullptr;
+    const float* normal_buffer = nullptr;
+    const float* tex_coord_buffer = nullptr;
+    size_t vertex_count = 0;
+
+    if (primitive.attributes.find("POSITION") != primitive.attributes.end()) {
+        const tinygltf::Accessor& accessor = model
+            .accessors[primitive.attributes.find("POSITION")->second];
+		const tinygltf::BufferView& view = model.bufferViews[accessor.bufferView];
+	    position_buffer = reinterpret_cast<const float*>(
+                &(model.buffers[view.buffer].data[accessor.byteOffset + view.byteOffset]));
+		vertex_count = accessor.count;
+    }
+
+    if (primitive.attributes.find("NORMAL") != primitive.attributes.end()) {
+        const tinygltf::Accessor& accessor = model
+            .accessors[primitive.attributes.find("NORMAL")->second];
+		const tinygltf::BufferView& view = model.bufferViews[accessor.bufferView];
+		normal_buffer = reinterpret_cast<const float*>(
+                &(model.buffers[view.buffer].data[accessor.byteOffset + view.byteOffset]));
+    }
+
+    if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end()) {
+        const tinygltf::Accessor& accessor = model
+            .accessors[primitive.attributes.find("TEXCOORD_0")->second];
+		const tinygltf::BufferView& view = model.bufferViews[accessor.bufferView];
+	    tex_coord_buffer = reinterpret_cast<const float*>(
+                &(model.buffers[view.buffer].data[accessor.byteOffset + view.byteOffset]));
+    }
+
+    for (size_t v = 0; v < vertex_count; v++) {
+        glm::vec4 pos = glm::vec4(glm::make_vec3(&position_buffer[v*3]), 1.0f);
+        glm::vec4 norm = glm::vec4(glm::vec3(normal_buffer ? 
+                    glm::make_vec3(&normal_buffer[v*3]) : glm::vec3(0.0f)), 1.0f);
+
+        glm::vec2 uv = tex_coord_buffer ? 
+            glm::make_vec2(&tex_coord_buffer[v*2]) : glm::vec3(0.0f);
+
+        Vertex vertex(pos, norm, uv);
+
+        vertices.push_back(vertex);
+    }
+
+}
+
 void Model::add_mesh(const std::string& fileName, std::optional<std::string> name) {
 	if (name.has_value() && file_exists(name.value())) {
 		model_name = name.value();
 		read_from_file();
 		return;
 	}
+
+    if (check_gltf(fileName)) {
+        add_gltf_model(fileName);
+        return;
+    }
 
 	//have assimp read file
 	Assimp::Importer importer;
@@ -405,22 +661,9 @@ Material Model::processMaterial(uint32_t materialIndex, aiMaterial** materials) 
 
     aiString roughness;
     
-    /*
-    aiReturn result = mat->GetTexture(
-            AI_MATKEY_ROUGHNESS_TEXTURE,
-            &roughness);
-
-    if (AI_FAILURE == result) {
-        LOG("[ERROR] - could not load materials roughness");
-        printf("%d \n", result);
-    }
-
-    printf("roughness: %s \n", roughness.data);
-    */
-
-    material.ambient = ambient;
-    material.diffuse = diffuse;
-    material.specular = specular;
+    material.ambient = glm::vec4(ambient.r, ambient.g, ambient.b, 1.0f);
+    material.diffuse = glm::vec4(diffuse.r, diffuse.g, diffuse.b, 1.0f);
+    material.specular = glm::vec4(specular.r, specular.g, specular.b, 1.0f);
 
     material.opacity = opacity;
 
