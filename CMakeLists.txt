@@ -55,6 +55,10 @@ find_package(Vulkan)
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/assimp" "${CMAKE_CURRENT_SOURCE_DIR}/external/include/assimp")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw")
 
+set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
+set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/tinygltf")
+
 #these handle the include directores for all my external dependencies, in case one these don't link properly, you can use set
 #an absolute path from your root folder here
 include_directories("${Vulkan_INCLUDE_DIR}")
@@ -65,7 +69,6 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/assimp/include
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/build/assimp/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/tinygltf")
 
-
 #engine composer
 
 #how to handle this part...
@@ -74,4 +77,8 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/tinygltf")
 #compile assimp
 add_executable(main main.cpp "render_examples/bmw.hpp" "render_examples/bmw.cpp")
 
-target_link_libraries(main PRIVATE REQUIRED_LIBRARIES "${Vulkan_LIBRARIES}" assimp::assimp glfw shaderc spirv-cross-core)
+target_link_libraries(main PRIVATE REQUIRED_LIBRARIES 
+                                   "${Vulkan_LIBRARIES}" 
+                                   assimp::assimp 
+                                   glfw shaderc 
+                                   spirv-cross-core)

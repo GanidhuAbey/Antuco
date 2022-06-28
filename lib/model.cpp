@@ -9,6 +9,10 @@
 #include <fstream>
 #include <limits>
 
+#define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+
 using namespace tuco;
 
 bool Model::check_gltf(const std::string& filepath) {
@@ -262,7 +266,8 @@ std::vector<Vertex>& vertices) {
 }
 
 void Model::add_mesh(const std::string& fileName, std::optional<std::string> name) {
-	if (name.has_value() && file_exists(name.value())) {
+    //NOTE: disabled reading from files 
+	if (name.has_value() && file_exists(name.value()) && false) {
 		model_name = name.value();
 		read_from_file();
 		return;
@@ -310,20 +315,182 @@ Model::~Model() {}
 
 void Model::processScene(aiNode* node, aiMesh** const meshes, aiMaterial** materials) {
 	for (uint32_t i = 0; i < node->mNumMeshes; i++) {
-        std::shared_ptr<Mesh> mesh = processMesh(meshes[node->mMeshes[i]], materials);
+        //std::shared_ptr<Mesh> mesh = processMesh(meshes[node->mMeshes[i]], materials); 
+        Primitive prim = process_assimp_primitive(meshes[node->mMeshes[i]], materials);
 		
-		if (mesh->is_transparent()) {
-			model_meshes.push_back(mesh);
+		if (prim.is_transparent) {
+            primitives.push_back(prim);
 		}
 		else {
-			auto it = model_meshes.begin();
-			model_meshes.insert(it, mesh);
+			auto it = primitives.begin();
+			primitives.insert(it, prim);
 		}
 	}
 
 	for (unsigned int i = 0; i < node->mNumChildren; i++) {
 		processScene(node->mChildren[i], meshes, materials);
 	}
+}
+
+Primitive Model::process_assimp_primitive(aiMesh* mesh, aiMaterial** materials) { 
+	std::vector<Vertex> vertices;
+	std::vector<uint32_t> indices;
+    Material material;
+
+	auto future_vertices = std::async(std::launch::async, [&] { 
+            return processVertices(
+                    mesh->mNumVertices, 
+                    mesh->mVertices, 
+                    mesh->mNormals, 
+                    mesh->mTextureCoords); 
+            });
+
+	auto future_indices = std::async(std::launch::async, [&] { 
+            return processIndices(mesh->mNumFaces, mesh->mFaces); 
+            });
+
+	auto future_material = std::async(std::launch::async, [&] { 
+            return processMaterial(mesh->mMaterialIndex, materials); 
+            });
+
+	vertices = future_vertices.get();
+	indices = future_indices.get();
+    material = future_material.get();
+ 
+    Primitive prim{};
+    prim.image_index = std::numeric_limits<uint32_t>::max();
+    prim.index_start = model_indices.size();
+    
+    model_vertices.insert(model_vertices.end(), vertices.begin(), vertices.end());
+    model_indices.insert(model_indices.end(), indices.begin(), indices.end());
+    model_materials.push_back(material); 
+
+    prim.index_count = model_indices.size() - prim.index_start;
+    prim.mat_index = model_materials.size() - 1;
+
+    prim.is_transparent = false;
+    if (material.opacity < 1.0) {
+        prim.is_transparent = true;
+    }
+}
+
+std::shared_ptr<Mesh> Model::processMesh(aiMesh* mesh, aiMaterial** materials) {
+	//multithread this functionality
+	std::vector<Vertex> vertices;
+	std::vector<uint32_t> indices;
+    Material material;
+
+	auto future_vertices = std::async(std::launch::async, [&] { 
+            return processVertices(
+                    mesh->mNumVertices, 
+                    mesh->mVertices, 
+                    mesh->mNormals, 
+                    mesh->mTextureCoords); 
+            });
+
+	auto future_indices = std::async(std::launch::async, [&] { 
+            return processIndices(mesh->mNumFaces, mesh->mFaces); 
+            });
+
+	auto future_material = std::async(std::launch::async, [&] { 
+            return processMaterial(mesh->mMaterialIndex, materials); 
+            });
+
+	vertices = future_vertices.get();
+	indices = future_indices.get();
+    material = future_material.get();
+
+	Mesh new_mesh(vertices, indices, material);
+	
+	return std::make_shared<Mesh>(new_mesh);
+}
+
+std::vector<Vertex> Model::processVertices(uint32_t numOfVertices, aiVector3D* aiVertices, aiVector3D* aiNormals, aiVector3t<ai_real>** textureCoords) {
+	std::vector<Vertex> meshVertices;
+	for (uint32_t i = 0; i < numOfVertices; i++) {
+		aiVector3D position = aiVertices[i];
+		aiVector3D normal = aiNormals[i];
+
+		//grab texture data?
+		glm::vec2 texCoord;
+		if (textureCoords[0]) {
+			texCoord.x = textureCoords[0][i].x;
+			texCoord.y = textureCoords[0][i].y;
+		}
+		else texCoord = glm::vec2(0.0, 0.0);
+
+		Vertex vertex(
+			glm::vec4(position.x, position.y, position.z, 0.0), 
+			glm::vec4(normal.x, normal.y, normal.z, 0.0), 
+			texCoord
+		);
+
+		meshVertices.push_back(vertex);
+	}
+
+	return meshVertices;
+}
+
+std::vector<uint32_t> Model::processIndices(uint32_t numOfFaces, aiFace* faces) {
+	std::vector<uint32_t> meshIndices;
+	for (uint32_t i = 0; i < numOfFaces; i++) {
+		if (faces[i].mNumIndices == 3) {
+			meshIndices.push_back(faces[i].mIndices[0]);
+			meshIndices.push_back(faces[i].mIndices[1]);
+			meshIndices.push_back(faces[i].mIndices[2]);
+		}
+	}
+
+	return meshIndices;
+}
+
+Material Model::processMaterial(uint32_t materialIndex, aiMaterial** materials) {
+	aiMaterial* mat = materials[materialIndex];
+	unsigned int texCount = mat->GetTextureCount(aiTextureType_DIFFUSE);
+	aiString texturePath;
+	char imagePath;
+    
+    Material material{};
+    
+    if (texCount > 0) {
+		mat->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath);
+        material.texturePath = std::string(texturePath.C_Str());
+    }
+
+    //ambient
+    aiColor3D ambient (0.f, 0.f, 0.f);
+    if (AI_SUCCESS != mat->Get(AI_MATKEY_COLOR_AMBIENT, ambient)) {
+        printf("[ERROR] - could not load materials ambient colour \n");
+    }
+
+    //diffuse
+    aiColor3D diffuse (0.f, 0.f, 0.f);
+    if (AI_SUCCESS != mat->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse)) {
+        printf("[ERROR] - could not load materials diffuse colour \n");
+    }
+
+    //specular
+    aiColor3D specular (0.f, 0.f, 0.f);
+    if (AI_SUCCESS != mat->Get(AI_MATKEY_COLOR_SPECULAR, specular)) {
+        printf("[ERROR] - could not load materials specular colour \n");
+    } 
+
+    //opacity
+    float opacity = 0.0f;
+    if (AI_SUCCESS != mat->Get(AI_MATKEY_OPACITY, opacity)) {
+        LOG("[ERROR] - could not load materials opacity data");        
+    }
+
+    aiString roughness;
+    
+    material.ambient = glm::vec4(ambient.r, ambient.g, ambient.b, 1.0f);
+    material.diffuse = glm::vec4(diffuse.r, diffuse.g, diffuse.b, 1.0f);
+    material.specular = glm::vec4(specular.r, specular.g, specular.b, 1.0f);
+
+    material.opacity = opacity;
+
+    return material;
+
 }
 
 void Model::read_from_file() {
@@ -562,111 +729,4 @@ void Model::write_to_file() {
         }
 	}
 	file.close();
-}
-
-std::shared_ptr<Mesh> Model::processMesh(aiMesh* mesh, aiMaterial** materials) {
-	//multithread this functionality
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
-    Material material;
-
-	auto future_vertices = std::async(std::launch::async, [&] { return processVertices(mesh->mNumVertices, mesh->mVertices, mesh->mNormals, mesh->mTextureCoords); });
-	auto future_indices = std::async(std::launch::async, [&] { return processIndices(mesh->mNumFaces, mesh->mFaces); });
-	auto future_material = std::async(std::launch::async, [&] { return processMaterial(mesh->mMaterialIndex, materials); });
-
-	vertices = future_vertices.get();
-	indices = future_indices.get();
-    material = future_material.get();
-
-	Mesh new_mesh(vertices, indices, material);
-	
-	return std::make_shared<Mesh>(new_mesh);
-}
-
-std::vector<Vertex> Model::processVertices(uint32_t numOfVertices, aiVector3D* aiVertices, aiVector3D* aiNormals, aiVector3t<ai_real>** textureCoords) {
-	std::vector<Vertex> meshVertices;
-	for (uint32_t i = 0; i < numOfVertices; i++) {
-		aiVector3D position = aiVertices[i];
-		aiVector3D normal = aiNormals[i];
-
-		//grab texture data?
-		glm::vec2 texCoord;
-		if (textureCoords[0]) {
-			texCoord.x = textureCoords[0][i].x;
-			texCoord.y = textureCoords[0][i].y;
-		}
-		else texCoord = glm::vec2(0.0, 0.0);
-
-		Vertex vertex(
-			glm::vec4(position.x, position.y, position.z, 0.0), 
-			glm::vec4(normal.x, normal.y, normal.z, 0.0), 
-			texCoord
-		);
-
-		meshVertices.push_back(vertex);
-	}
-
-	return meshVertices;
-}
-
-std::vector<uint32_t> Model::processIndices(uint32_t numOfFaces, aiFace* faces) {
-	std::vector<uint32_t> meshIndices;
-	for (uint32_t i = 0; i < numOfFaces; i++) {
-		if (faces[i].mNumIndices == 3) {
-			meshIndices.push_back(faces[i].mIndices[0]);
-			meshIndices.push_back(faces[i].mIndices[1]);
-			meshIndices.push_back(faces[i].mIndices[2]);
-		}
-	}
-
-	return meshIndices;
-}
-
-Material Model::processMaterial(uint32_t materialIndex, aiMaterial** materials) {
-	aiMaterial* mat = materials[materialIndex];
-	unsigned int texCount = mat->GetTextureCount(aiTextureType_DIFFUSE);
-	aiString texturePath;
-	char imagePath;
-    
-    Material material{};
-    
-    if (texCount > 0) {
-		mat->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath);
-        material.texturePath = texturePath;
-    }
-
-    //ambient
-    aiColor3D ambient (0.f, 0.f, 0.f);
-    if (AI_SUCCESS != mat->Get(AI_MATKEY_COLOR_AMBIENT, ambient)) {
-        printf("[ERROR] - could not load materials ambient colour \n");
-    }
-
-    //diffuse
-    aiColor3D diffuse (0.f, 0.f, 0.f);
-    if (AI_SUCCESS != mat->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse)) {
-        printf("[ERROR] - could not load materials diffuse colour \n");
-    }
-
-    //specular
-    aiColor3D specular (0.f, 0.f, 0.f);
-    if (AI_SUCCESS != mat->Get(AI_MATKEY_COLOR_SPECULAR, specular)) {
-        printf("[ERROR] - could not load materials specular colour \n");
-    } 
-
-    //opacity
-    float opacity = 0.0f;
-    if (AI_SUCCESS != mat->Get(AI_MATKEY_OPACITY, opacity)) {
-        LOG("[ERROR] - could not load materials opacity data");        
-    }
-
-    aiString roughness;
-    
-    material.ambient = glm::vec4(ambient.r, ambient.g, ambient.b, 1.0f);
-    material.diffuse = glm::vec4(diffuse.r, diffuse.g, diffuse.b, 1.0f);
-    material.specular = glm::vec4(specular.r, specular.g, specular.b, 1.0f);
-
-    material.opacity = opacity;
-
-    return material;
-
 }

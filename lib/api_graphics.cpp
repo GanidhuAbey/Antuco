@@ -96,7 +96,7 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 
 	bool update_command_buffers = false;
 	for (size_t i = 0; i < game_objects.size(); i++) {
-
+        Model model = game_objects[i]->object_model;
 		//create ubo data
 		UniformBufferObject ubo;
 
@@ -112,37 +112,36 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		lbo.projection = light_data[0].perspective;
 
 		if (game_objects[i]->update) {
+            //update the buffer data of game objects
+            uint32_t index_mem = update_index_buffer(model.model_indices);
+            uint32_t vertex_mem = update_vertex_buffer(model.model_vertices);
+
 			update_command_buffers = true;
 			game_objects[i]->update = false;
 			create_ubo_set();	
 			write_to_ubo();
-			//will have to dynamically update the orientation to make the cross product returns a proper value 
 			create_light_set(lbo);
             
 			//TODO: for some reason model_meshes or object_model does not exist
 			//      and the program crashes when it attempts to access the data here.
-			std::vector<std::shared_ptr<Mesh>> meshes = 
-                game_objects[i]->object_model.model_meshes;
+			std::vector<Primitive> primitives = 
+                model.primitives;
 			//create texture data
-			create_texture_set(meshes.size());
+			create_texture_set(primitives.size());
 
-            create_materials_set(meshes.size());
+            create_materials_set(primitives.size());
             write_to_materials();
 
-			for (size_t j = 0; j < meshes.size(); j++) {
-				//for now lets just assume this works so we can deal with the other errors...
-				uint32_t index_mem = update_vertex_buffer(meshes[j]->vertices);
-				uint32_t vertices_mem = update_index_buffer(meshes[j]->indices);
-
-                meshes[j]->index_mem = index_mem;
-                meshes[j]->vertex_mem = vertices_mem;
-
-                update_materials(mat_offsets[i][j], meshes[j]->mat_data);
+			for (size_t j = 0; j < primitives.size(); j++) {
+                Material material = model.model_materials[primitives[j].mat_index];
+                update_materials(
+                        mat_offsets[i][j], 
+                        material);
 
 				//create vulkan image
 				//why is textures even a vector???
-                if (meshes[j]->mat_data.texture_opacity.r > 0) {
-                    create_texture_image(meshes[j]->textures[0], i, j);
+                if (material.image_index != std::numeric_limits<uint32_t>::max()) {
+                    create_texture_image(material.texturePath.value(), i, j);
                 } else {
                     create_empty_image(i, j);
                 }

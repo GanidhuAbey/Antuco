@@ -292,7 +292,7 @@ private:
     void write_to_ubo();	
     void write_to_materials();
 	void update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo);
-    void update_materials(VkDeviceSize memory_offset, MaterialsObject mat);
+    void update_materials(VkDeviceSize memory_offset, Material mat);
     void copy_image_to_image(
             VkImage src_image, 
             VkImageLayout src_layout, 

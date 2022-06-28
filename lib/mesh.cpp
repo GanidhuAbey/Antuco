@@ -11,7 +11,7 @@ Mesh::Mesh(std::vector<Vertex> newVertices, std::vector<uint32_t> newIndices, Ma
 
     glm::vec4 texture_opacity;
     if (material.texturePath.has_value()) {
-        textures.push_back(std::string(material.texturePath.value().C_Str()));
+        textures.push_back(std::string(material.texturePath.value().c_str()));
         texture_opacity = glm::vec4(1.0, material.opacity, 0.0, 0.0);
     } else {
         texture_opacity = glm::vec4(0.0, material.opacity, 0.0, 0.0); 

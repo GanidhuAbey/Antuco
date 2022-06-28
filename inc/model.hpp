@@ -9,7 +9,10 @@
 #include <assimp/scene.h>           // Output data structure
 #include <assimp/postprocess.h>     // Post processing flags
 
-#include <tiny_gltf.h>
+#define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+#include "tiny_gltf.h"
 
 #include "mesh.hpp"
 
@@ -76,6 +79,8 @@ private:
 
     void process_gltf_textures(tinygltf::Model model,
             std::vector<ImageBuffer>& images);
+
+    Primitive process_assimp_primitive(aiMesh* mesh, aiMaterial** materials);
 
 private:
 	std::vector<std::shared_ptr<Mesh>> model_meshes;

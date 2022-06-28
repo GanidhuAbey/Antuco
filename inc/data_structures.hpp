@@ -55,6 +55,7 @@ struct Primitive {
     uint32_t index_count;
     uint32_t mat_index;
     uint32_t image_index;
+    bool is_transparent;
 };
 
 class MaterialsObject {
@@ -78,7 +79,7 @@ struct ImageBuffer {
 
 struct Material { 
     uint32_t image_index;
-    std::optional<aiString> texturePath;
+    std::optional<std::string> texturePath;
     glm::vec4 ambient; //Ka
     glm::vec4 diffuse; //Kd
     glm::vec4 specular; //Ks

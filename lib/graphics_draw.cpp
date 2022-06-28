@@ -17,9 +17,6 @@
 
 #include "api_config.hpp"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-
 #include <stdexcept>
 
 #include <glm/ext.hpp>
@@ -1306,7 +1303,8 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		vkCmdSetScissor(command_buffers[i], 0, 1, &newScissor);
 
 		//time for the draw calls
-		const VkDeviceSize offset[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
+		const VkDeviceSize offset[] = {0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord)};
+
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offset);
 		vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
@@ -1563,15 +1561,18 @@ void GraphicsImpl::create_index_buffer() {
 }
 
 
-//REQUIRES: indices_data is a list of indices corresponding to the vertices provided to the vertex buffer
+//REQUIRES: indices_data is a list of indices corresponding 
+//          to the vertices provided to the vertex buffer
 //MODIFIES: this
-//EFFECTS: allocates memory and maps indices_data to index buffer, returns location in memory as int or '-1' if
+//EFFECTS: allocates memory and maps indices_data to index buffer, 
+//         returns location in memory as int or '-1' if
 //         new data was mapped.
 int32_t GraphicsImpl::update_index_buffer(std::vector<uint32_t> indices_data) {
     if (check_data(indices_data.size() * sizeof(uint32_t))) {
         return -1;
     }
-    uint32_t mem_location = index_buffer.map(indices_data.size() * sizeof(uint32_t), indices_data.data()); 
+    uint32_t mem_location = index_buffer.map(
+            indices_data.size() * sizeof(uint32_t), indices_data.data()); 
     
     return mem_location;
 }
@@ -1621,7 +1622,18 @@ void GraphicsImpl::update_light_buffer(VkDeviceSize memory_offset, LightBufferOb
     uniform_buffer.write(*p_device, memory_offset, sizeof(lbo), &lbo);
 }
 
-void GraphicsImpl::update_materials(VkDeviceSize memory_offset, MaterialsObject mat) {
+void GraphicsImpl::update_materials(VkDeviceSize memory_offset, Material mat) {
+    MaterialsObject mat_obj;
+    float has_image = 1;
+    if (mat.image_index == std::numeric_limits<uint32_t>::max()) {
+        has_image = 0;
+    }
+
+    mat_obj.init(glm::vec4(has_image, mat.opacity, 0.0, 0.0),
+            mat.ambient,
+            mat.diffuse,
+            mat.specular);
+
     uniform_buffer.write(*p_device, memory_offset, sizeof(mat), &mat);
 }
 

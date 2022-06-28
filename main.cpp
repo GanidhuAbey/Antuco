@@ -95,7 +95,7 @@ int main() {
 	
 #if defined(__APPLE__)
 	another->add_mesh(root_project + "/objects/antuco-files/mac/no_texture.obj", "no_texture");
-	some_object->add_mesh(root_project + "/objects/antuco-files/mac/bmw.gltf", "a");
+	some_object->add_mesh(root_project + "/objects/antuco-files/mac/bmw.obj", "bmw");
 	
 #elif defined(_WIN32) || defined(_WIN64)
 	another->add_mesh(root_project + "\\objects\\antuco-files\\windows\\grey_cube.obj", "grey_cubef");
