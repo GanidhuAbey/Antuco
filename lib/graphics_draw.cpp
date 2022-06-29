@@ -10,6 +10,8 @@
 
 #include "shader_text.hpp"
 
+#include <stb_image.h>
+
 #include <optional>
 #include <vector>
 #include <vulkan/vulkan.h>

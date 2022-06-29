@@ -24,3 +24,6 @@
 [submodule "objects/antuco-files"]
 	path = objects/antuco-files
 	url = https://github.com/GanidhuAbey/antuco-files
+[submodule "external/include/tinygltf"]
+	path = external/include/tinygltf
+	url = https://github.com/syoyo/tinygltf

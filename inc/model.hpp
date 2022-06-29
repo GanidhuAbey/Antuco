@@ -9,14 +9,10 @@
 #include <assimp/scene.h>           // Output data structure
 #include <assimp/postprocess.h>     // Post processing flags
 
-#define TINYGLTF_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
-#include "tiny_gltf.h"
-
 #include "mesh.hpp"
 
 #include "config.hpp"
+#include "tiny_gltf.h"
 
 #include <thread>
 #include <future>

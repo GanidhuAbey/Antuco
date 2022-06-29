@@ -140,7 +140,7 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 
 				//create vulkan image
 				//why is textures even a vector???
-                if (material.image_index != std::numeric_limits<uint32_t>::max()) {
+                if (material.texturePath.has_value()) {
                     create_texture_image(material.texturePath.value(), i, j);
                 } else {
                     create_empty_image(i, j);

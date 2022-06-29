@@ -55,9 +55,9 @@ find_package(Vulkan)
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/assimp" "${CMAKE_CURRENT_SOURCE_DIR}/external/include/assimp")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw")
 
-set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
-set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/tinygltf")
+#set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
+#set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
+#add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/tinygltf")
 
 #these handle the include directores for all my external dependencies, in case one these don't link properly, you can use set
 #an absolute path from your root folder here

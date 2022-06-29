@@ -9,10 +9,6 @@
 #include <fstream>
 #include <limits>
 
-#define TINYGLTF_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
-
 using namespace tuco;
 
 bool Model::check_gltf(const std::string& filepath) {
@@ -372,6 +368,8 @@ Primitive Model::process_assimp_primitive(aiMesh* mesh, aiMaterial** materials) 
     if (material.opacity < 1.0) {
         prim.is_transparent = true;
     }
+
+    return prim;
 }
 
 std::shared_ptr<Mesh> Model::processMesh(aiMesh* mesh, aiMaterial** materials) {
