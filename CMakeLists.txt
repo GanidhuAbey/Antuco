@@ -38,6 +38,16 @@ file(GLOB SOURCES lib/*.cpp lib/vulkan_wrapper/*.cpp)
 
 set(SHADERC_SKIP_TESTS ON)
 
+#these handle the include directores for all my external dependencies, in case one these don't link properly, you can use set
+#an absolute path from your root folder here
+include_directories("${Vulkan_INCLUDE_DIR}")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/tinygltf")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glm")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/stb")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/assimp/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/build/assimp/include")
+
 #add_library(shaderc STATIC IMPORTED GLOBAL)
 
 #find_library(SHADERC_LIBRARY libshaderc_combined.a)
@@ -59,15 +69,7 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw")
 #set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
 #add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/tinygltf")
 
-#these handle the include directores for all my external dependencies, in case one these don't link properly, you can use set
-#an absolute path from your root folder here
-include_directories("${Vulkan_INCLUDE_DIR}")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw/include")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glm")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/stb")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/assimp/include")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/build/assimp/include")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/tinygltf")
+
 
 #engine composer
 

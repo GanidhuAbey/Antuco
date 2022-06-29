@@ -107,7 +107,7 @@ void main() {
         texture_component = vec3(1);
     }
     
-    result = (mat.ambient * AMBIENCE_FACTOR) + diffuse_final;
+    result = texture_component;
 
     outColor = vec4(result, mat.has_texture.g);
 }

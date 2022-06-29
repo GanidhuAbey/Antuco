@@ -1185,10 +1185,8 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
 
     for (size_t j = 0; j < game_objects.size(); j++) {
         if (!game_objects[j]->update) {
-            for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
-                std::shared_ptr<Mesh> mesh_data = game_objects[j]->object_model.model_meshes[k];
-                uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
-                uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
+            for (size_t k = 0; k < game_objects[j]->object_model.primitives.size(); k++) {
+                Primitive prim = game_objects[j]->object_model.primitives[k];
 
                 VkDescriptorSet descriptors[1] = { light_ubo[j].get_api_set(command_index) };
 
@@ -1202,14 +1200,11 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
                     nullptr);
 
                 vkCmdDrawIndexed(command_buffers[command_index], 
-                    index_count, 
+                    prim.index_count, 
                     1, 
-                    total_indexes, 
-                    total_vertices, 
+                    prim.index_start, 
+                    0, 
                     static_cast<uint32_t>(0));
-
-                total_indexes += index_count;
-                total_vertices += vertex_count;
             }
         }
     }
@@ -1337,13 +1332,9 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
         for (size_t j = 0; j < game_objects.size(); j++) {
             if (!game_objects[j]->update) {
-                for (size_t k = 0; k < game_objects[j]->object_model.model_meshes.size(); k++) {
+                for (size_t k = 0; k < game_objects[j]->object_model.primitives.size(); k++) {
 
-                    std::shared_ptr<Mesh> mesh_data =
-                        game_objects[j]->object_model.model_meshes[k];
-
-                    uint32_t index_count = static_cast<uint32_t>(mesh_data->indices.size());
-                    uint32_t vertex_count = static_cast<uint32_t>(mesh_data->vertices.size());
+                    Primitive prim = game_objects[j]->object_model.primitives[k];
 
                     std::vector<VkDescriptorSet> descriptors = {
                         light_ubo[j].get_api_set(i),
@@ -1365,14 +1356,11 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
                     vkCmdDrawIndexed(
                         command_buffers[i],
-                        index_count,
+                        prim.index_count,
                         1,
-                        total_indexes,
-                        total_vertices,
+                        prim.index_start,
+                        0, //indices refer to all vertices in model, then no vertex offsets are required.
                         static_cast<uint32_t>(0));
-
-                    total_indexes += index_count;
-                    total_vertices += vertex_count;
                 }
             }
         }
@@ -1626,9 +1614,9 @@ void GraphicsImpl::update_light_buffer(VkDeviceSize memory_offset, LightBufferOb
 
 void GraphicsImpl::update_materials(VkDeviceSize memory_offset, Material mat) {
     MaterialsObject mat_obj;
-    float has_image = 1;
+    float has_image = 1.0f;
     if (mat.image_index == std::numeric_limits<uint32_t>::max()) {
-        has_image = 0;
+        has_image = 0.0f;
     }
 
     mat_obj.init(glm::vec4(has_image, mat.opacity, 0.0, 0.0),
@@ -1636,7 +1624,7 @@ void GraphicsImpl::update_materials(VkDeviceSize memory_offset, Material mat) {
             mat.diffuse,
             mat.specular);
 
-    uniform_buffer.write(*p_device, memory_offset, sizeof(mat), &mat);
+    uniform_buffer.write(*p_device, memory_offset, sizeof(mat_obj), &mat_obj);
 }
 
 void GraphicsImpl::update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo) {
@@ -1840,6 +1828,63 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
 
     texture_sets[object].set_binding(0);
     texture_sets[object].update_set(texture_set);
+}
+
+void GraphicsImpl::create_vulkan_image(ImageBuffer& image, size_t i, size_t j) {
+    //create image
+    mem::ImageData data{};
+    mem::ImageCreateInfo create{};
+    mem::ImageViewCreateInfo view{};
+
+    create.format = VK_FORMAT_R8G8B8A8_SRGB;
+    create.extent = {image.width, image.height, 1};
+    create.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    create.queueFamilyIndexCount = 1;
+    create.pQueueFamilyIndices = &graphics_family;
+    create.size = image.buffer_size;
+    create.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    view.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+    data.image_view_info = view;
+    data.image_info = create;
+
+    texture_images.resize(texture_images.size() + 1);
+    texture_images[texture_images.size() - 1].resize(1);
+
+    texture_images[texture_images.size() - 1][0].init(physical_device.get(), *p_device, data);
+
+    //create cpu buffer
+    mem::BufferCreateInfo textureBufferInfo{};
+    textureBufferInfo.size = image.buffer_size;
+    textureBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    textureBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    textureBufferInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | 
+                                         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    textureBufferInfo.queueFamilyIndexCount = 1;
+    textureBufferInfo.pQueueFamilyIndices = &graphics_family;
+
+    //TODO: make buffer at runtime specifically for transfer commands
+    mem::Memory buffer;
+    mem::createBuffer(physical_device, *p_device, &textureBufferInfo, &buffer);
+
+    mem::allocateMemory(image.buffer_size, &buffer);
+    mem::mapMemory(*p_device, image.buffer_size, &buffer, &image.buffer[0]);
+
+    //map from buffer to image
+    texture_images[texture_images.size() - 1][0].transfer(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, graphics_queue, command_pool);
+    VkOffset3D image_offset = { 0, 0, 0 };
+    texture_images[texture_images.size() - 1][0].copy_from_buffer(buffer.buffer, image_offset, std::nullopt, graphics_queue, command_pool);
+    texture_images[texture_images.size() - 1][0].transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool);
+
+    mem::destroyBuffer(*p_device, buffer);
+
+    //save to resource set
+    mem::Image& vulkan_image = texture_images[texture_images.size() - 1][0];
+    ResourceCollection& set = texture_sets[i];
+    set.add_image(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, vulkan_image, texture_sampler);
+    set.set_binding(0);
+    set.update_set(j);
 }
 
 

@@ -123,6 +123,13 @@ private:
     void create_image_view(ImageViewCreateInfo info);
 };
 
+//buffer visible to the CPU, used for mapping data from the CPU to the GPU.
+//amount of memory visible to both CPU and GPU is limited in systems so should only be
+//used temporary cases.
+class CPUBuffer {
+
+};
+
 class SearchBuffer {
 private:
     std::vector<VkDeviceSize> memory_locations;

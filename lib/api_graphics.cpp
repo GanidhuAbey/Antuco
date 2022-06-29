@@ -128,7 +128,6 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
                 model.primitives;
 			//create texture data
 			create_texture_set(primitives.size());
-
             create_materials_set(primitives.size());
             write_to_materials();
 
@@ -140,8 +139,8 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 
 				//create vulkan image
 				//why is textures even a vector???
-                if (material.texturePath.has_value()) {
-                    create_texture_image(material.texturePath.value(), i, j);
+                if (primitives[j].image_index < model.model_images.size()) {
+					create_vulkan_image(model.model_images[j], i, j);
                 } else {
                     create_empty_image(i, j);
                 }

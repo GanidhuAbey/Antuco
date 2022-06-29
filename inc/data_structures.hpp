@@ -8,6 +8,7 @@
 #include "assimp/types.h"
 #include <glm/glm.hpp>
 #include <vector>
+#include <memory>
 #include <optional>
 
 const uint32_t MATERIALS_POOL_SIZE = 5;
@@ -73,8 +74,12 @@ public:
 };
 
 struct ImageBuffer {
-    unsigned char* buffer = nullptr;
+    std::vector<unsigned char> buffer;
     size_t buffer_size = 0;
+    
+    //image dimensions
+    uint32_t width;
+    uint32_t height;
 };
 
 struct Material { 

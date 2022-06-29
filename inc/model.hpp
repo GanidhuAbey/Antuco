@@ -12,7 +12,7 @@
 #include "mesh.hpp"
 
 #include "config.hpp"
-#include "tiny_gltf.h"
+#include <tiny_gltf.h>
 
 #include <thread>
 #include <future>
@@ -79,7 +79,6 @@ private:
     Primitive process_assimp_primitive(aiMesh* mesh, aiMaterial** materials);
 
 private:
-	std::vector<std::shared_ptr<Mesh>> model_meshes;
 	std::string model_name;
 	//push the model loading onto a different thread
 
@@ -91,6 +90,7 @@ private:
     std::vector<uint32_t> read_indices(std::ifstream* file);
     MaterialsObject read_materials(std::ifstream* file);
 	std::string get_texture(std::ifstream* file);
+    std::vector<uint32_t> linearlize_primitive(Primitive primitive);
 
 private:
     std::vector<Vertex> model_vertices;

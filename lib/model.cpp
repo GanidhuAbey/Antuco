@@ -108,20 +108,26 @@ std::vector<ImageBuffer>& images) {
         tinygltf::Image& image = model.images[i];
         uint32_t index = model.textures[i].source;
         if (image.component == 3) {
-                images[index].buffer_size = image.width * image.height * 4;
-			    images[index].buffer = new unsigned char[images[i].buffer_size];
-				unsigned char* rgba = images[i].buffer;
-				unsigned char* rgb = &image.image[0];
-				for (size_t i = 0; i < image.width * image.height; i++) {
-					memcpy(rgba, rgb, sizeof(unsigned char) * 3);
-					rgba += 4;
-					rgb += 3;
-				}
+            images[index].buffer_size = image.width * image.height * 4;
+            unsigned char* rgba = new unsigned char[images[index].buffer_size];
+			unsigned char* rgb = &image.image[0];
+			for (size_t i = 0; i < image.width * image.height; i++) {
+				memcpy(rgba, rgb, sizeof(unsigned char) * 3);
+				rgba += 4;
+				rgb += 3;
+			}
+            images.resize(1);
+            images[index].buffer[0] = *rgba;
+
+            delete[] rgba;
         } 
         else {
-            images[index].buffer = &image.image[0];
+            images[index].buffer = image.image;
             images[index].buffer_size = image.image.size();
         }
+
+        images[index].width = image.width;
+        images[index].height = image.height;
     }
 }
 
@@ -265,7 +271,7 @@ void Model::add_mesh(const std::string& fileName, std::optional<std::string> nam
     //NOTE: disabled reading from files 
 	if (name.has_value() && file_exists(name.value()) && false) {
 		model_name = name.value();
-		read_from_file();
+		//read_from_file();
 		return;
 	}
 
@@ -491,6 +497,7 @@ Material Model::processMaterial(uint32_t materialIndex, aiMaterial** materials) 
 
 }
 
+/*
 void Model::read_from_file() {
 	std::string file_name = model_name + ".bin";
 	std::ifstream file(file_name, std::ios::in | std::ios::binary);
@@ -527,6 +534,7 @@ void Model::read_from_file() {
 
     file.close();
 }
+*/
 
 std::string Model::get_texture(std::ifstream* file) {
     std::string texture_path;
@@ -684,6 +692,17 @@ bool Model::file_exists(std::string name) {
     return file.is_open();
 }
 
+std::vector<uint32_t> Model::linearlize_primitive(Primitive primitive) {
+    std::vector<uint32_t> lin;
+    lin.push_back(primitive.image_index);
+    lin.push_back(primitive.index_count);
+    lin.push_back(primitive.index_start);
+    lin.push_back(primitive.mat_index);
+    lin.push_back(static_cast<uint32_t>(primitive.is_transparent));
+
+    return lin;   
+}
+
 void Model::write_to_file() {
     std::ofstream file;
 	file.open(model_name + ".bin", std::ios::out | std::ios::binary);
@@ -691,40 +710,32 @@ void Model::write_to_file() {
 	//file.write(model_name.c_str(), sizeof(model_name.c_str())); 
     uint32_t c = std::numeric_limits<uint32_t>::max();
     float f = std::numeric_limits<float>::max();
-	for (size_t i = 0; i < model_meshes.size(); i++) {
-		//save vertices
-		for (size_t j = 0; j < model_meshes[i]->vertices.size(); j++) {
-			//std::string vertex = model_meshes[i]->vertices[j].to_string();
-			//file.write(vertex.c_str(), sizeof(vertex));
-            //
-            std::vector<float> floats = model_meshes[i]->vertices[j].linearlize();
-            for (float& f : floats) {
-                file.write(reinterpret_cast<char*>(&f), sizeof(float));
-            }
-            //Vertex vertex = model_meshes[i]->vertices[j];
-            //file.write(reinterpret_cast<char*>(&vertex), sizeof(Vertex));
-		} 
-        file.write(reinterpret_cast<char*>(&f), sizeof(float));
-		//saive indices
-        for (size_t j = 0; j < model_meshes[i]->indices.size(); j+=3) {
-            for (size_t k = 0; k < 3; k++) {
-                uint32_t index = model_meshes[i]->indices[j + k];
-                file.write(reinterpret_cast<char*>(&index), sizeof(uint32_t)); 
-            } 
-        }
-        file.write(reinterpret_cast<char*>(&c), sizeof(uint32_t));
-        
-		//save materials
-        std::vector<float> floats = model_meshes[i]->mat_data.linearlize();
-        for (float& m : floats) {
-            file.write(reinterpret_cast<char*>(&m), sizeof(float));
-        }
 
-        //save textures
-        if (model_meshes[i]->mat_data.texture_opacity.x == 1) {
-            std::string texture_path = std::string(model_meshes[i]->textures[0].data());
-            file.write(texture_path.c_str(), texture_path.size());
+    //save vertices
+    for (Vertex& vertex : model_vertices) {
+        std::vector<float> vertex_linearlized = vertex.linearlize();
+        for (float& num : vertex_linearlized) {
+            file.write(reinterpret_cast<char*>(&num), sizeof(float));
         }
-	}
+    }
+    file.write(reinterpret_cast<char*>(&f), sizeof(float));
+
+    //save indices
+    for (uint32_t& index : model_indices) {
+        file.write(reinterpret_cast<char*>(&index), sizeof(uint32_t));
+    }
+    file.write(reinterpret_cast<char*>(&c), sizeof(uint32_t));
+
+    //save image data 
+    //TODO: load image with stb_image.h and save image buffer data to file (faster at runtime) and consistent with gltf importing
+
+    //save primitives
+    for (Primitive& prim : primitives) {
+        std::vector<uint32_t> lin = linearlize_primitive(prim);
+        for (uint32_t& u_int : lin) {
+            file.write(reinterpret_cast<char*>(&lin), sizeof(uint32_t));
+        }
+    }
+    
 	file.close();
 }
