@@ -98,7 +98,7 @@ int main() {
 	some_object->add_mesh(root_project + "/objects/antuco-files/mac/bmw.obj", "bmw");
 	
 #elif defined(_WIN32) || defined(_WIN64)
-	another->add_mesh(root_project + "\\objects\\antuco-files\\windows\\cube.glb", "grey_cube");
+	another->add_mesh(root_project + "\\objects\\antuco-files\\windows\\red_cube.glb", "grey_cube");
 	//light_mesh->add_mesh(root_project + "\\objects\\antuco-files\\windows\\surface.obj", "surfacef");
 	//some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.obj", "bmw");
 #endif

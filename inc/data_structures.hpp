@@ -82,13 +82,19 @@ struct ImageBuffer {
     uint32_t height;
 };
 
-struct Material { 
+class Material {
+public:
     uint32_t image_index;
     std::optional<std::string> texturePath;
     glm::vec4 ambient; //Ka
     glm::vec4 diffuse; //Kd
     glm::vec4 specular; //Ks
     float opacity;
+
+public:
+    Material() {}
+    ~Material() {}
+    std::vector<float> linearlize();
 };
 
 struct TransparentMesh {

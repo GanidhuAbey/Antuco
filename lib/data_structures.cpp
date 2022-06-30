@@ -4,6 +4,25 @@
 
 using namespace tuco;
 
+std::vector<float> Material::linearlize() {
+    std::vector<float> floats;
+    floats.push_back(opacity);
+
+    floats.push_back(ambient.x);
+    floats.push_back(ambient.y);
+    floats.push_back(ambient.z);
+
+    floats.push_back(diffuse.x);
+    floats.push_back(diffuse.y);
+    floats.push_back(diffuse.z);
+
+    floats.push_back(specular.x);
+    floats.push_back(specular.y);
+    floats.push_back(specular.z);
+
+    return floats;
+}
+
 Vertex::Vertex(glm::vec4 pos, glm::vec4 norm, glm::vec2 tex) {
 	position = pos;
 	normal = norm;

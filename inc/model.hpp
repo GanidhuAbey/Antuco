@@ -5,14 +5,12 @@
 */
 #pragma once
 
-#include <assimp/Importer.hpp>      // C++ importer interface
-#include <assimp/scene.h>           // Output data structure
-#include <assimp/postprocess.h>     // Post processing flags
-
 #include "mesh.hpp"
 
 #include "config.hpp"
 #include <tiny_gltf.h>
+
+#include "memory_allocator.hpp"
 
 #include <thread>
 #include <future>
@@ -33,17 +31,6 @@ public:
 
 private:
 	//if name is left null, then model will not be saved/loaded from file
-	void processScene(aiNode* node, aiMesh** const meshes, aiMaterial** materials);
-    std::shared_ptr<Mesh> processMesh(aiMesh* mesh, aiMaterial** materials);
-	
-    std::vector<Vertex> processVertices(
-            uint32_t numOfVertices, 
-            aiVector3D* aiVertices, 
-            aiVector3D* aiNormals, 
-            aiVector3t<ai_real>** textureCoords);
-
-	std::vector<uint32_t> processIndices(uint32_t numOfFaces, aiFace* faces);
-	Material processMaterial(uint32_t materialIndex, aiMaterial** materials);
 	void add_mesh(const std::string& fileName, std::optional<std::string> name = std::nullopt);
     bool check_gltf(const std::string& filepath);
     void add_gltf_model(const std::string& filepath);
@@ -56,7 +43,7 @@ private:
     void assign_mesh(uint32_t index_start,
             uint32_t index_count,
             std::vector<Material> materials,
-            std::vector<ImageBuffer> images);
+            std::vector<mem::Image> images);
 
 	void process_gltf_indices(
             tinygltf::Model model,
@@ -75,8 +62,6 @@ private:
 
     void process_gltf_textures(tinygltf::Model model,
             std::vector<ImageBuffer>& images);
-
-    Primitive process_assimp_primitive(aiMesh* mesh, aiMaterial** materials);
 
 private:
 	std::string model_name;
