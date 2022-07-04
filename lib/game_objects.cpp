@@ -48,5 +48,7 @@ void GameObject::scale(glm::vec3 scale_vector) {
 		0, 0, 0, 1
 	};
 
-	transform = transform * glm::transpose(scale_mat);
+	for (auto& transform : object_model.transforms) {
+		transform = transform * glm::transpose(scale_mat);
+	}
 }

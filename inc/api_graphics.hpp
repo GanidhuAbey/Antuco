@@ -117,7 +117,7 @@ private:
 	TucoPipeline screen_pipeline;
 
     //if oit is enabled, then we must disable depth testing in main pipeline?
-    TucoPipeline graphics_pipeline;
+    std::vector<TucoPipeline> graphics_pipelines;
 
 private:
     void create_depth_pipeline();
@@ -250,10 +250,10 @@ private:
 	void create_graphics_pipeline();
 	void create_ubo_layout();
 	void create_ubo_pool();
-	void create_ubo_set();
+	void create_ubo_set(uint32_t set_count);
     void create_materials_layout();
     void create_materials_pool();
-    void create_materials_set(uint32_t mesh_count);
+    void create_materials_set(uint32_t mat_count);
 	void create_texture_layout();
 	void create_texture_pool();
 	void create_texture_set(size_t mesh_count);
@@ -290,7 +290,7 @@ private:
             VkShaderModule shaderModule);
 	
     void write_to_ubo();	
-    void write_to_materials();
+    void write_to_materials(size_t mat_count);
 	void update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo);
     void update_materials(VkDeviceSize memory_offset, Material mat);
     void copy_image_to_image(
@@ -305,7 +305,7 @@ private:
     void create_empty_image(size_t object, size_t texture_set);
 	void write_to_texture_set(ResourceCollection texture_set, mem::Image image);
 	void update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo);
-	void create_light_set(UniformBufferObject lbo);
+	void create_light_set();
 	void create_light_layout();
 	void cleanup_swapchain();
 	void recreate_swapchain();

@@ -45,10 +45,22 @@ void Model::add_gltf_model(const std::string& filepath) {
 
     //get scene
     const tinygltf::Scene& scene = model.scenes[0]; //use model.defaultScene?
+    
+    //process materials 
+    process_gltf_materials(
+        model,
+        model_materials
+    );
+
+    //process images
+    process_gltf_textures(model, model_images);
+                                                    
     //process nodes
     for (size_t i = 0; i < scene.nodes.size(); i++) {
         process_gltf_nodes(model.nodes[scene.nodes[i]], model);
     }
+    //reverse order of primitives as test
+    std::reverse(primitives.begin(), primitives.end());
 }
 
 void Model::process_gltf_nodes(
@@ -61,22 +73,40 @@ void Model::process_gltf_nodes(
     
     const tinygltf::Mesh mesh = model.meshes[node.mesh];
     
-    uint32_t index_point = model_indices.size();
-    uint32_t vertex_point = model_vertices.size();
+    //uint32_t index_point = model_indices.size();
+    //uint32_t vertex_point = model_vertices.size();
+    auto index_point = uint32_t(0);
+    auto vertex_point = uint32_t(0);
     uint32_t index_count = 0;
 
-    //process materials 
-    process_gltf_materials(
-            model,
-            model_materials
-    );
+    auto matrix = glm::mat4{
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1,
+    };
 
-    //process images
-    process_gltf_textures(model, model_images);
+    //process translations for nodes
+    if (node.translation.size() == 3) {
+        matrix = glm::translate(matrix, glm::vec3(glm::make_vec3(node.translation.data())));
+    }
+    if (node.rotation.size() == 4) {
+        glm::quat q = glm::make_quat(node.rotation.data());
+        matrix *= glm::mat4(q);
+    }
+    if (node.scale.size() == 3) {
+        matrix = glm::scale(matrix, glm::vec3(glm::make_vec3(node.scale.data())));
+    }
+    if (node.matrix.size() == 16) {
+        matrix = glm::make_mat4x4(node.matrix.data());
+    }
 
+    transforms.push_back(matrix);
 
     for (size_t i = 0; i < mesh.primitives.size(); i++) {
         const tinygltf::Primitive& primitive = mesh.primitives[i];
+        index_point = static_cast<uint32_t>(model_indices.size());
+        vertex_point = static_cast<uint32_t>(model_vertices.size());
         //process vertices
         process_gltf_vertices(model, primitive, model_vertices); 
 
@@ -94,7 +124,22 @@ void Model::process_gltf_nodes(
         prim.index_start = index_point;
         prim.index_count = index_count;
         prim.mat_index = primitive.material;
-        prim.image_index = model_materials[i].image_index; 
+        if (prim.mat_index == -1) {
+            prim.image_index = -1;
+            //create new material
+            auto mat = Material{};
+            mat.ambient = glm::vec4(1.0);
+            mat.diffuse = glm::vec4(1.0);
+            mat.opacity = 1.0f;
+            mat.specular = glm::vec4(0.0f);
+            
+            prim.mat_index = model_materials.size();
+            model_materials.push_back(mat);
+        }
+        else {
+            prim.image_index = model_materials[prim.mat_index].image_index;
+        }
+        prim.transform_index = transforms.size() - 1;
         primitives.push_back(prim);
     }
 }    
@@ -167,7 +212,7 @@ std::vector<Material>& materials) {
             materials[i].image_index = mat.values["baseColorTexture"].TextureIndex();
         }
         else {
-            materials[i].image_index = std::numeric_limits<uint32_t>::max();
+            materials[i].image_index = -1;
         }
     }
 }
@@ -197,7 +242,7 @@ uint32_t& vertex_start) {
 			const uint16_t* buf = reinterpret_cast<const uint16_t*>(
                     &buffer.data[accessor.byteOffset + buffer_view.byteOffset]);
 			for (size_t index = 0; index < accessor.count; index++) {
-				indices.push_back(buf[index] + vertex_start);
+				indices.push_back(static_cast<uint32_t>(buf[index]) + vertex_start);
 			}
 		    break;
 		}
@@ -205,7 +250,7 @@ uint32_t& vertex_start) {
 			const uint8_t* buf = reinterpret_cast<const uint8_t*>(
                     &buffer.data[accessor.byteOffset + buffer_view.byteOffset]);
 			for (size_t index = 0; index < accessor.count; index++) {
-			    indices.push_back(buf[index] + vertex_start);
+			    indices.push_back(static_cast<uint32_t>(buf[index]) + vertex_start);
 			}
 			break;
 		}
@@ -267,11 +312,13 @@ std::vector<Vertex>& vertices) {
 
 void Model::add_mesh(const std::string& fileName, std::optional<std::string> name) {
     //NOTE: disabled reading from files 
-	if (name.has_value() && file_exists(name.value()) && false) {
+    /*
+	if (name.has_value() && file_exists(name.value())) {
 		model_name = name.value();
 		//read_from_file();
 		return;
 	}
+    */
 
     if (check_gltf(fileName)) {
         add_gltf_model(fileName);
@@ -286,7 +333,7 @@ void Model::add_mesh(const std::string& fileName, std::optional<std::string> nam
 Model::Model() {}
 Model::~Model() {}
 
-/*
+
 void Model::read_from_file() {
 	std::string file_name = model_name + ".bin";
 	std::ifstream file(file_name, std::ios::in | std::ios::binary);
@@ -309,21 +356,43 @@ void Model::read_from_file() {
 
         std::vector<Vertex> vertices = read_vertices(&file);
         std::vector<uint32_t> indices = read_indices(&file);
-        MaterialsObject materials =  read_materials(&file);
+        std::vector<ImageBuffer> images = read_images(&file);
+        std::vector<Material> materials =  read_materials(&file);
 
-        std::string texture_path;
-        if (materials.texture_opacity.x == 1) {
-            texture_path = get_texture(&file);
-        }
+        model_vertices = vertices;
+        model_indices = indices;
+        model_materials = materials;
 
-        Mesh new_mesh(vertices, indices, materials, texture_path);
-
-        model_meshes.push_back(std::make_unique<Mesh>(new_mesh));
+        
     }
 
     file.close();
 }
-*/
+
+std::vector<ImageBuffer> Model::read_images(std::ifstream* file) {
+    std::vector<ImageBuffer> images;
+    
+    while (file->peek() != EOF) {
+        ImageBuffer ib;
+        //get buffer size
+        uint32_t buffer_size;
+        file->read(reinterpret_cast<char*>(&ib.buffer_size), sizeof(uint32_t));
+
+        //if at end of image data, then buffer size will be uint32_t::max
+        if (ib.buffer_size == UINT32_MAX) break;
+
+        //get image data
+        file->read(reinterpret_cast<char*>(&ib.buffer), sizeof(ib.buffer_size));
+
+        //get image dimensions
+        file->read(reinterpret_cast<char*>(&ib.width), sizeof(uint32_t));
+        file->read(reinterpret_cast<char*>(&ib.height), sizeof(uint32_t));
+
+        images.push_back(ib);   
+    }
+    return images;
+}
+
 
 std::string Model::get_texture(std::ifstream* file) {
     std::string texture_path;
@@ -354,56 +423,38 @@ std::vector<uint32_t> Model::read_indices(std::ifstream* file) {
     return indices;
 }
 
-MaterialsObject Model::read_materials(std::ifstream* file) {
+std::vector<Material> Model::read_materials(std::ifstream* file) {
     size_t read_state = 0;
     glm::vec4 t;
-    glm::vec4 a;
-    glm::vec4 d;
-    glm::vec4 s;
+    glm::vec4 ambience;
+    glm::vec4 diffuse;
+    glm::vec4 specular;
 
-    MaterialsObject mat;
+    std::vector<Material> mats;
 
-    float f;
-    file->read(reinterpret_cast<char*>(&f), sizeof(float));
-    t.x = f;
+    while (file->peek() != EOF) {
+        float f;
+        //read ambience
+        for (size_t i = 0; i < 3; i++) {
+            file->read(reinterpret_cast<char*>(&f), sizeof(float));
+            ambience[i] = f;
+        }
 
-    file->read(reinterpret_cast<char*>(&f), sizeof(float));
-    t.y = f;
+        //read diffuse
+        for (size_t i = 0; i < 3; i++) {
+            file->read(reinterpret_cast<char*>(&f), sizeof(float));
+            diffuse[i] = f;
+        }
 
-    file->read(reinterpret_cast<char*>(&f), sizeof(float));
-    a.x = f;
+        //read specular
+        for (size_t i = 0; i < 3; i++) {
+            file->read(reinterpret_cast<char*>(&f), sizeof(float));
+            specular[i] = f;
+        }
+    }
 
-    file->read(reinterpret_cast<char*>(&f), sizeof(float));
-    a.y = f;
 
-    file->read(reinterpret_cast<char*>(&f), sizeof(float));
-    a.z = f;
-
-    file->read(reinterpret_cast<char*>(&f), sizeof(float));
-    d.x = f;
-
-    file->read(reinterpret_cast<char*>(&f), sizeof(float));
-    d.y = f;
-
-    file->read(reinterpret_cast<char*>(&f), sizeof(float));
-    d.z = f;
-
-    file->read(reinterpret_cast<char*>(&f), sizeof(float));
-    s.x = f;
-
-    file->read(reinterpret_cast<char*>(&f), sizeof(float));
-    s.y = f;
-
-    file->read(reinterpret_cast<char*>(&f), sizeof(float));
-    s.z = f;
-
-    t.w = 0;
-    a.w = 0;
-    d.w = 0;
-    s.w = 0;
-    mat.init(t, a, d, s);
-
-    return mat;
+    return mats;
 }
 
 

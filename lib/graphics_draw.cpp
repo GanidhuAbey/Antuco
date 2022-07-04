@@ -253,6 +253,9 @@ void GraphicsImpl::create_shadowpass_resources() {
 }
 
 void GraphicsImpl::create_graphics_pipeline() {
+    //create 2 pipelines, 1 for materials with textures, one without
+    graphics_pipelines.resize(2);
+
     std::vector<VkDynamicState> dynamic_states = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR,
@@ -288,7 +291,13 @@ void GraphicsImpl::create_graphics_pipeline() {
     config.screen_extent = swapchain_extent;
     config.blend_colours = true;
 
-    graphics_pipeline.init(*p_device, config);
+    graphics_pipelines[0].init(*p_device, config);
+
+    auto it = config.descriptor_layouts.begin() + 2;
+    config.descriptor_layouts.erase(it);
+    config.frag_shader_path = SHADER_PATH + "no_texture.frag";
+
+    graphics_pipelines[1].init(*p_device, config);
 }
 
 void GraphicsImpl::create_oit_pass() {
@@ -496,22 +505,22 @@ void GraphicsImpl::create_materials_pool() {
     mat_pool = std::make_unique<mem::Pool>(*p_device, pool_info);
 }
 
-void GraphicsImpl::create_materials_set(uint32_t mesh_count) {
-    std::vector<VkDescriptorSetLayout> mat_layouts(mesh_count, mat_layout);
+void GraphicsImpl::create_materials_set(uint32_t mat_count) {
+    std::vector<VkDescriptorSetLayout> mat_layouts(mat_count, mat_layout);
 
     VkDescriptorSetAllocateInfo allocateInfo{};
 
     VkDescriptorPool allocated_pool;
-    size_t pool_index = mat_pool->allocate(mesh_count);
+    size_t pool_index = mat_pool->allocate(mat_count);
 
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocateInfo.descriptorPool = mat_pool->pools[pool_index];
-    allocateInfo.descriptorSetCount = mesh_count;
+    allocateInfo.descriptorSetCount = mat_count;
     allocateInfo.pSetLayouts = mat_layouts.data();
 
    
     mat_sets.resize(mat_sets.size() + 1);
-    mat_sets[mat_sets.size() - 1].resize(mesh_count);
+    mat_sets[mat_sets.size() - 1].resize(mat_count);
     auto result = vkAllocateDescriptorSets(*p_device, &allocateInfo, mat_sets[mat_sets.size() - 1].data());
     if (result != VK_SUCCESS) {
         LOG("failed to allocate descriptor sets!");
@@ -624,17 +633,18 @@ void GraphicsImpl::create_ubo_pool() {
     ubo_pool = std::make_unique<mem::Pool>(*p_device, pool_info);
 }
 
-void GraphicsImpl::create_ubo_set() {
-    std::vector<VkDescriptorSetLayout> ubo_layouts(swapchain_images.size(), ubo_layout);
+//create swapchain image * set_count amount of descriptor sets.
+void GraphicsImpl::create_ubo_set(uint32_t set_count) {
+    std::vector<VkDescriptorSetLayout> ubo_layouts(set_count, ubo_layout);
 
     VkDescriptorSetAllocateInfo allocateInfo{};
 
     VkDescriptorPool allocated_pool;
-    size_t pool_index = ubo_pool->allocate(swapchain_images.size());
+    size_t pool_index = ubo_pool->allocate(set_count);
 
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocateInfo.descriptorPool = ubo_pool->pools[pool_index];
-    allocateInfo.descriptorSetCount = swapchain_images.size();
+    allocateInfo.descriptorSetCount = set_count;
     allocateInfo.pSetLayouts = ubo_layouts.data();
 
     //size_t currentSize = descriptorSets.size();
@@ -645,7 +655,7 @@ void GraphicsImpl::create_ubo_set() {
     //      to only create one copy for every swapchain image.
     size_t current_size = ubo_sets.size();
     ubo_sets.resize(current_size + 1);
-    ubo_sets[current_size].resize(swapchain_images.size());
+    ubo_sets[current_size].resize(set_count);
     if (vkAllocateDescriptorSets(*p_device, &allocateInfo, ubo_sets[current_size].data()) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     } 
@@ -865,21 +875,20 @@ void GraphicsImpl::update_descriptor_set(VkDescriptorBufferInfo buffer_info, uin
     vkUpdateDescriptorSets(*p_device, 1, &writeInfo, 0, nullptr);
 }
 
-void GraphicsImpl::write_to_materials() {
+void GraphicsImpl::write_to_materials(size_t mat_count) {
     mat_offsets.resize(mat_offsets.size() + 1);
+    mat_offsets[mat_sets.size() - 1].resize(mat_count);
     for (size_t i = 0; i < mat_sets[mat_sets.size() - 1].size(); i++) {
         VkDescriptorBufferInfo buffer_info = setup_descriptor_set_buffer(sizeof(MaterialsObject)); 
-        mat_offsets[mat_offsets.size() - 1].push_back(buffer_info.offset);
+        mat_offsets[mat_offsets.size() - 1][i] = buffer_info.offset;
         update_descriptor_set(buffer_info, 0, mat_sets[mat_sets.size() - 1][i]);
     }
 }
 
 void GraphicsImpl::write_to_ubo() {
-    VkDescriptorBufferInfo buffer_info = setup_descriptor_set_buffer(sizeof(UniformBufferObject));
-
-    ubo_offsets.push_back(buffer_info.offset);
-
-    for (size_t i = 0; i < swapchain_images.size(); i++) {
+    for (size_t i = 0; i < ubo_sets[ubo_sets.size() - 1].size(); i++) {
+        VkDescriptorBufferInfo buffer_info = setup_descriptor_set_buffer(sizeof(UniformBufferObject));
+        ubo_offsets.push_back(buffer_info.offset);
         update_descriptor_set(buffer_info, 0, ubo_sets[ubo_sets.size() - 1][i]);
     }
 }
@@ -909,8 +918,10 @@ void GraphicsImpl::destroy_draw() {
 
     vkDestroySampler(*p_device, texture_sampler, nullptr);
     vkDestroySampler(*p_device, shadowmap_sampler, nullptr);
-
-    graphics_pipeline.destroy();
+    
+    for (auto& graphics_pipeline : graphics_pipelines) {
+        graphics_pipeline.destroy();
+    }
     shadowmap_pipeline.destroy();
     screen_pipeline.destroy();
     
@@ -1044,7 +1055,7 @@ void GraphicsImpl::create_swapchain() {
 
 
 
-void GraphicsImpl::create_light_set(UniformBufferObject lbo) { 
+void GraphicsImpl::create_light_set() { 
     size_t current_size = light_ubo.size();
     light_ubo.resize(current_size + 1);
     light_ubo[current_size].init(
@@ -1063,29 +1074,6 @@ void GraphicsImpl::create_light_set(UniformBufferObject lbo) {
     light_ubo[current_size].update_set();
  
     light_offsets.push_back(offset);
-    /*
-    VkDescriptorBufferInfo buffer_info{};
-    buffer_info.buffer = uniform_buffer.buffer;
-    buffer_info.offset = offset;
-    buffer_info.range = (VkDeviceSize)sizeof(UniformBufferObject);
-
-    light_offsets.push_back(offset);
-
-    for (size_t i = 0; i < swapchain_images.size(); i++) {
-        VkWriteDescriptorSet writeInfo{};
-        writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeInfo.dstBinding = 1;
-        writeInfo.dstSet = light_ubo[light_ubo.size() - 1][i];
-        writeInfo.descriptorCount = 1;
-        writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        writeInfo.pBufferInfo = &buffer_info;
-        writeInfo.dstArrayElement = 0;
-
-        vkUpdateDescriptorSets(*p_device, 1, &writeInfo, 0, nullptr);
-    }
-    */
-
-    update_uniform_buffer(offset, lbo);
 }
 
 void GraphicsImpl::free_command_buffers() {
@@ -1280,11 +1268,6 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
 		//add commands to command buffer
 
-		vkCmdBindPipeline(
-                command_buffers[i], 
-                VK_PIPELINE_BIND_POINT_GRAPHICS, 
-                graphics_pipeline.get_api_pipeline());
-
 		VkViewport newViewport{};
 		newViewport.x = 0;
 		newViewport.y = 0;
@@ -1307,10 +1290,17 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
 		//universal to every object so i can push the light constants before the for loop
 		//convert to light_object;
+
+        auto texture_less = false;
+        auto index = 0;
+        vkCmdBindPipeline(
+            command_buffers[i],
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            graphics_pipelines[0].get_api_pipeline());
         
 		vkCmdPushConstants(
                 command_buffers[i], 
-                graphics_pipeline.get_api_layout(), 
+                graphics_pipelines[0].get_api_layout(),
                 VK_SHADER_STAGE_VERTEX_BIT, 
                 0, 
                 sizeof(light), 
@@ -1318,39 +1308,79 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 
         vkCmdPushConstants(
                 command_buffers[i], 
-                graphics_pipeline.get_api_layout(), 
+                graphics_pipelines[0].get_api_layout(),
                 VK_SHADER_STAGE_VERTEX_BIT, 
                 sizeof(light), 
                 sizeof(glm::vec4), 
                 &camera_pos); 
 
 		//draw first object (cube)
-		uint32_t total_indexes = 0;
-		uint32_t total_vertices = 0;
+        auto index_offset = uint32_t(0);
+        auto vertex_offset = uint32_t(0);
 
         std::vector<TransparentMesh> transparent_meshes;
 
         for (size_t j = 0; j < game_objects.size(); j++) {
+            auto total_indexes = uint32_t(0);
+            //auto total_vertices = uint32_t(0);
+            //i actually think this update this is ill-thought out...
             if (!game_objects[j]->update) {
                 for (size_t k = 0; k < game_objects[j]->object_model.primitives.size(); k++) {
 
                     Primitive prim = game_objects[j]->object_model.primitives[k];
+                    
+                    auto descriptor_1 = std::vector<VkDescriptorSet>();
+                    auto descriptor_2 = std::vector<VkDescriptorSet>();
+                    auto descriptors = std::vector<std::vector<VkDescriptorSet>>();
 
-                    std::vector<VkDescriptorSet> descriptors = {
-                        light_ubo[j].get_api_set(i),
-                        ubo_sets[j][i],
-                        texture_sets[j].get_api_set(k),
-                        shadowmap_set,
-                        mat_sets[j][k],
-                    };
+                    descriptor_1.resize(5);
+                    descriptor_2.resize(4);
+
+                    descriptor_1[0] = light_ubo[j].get_api_set(i);
+                    descriptor_1[1] = ubo_sets[j][prim.transform_index];
+                    descriptor_1[3] = shadowmap_set;
+                    descriptor_1[4] = mat_sets[j][prim.mat_index];
+
+                    descriptor_2[0] = descriptor_1[0];
+                    descriptor_2[1] = descriptor_1[1];
+                    descriptor_2[2] = descriptor_1[3];
+                    descriptor_2[3] = descriptor_1[4];
+                    
+
+
+                    if (prim.image_index == -1 && !texture_less) {
+                        vkCmdBindPipeline(
+                            command_buffers[i],
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            graphics_pipelines[1].get_api_pipeline());
+
+                        texture_less = true;
+                        index = 1;
+
+                    }
+                    else if (prim.image_index != -1 && texture_less) {
+                        vkCmdBindPipeline(
+                            command_buffers[i],
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            graphics_pipelines[0].get_api_pipeline());
+
+                        texture_less = false;
+                        index = 0;
+
+                        descriptor_1[2] = texture_sets[j].get_api_set(k);
+                    }
+                    auto layout = graphics_pipelines[index].get_api_layout();
+
+                    descriptors.push_back(descriptor_1);
+                    descriptors.push_back(descriptor_2);
 
                     vkCmdBindDescriptorSets(
                         command_buffers[i],
                         VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        graphics_pipeline.get_api_layout(),
+                        layout,
                         0,
-                        descriptors.size(),
-                        descriptors.data(),
+                        descriptors[index].size(),
+                        descriptors[index].data(),
                         0,
                         nullptr);
 
@@ -1358,11 +1388,14 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                         command_buffers[i],
                         prim.index_count,
                         1,
-                        prim.index_start,
-                        0, //indices refer to all vertices in model, then no vertex offsets are required.
+                        prim.index_start + index_offset,
+                        vertex_offset, //indices refer to all vertices in model, then no vertex offsets are required.
                         static_cast<uint32_t>(0));
                 }
             }
+
+            index_offset += static_cast<uint32_t>(game_objects[j]->object_model.model_indices.size());
+            vertex_offset += static_cast<uint32_t>(game_objects[j]->object_model.model_vertices.size());
         }
         vkCmdEndRenderPass(command_buffers[i]);
 

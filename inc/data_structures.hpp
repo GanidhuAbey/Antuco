@@ -54,8 +54,9 @@ struct LightBufferObject {
 struct Primitive {
     uint32_t index_start;
     uint32_t index_count;
-    uint32_t mat_index;
-    uint32_t image_index;
+    uint32_t transform_index;
+    int mat_index;
+    int image_index;
     bool is_transparent;
 };
 

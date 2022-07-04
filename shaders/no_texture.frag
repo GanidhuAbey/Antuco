@@ -11,10 +11,9 @@ layout(location=7) in vec3 light_position;
 layout(location=8) in vec3 light_color;
 layout(location=9) in vec3 camera_pos;
 
-layout(set=2, binding=0) uniform sampler2D texture1;
-layout(set=3, binding=1) uniform sampler2D shadowmap;
+layout(set=2, binding=1) uniform sampler2D shadowmap;
 
-layout(set=4, binding=0) uniform Materials {
+layout(set=3, binding=0) uniform Materials {
     vec3 has_texture;
     vec3 ambient; //Ka
     vec3 diffuse; //Kd
@@ -77,9 +76,6 @@ vec3 get_scattering(vec4 light_view) {
 void main() {
     float dist = length(light_position - vec3(vPos));
 
-    //get vector of light
-    vec3 texture_component = vec3(texture(texture1, texCoord));
-
     //this code treats a directional light as a point light...
     vec3 lightToObject = (light_position - vec3(vPos));
     //when the dot product should be at its highest, it seems to be at its lowest, and vice versa.
@@ -103,11 +99,7 @@ void main() {
     
     //TODO: get rid of this if statement once everything works
     vec3 result;
-    if (mat.has_texture.r == 0) {
-        texture_component = vec3(1);
-    }
-    
-    result = (diffuse_final) * texture_component;
+    result = diffuse_final;
 
     outColor = vec4(result, mat.has_texture.g);
 }

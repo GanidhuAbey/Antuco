@@ -3,8 +3,7 @@
 #include "data_structures.hpp"
 
 #include <memory>
-#include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.hpp>
 
 #include <vector>
 #include <optional>
@@ -34,19 +33,22 @@ namespace tuco {
  *  
  * --------------------------------------------------------------------------------
 */
+
+
 struct PipelineConfig {
     VkExtent2D screen_extent;
     std::optional<std::string> vert_shader_path = std::nullopt;
     std::optional<std::string> frag_shader_path = std::nullopt;
     std::optional<std::string> compute_shader_path = std::nullopt;
     std::vector<VkDynamicState> dynamic_states;
-    std::vector<VkDescriptorSetLayout> descriptor_layouts;
-    std::vector<VkPushConstantRange> push_ranges = std::vector<VkPushConstantRange>(0);
     VkCompareOp depth_compare_op = VK_COMPARE_OP_LESS;
     VkBool32 depth_bias_enable = VK_FALSE;
     VkRenderPass pass;
     uint32_t subpass_index;
     bool blend_colours = VK_FALSE;
+
+    std::vector<VkDescriptorSetLayout> descriptor_layouts;
+    std::vector<VkPushConstantRange> push_ranges = std::vector<VkPushConstantRange>(0);
 
     std::vector<VkVertexInputBindingDescription> binding_descriptions = {
         {0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX},
@@ -65,12 +67,12 @@ struct PipelineConfig {
 
 class TucoPipeline {
     private:
-        VkPipeline pipeline;
-        VkPipelineLayout layout;
+        VkPipeline pipeline_;
+        VkPipelineLayout layout_;
 
         VkDevice api_device;
     public:
-        void init(VkDevice device, PipelineConfig config);
+        void init(VkDevice& device, const PipelineConfig& config);
         TucoPipeline();
         ~TucoPipeline();
 
@@ -80,8 +82,8 @@ class TucoPipeline {
         void destroy();
 
     private:
-        void create_render_pipeline(PipelineConfig config);
-        void create_compute_pipeline(PipelineConfig config);
+        void create_render_pipeline(const PipelineConfig& config);
+        void create_compute_pipeline(const PipelineConfig& config);
 
 
     //helper functions
@@ -90,7 +92,8 @@ class TucoPipeline {
         VkPipelineColorBlendAttachmentState enable_alpha_blending();
         VkShaderModule create_shader_module(std::vector<uint32_t> shaderCode);
         VkPipelineShaderStageCreateInfo fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
-        void create_pipeline_layout(std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkPipelineLayout* layout);
+        void create_pipeline_layout(const std::vector<VkDescriptorSetLayout>& set_layouts,
+                                    const std::vector<VkPushConstantRange>& push_ranges);
 };
 
 }

@@ -73,7 +73,8 @@ private:
 	void read_from_file();
     std::vector<Vertex> read_vertices(std::ifstream* file);
     std::vector<uint32_t> read_indices(std::ifstream* file);
-    MaterialsObject read_materials(std::ifstream* file);
+    std::vector<Material> read_materials(std::ifstream* file);
+    std::vector<ImageBuffer> read_images(std::ifstream* file);
 	std::string get_texture(std::ifstream* file);
     std::vector<uint32_t> linearlize_primitive(Primitive primitive);
 
@@ -83,6 +84,7 @@ private:
     std::vector<Material> model_materials;
     std::vector<ImageBuffer> model_images;
     std::vector<Primitive> primitives;
+    std::vector<glm::mat4> transforms;
 };
 
 }
