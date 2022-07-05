@@ -11,7 +11,7 @@ using namespace tuco;
 //PURPOSE: create a vulkan pipeline with desired configuration
 //PARAMETERS:
 //<PipelineConfig config> - configuration settings for pipeline
-void TucoPipeline::init(VkDevice device, PipelineConfig config) {
+void TucoPipeline::init(VkDevice& device, const PipelineConfig& config) {
     api_device = device;
 
     //distinguish render/compute pipeline
@@ -30,16 +30,16 @@ TucoPipeline::~TucoPipeline() {
 }
 
 void TucoPipeline::destroy() {
-    vkDestroyPipeline(api_device, pipeline, nullptr);
-    vkDestroyPipelineLayout(api_device, layout, nullptr);
+    vkDestroyPipeline(api_device, pipeline_, nullptr);
+    vkDestroyPipelineLayout(api_device, layout_, nullptr);
 }
 
 VkPipeline TucoPipeline::get_api_pipeline() {
-    return pipeline;
+    return pipeline_;
 }
 
 VkPipelineLayout TucoPipeline::get_api_layout() {
-    return layout;
+    return layout_;
 }
 
 
@@ -69,7 +69,7 @@ VkPipelineShaderStageCreateInfo TucoPipeline::fill_shader_stage_struct(VkShaderS
     return createInfo;
 }
 
-void TucoPipeline::create_compute_pipeline(PipelineConfig config) {
+void TucoPipeline::create_compute_pipeline(const PipelineConfig& config) {
     VkShaderModule compute_shader;
     VkPipelineShaderStageCreateInfo shader_info;
 
@@ -77,22 +77,23 @@ void TucoPipeline::create_compute_pipeline(PipelineConfig config) {
     compute_shader = create_shader_module(compute_code.get_code());
     shader_info = fill_shader_stage_struct(VK_SHADER_STAGE_COMPUTE_BIT, compute_shader);
 
-    create_pipeline_layout(config.descriptor_layouts, config.push_ranges, &layout);
+    create_pipeline_layout(config.descriptor_layouts, config.push_ranges);
 
     VkComputePipelineCreateInfo pipeline_info{};
     pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     pipeline_info.pNext = nullptr;
     pipeline_info.flags = 0;
     pipeline_info.stage = shader_info;
-    pipeline_info.layout = layout;
+    pipeline_info.layout = layout_;
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
     pipeline_info.basePipelineIndex = -1;
 
 
-    if (vkCreateComputePipelines(api_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline) != VK_SUCCESS) {
+    if (vkCreateComputePipelines(api_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline_) != VK_SUCCESS) {
         LOG("could not create compute shader");
     }
 
+    //for each layout a new pipeline is required
 }
 
 VkPipelineColorBlendAttachmentState TucoPipeline::enable_alpha_blending() {
@@ -109,7 +110,7 @@ VkPipelineColorBlendAttachmentState TucoPipeline::enable_alpha_blending() {
     return color_blend_attachment;
 }
 
-void TucoPipeline::create_render_pipeline(PipelineConfig config) {
+void TucoPipeline::create_render_pipeline(const PipelineConfig& config) {
     //might have two might have one
     VkShaderModule vert_shader;
     VkShaderModule frag_shader;
@@ -225,8 +226,8 @@ void TucoPipeline::create_render_pipeline(PipelineConfig config) {
     dynamic_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamic_info.dynamicStateCount = static_cast<uint32_t>(config.dynamic_states.size());
     dynamic_info.pDynamicStates = config.dynamic_states.data();
-    
-    create_pipeline_layout(config.descriptor_layouts, config.push_ranges, &layout);
+
+    create_pipeline_layout(config.descriptor_layouts, config.push_ranges);
 
     VkGraphicsPipelineCreateInfo create_pipeline_info{};
     create_pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -240,11 +241,17 @@ void TucoPipeline::create_render_pipeline(PipelineConfig config) {
     create_pipeline_info.pColorBlendState = &color_blend_info;
     create_pipeline_info.pDepthStencilState = &depth_stencil_info;
     create_pipeline_info.pDynamicState = &dynamic_info;
-    create_pipeline_info.layout = layout;
+    create_pipeline_info.layout = layout_;
     create_pipeline_info.renderPass = config.pass;
     create_pipeline_info.subpass = config.subpass_index;
     
-    VkResult result = vkCreateGraphicsPipelines(api_device, VK_NULL_HANDLE, 1, &create_pipeline_info, nullptr, &pipeline);
+    VkResult result = vkCreateGraphicsPipelines(
+        api_device, 
+        VK_NULL_HANDLE, 
+        1, 
+        &create_pipeline_info, 
+        nullptr, 
+        &pipeline_);
     
     if (result != VK_SUCCESS) {
         throw std::runtime_error("could not create graphics pipeline");
@@ -256,18 +263,21 @@ void TucoPipeline::create_render_pipeline(PipelineConfig config) {
 
 }
 
+void TucoPipeline::create_pipeline_layout(const std::vector<VkDescriptorSetLayout>& set_layouts,
+const std::vector<VkPushConstantRange>& push_ranges) {
+    auto info = VkPipelineLayoutCreateInfo{};
+    info.flags = 0;
+    info.pNext = nullptr;
+    info.setLayoutCount = static_cast<uint32_t>(set_layouts.size());
+    info.pushConstantRangeCount = static_cast<uint32_t>(push_ranges.size());
+    info.pPushConstantRanges = push_ranges.data();
+    info.pSetLayouts = set_layouts.data();
+    info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
-void TucoPipeline::create_pipeline_layout(std::vector<VkDescriptorSetLayout> descriptor_layouts, std::vector<VkPushConstantRange> push_ranges, VkPipelineLayout* layout) {
-    VkPipelineLayoutCreateInfo pipeline_layout_info{};
-    pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipeline_layout_info.setLayoutCount = static_cast<uint32_t>(descriptor_layouts.size());
-    pipeline_layout_info.pSetLayouts = descriptor_layouts.data();
+    auto result = vkCreatePipelineLayout(api_device, &info, nullptr, &layout_);
 
-    //as long as this is zero the pointer data sent in will be ignored, so the user can send an empty vector and it wont matter
-    pipeline_layout_info.pushConstantRangeCount = static_cast<uint32_t>(push_ranges.size());
-    pipeline_layout_info.pPushConstantRanges = push_ranges.data();
-
-    if (vkCreatePipelineLayout(api_device, &pipeline_layout_info, nullptr, layout) != VK_SUCCESS) {
-        throw std::runtime_error("could not create pipeline layout");
+    if (result != VK_SUCCESS) {
+        msg::print_line("could not create layout, error code: " + result);
+        throw std::runtime_error("");
     }
 }

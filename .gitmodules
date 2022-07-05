@@ -1,7 +1,3 @@
-[submodule "external/include/assimp"]
-	path = external/include/assimp
-	url = https://github.com/assimp/assimp.git
-	branch = assimp_5.0_release
 [submodule "external/include/glm"]
 	path = external/include/glm
 	url = https://github.com/g-truc/glm
@@ -24,3 +20,6 @@
 [submodule "objects/antuco-files"]
 	path = objects/antuco-files
 	url = https://github.com/GanidhuAbey/antuco-files
+[submodule "external/include/tinygltf"]
+	path = external/include/tinygltf
+	url = https://github.com/syoyo/tinygltf

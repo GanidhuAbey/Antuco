@@ -5,9 +5,10 @@
 */
 #pragma once
 
-#include "assimp/types.h"
+#include <string>
 #include <glm/glm.hpp>
 #include <vector>
+#include <memory>
 #include <optional>
 
 const uint32_t MATERIALS_POOL_SIZE = 5;
@@ -53,8 +54,9 @@ struct LightBufferObject {
 struct Primitive {
     uint32_t index_start;
     uint32_t index_count;
-    uint32_t mat_index;
-    uint32_t image_index;
+    uint32_t transform_index;
+    int mat_index;
+    int image_index;
     bool is_transparent;
 };
 
@@ -73,17 +75,27 @@ public:
 };
 
 struct ImageBuffer {
-    unsigned char* buffer = nullptr;
+    std::vector<unsigned char> buffer;
     size_t buffer_size = 0;
+    
+    //image dimensions
+    uint32_t width;
+    uint32_t height;
 };
 
-struct Material { 
+class Material {
+public:
     uint32_t image_index;
     std::optional<std::string> texturePath;
     glm::vec4 ambient; //Ka
     glm::vec4 diffuse; //Kd
     glm::vec4 specular; //Ks
     float opacity;
+
+public:
+    Material() {}
+    ~Material() {}
+    std::vector<float> linearlize();
 };
 
 struct TransparentMesh {

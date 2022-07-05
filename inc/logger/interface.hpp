@@ -23,7 +23,7 @@
 
 
 namespace msg {
-static void print_line(std::string msg) {
+static void print_line(const std::string& msg) {
     printf("%s \n", msg.c_str());
 }
 }

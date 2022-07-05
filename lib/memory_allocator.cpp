@@ -1102,7 +1102,7 @@ void mem::freeMemory(FreeMemoryInfo freeInfo, Memory* pMemory) {
 //           - [VkDeviceSize] dataSize - the size of the data being mapped
 //           - [Memory*] pMemory - pointer to memory struct
 //           - [void*] data - the data actually being mapped
-void mem::mapMemory(VkDevice device, VkDeviceSize dataSize, Memory* pMemory, void* data) {
+void mem::mapMemory(VkDevice device, VkDeviceSize dataSize, Memory* pMemory, const void* src) {
     if (!pMemory->allocate) {
         throw std::runtime_error("tried to map memory to unallocated data");
     }
@@ -1112,7 +1112,7 @@ void mem::mapMemory(VkDevice device, VkDeviceSize dataSize, Memory* pMemory, voi
     if (vkMapMemory(device, pMemory->memoryHandle, pMemory->offset, dataSize, 0, &pData) != VK_SUCCESS) {
         throw std::runtime_error("could not map data to memory");
     }
-    memcpy(pData, data, dataSize);
+    memcpy(pData, src, dataSize);
     vkUnmapMemory(device, pMemory->memoryHandle);
 }
 
