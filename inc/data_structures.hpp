@@ -5,7 +5,7 @@
 */
 #pragma once
 
-#include "assimp/types.h"
+#include <string>
 #include <glm/glm.hpp>
 #include <vector>
 #include <memory>

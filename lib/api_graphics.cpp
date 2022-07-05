@@ -99,14 +99,10 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 	bool update_command_buffers = false;
 	auto offset = 0;
 	for (size_t i = 0; i < game_objects.size(); i++) {
-        Model model = game_objects[i]->object_model;
+        const auto& model = game_objects[i]->object_model;
 
 		//TODO: make light buffer object a ubo with only 2 matricies for the respective light data.
 		//		it will make the whole thing more elegant once we have more light data to deal with
-		auto lbo = UniformBufferObject{};
-		lbo.modelToWorld = game_objects[i]->transform;
-		lbo.worldToCamera = light_data[0].world_to_light;
-		lbo.projection = light_data[0].perspective;
 
 		if (game_objects[i]->update) {
             //update the buffer data of game objects
@@ -117,7 +113,7 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 			game_objects[i]->update = false;
 			create_ubo_set(static_cast<uint32_t>(model.transforms.size()));	
 			write_to_ubo();
-			create_light_set();
+			create_light_set(static_cast<uint32_t>(model.transforms.size()));
             
 			//TODO: for some reason model_meshes or object_model does not exist
 			//      and the program crashes when it attempts to access the data here.
@@ -152,14 +148,20 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		auto ubo = UniformBufferObject{};
 		ubo.worldToCamera = camera_view;
 		ubo.projection = camera_projection;
+
+		auto lbo = UniformBufferObject{};
+		lbo.worldToCamera = light_data[0].world_to_light;
+		lbo.projection = light_data[0].perspective;
 		for (size_t j = 0; j < model.transforms.size(); j++) {
 			ubo.modelToWorld = model.transforms[j];
+			lbo.modelToWorld = model.transforms[j];
 			update_uniform_buffer(ubo_offsets[offset + j], ubo);
+			//update light data (used for generating shadow map)	
+			update_uniform_buffer(light_offsets[offset + j], lbo);
 		}
 		offset += model.transforms.size();
 
-        //update light data (used for generating shadow map)	
-		update_uniform_buffer(light_offsets[i], lbo);
+        
 
 	}
 

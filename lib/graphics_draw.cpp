@@ -1055,25 +1055,26 @@ void GraphicsImpl::create_swapchain() {
 
 
 
-void GraphicsImpl::create_light_set() { 
+void GraphicsImpl::create_light_set(uint32_t set_count) { 
     size_t current_size = light_ubo.size();
     light_ubo.resize(current_size + 1);
     light_ubo[current_size].init(
             *p_device,
             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
             light_layout,
-            swapchain_images.size(),
+            set_count,
             *ubo_pool);
     
     //write to set
     VkDeviceSize offset = uniform_buffer.allocate(sizeof(UniformBufferObject));
 
-    light_ubo[current_size].set_binding(1);
-    VkDeviceSize buffer_range = (VkDeviceSize)sizeof(UniformBufferObject);
-    light_ubo[current_size].add_buffer(uniform_buffer.buffer, offset, buffer_range);
-    light_ubo[current_size].update_set();
- 
-    light_offsets.push_back(offset);
+    for (uint32_t i = 0; i < set_count; i++) {
+        light_ubo[current_size].set_binding(1);
+        VkDeviceSize buffer_range = (VkDeviceSize)sizeof(UniformBufferObject);
+        light_ubo[current_size].add_buffer(uniform_buffer.buffer, offset, buffer_range);
+        light_ubo[current_size].update_set(i);
+        light_offsets.push_back(offset);
+    }
 }
 
 void GraphicsImpl::free_command_buffers() {
@@ -1863,7 +1864,7 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
     texture_sets[object].update_set(texture_set);
 }
 
-void GraphicsImpl::create_vulkan_image(ImageBuffer& image, size_t i, size_t j) {
+void GraphicsImpl::create_vulkan_image(const ImageBuffer& image, size_t i, size_t j) {
     //create image
     mem::ImageData data{};
     mem::ImageCreateInfo create{};

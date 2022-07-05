@@ -9,6 +9,7 @@
 
 #include "config.hpp"
 #include <tiny_gltf.h>
+#include "node.hpp"
 
 #include "memory_allocator.hpp"
 
@@ -28,6 +29,8 @@ private:
 	Model();
 public:
 	~Model();
+    Model(const Model&) = delete;
+    Model& operator=(const Model&) = delete;
 
 private:
 	//if name is left null, then model will not be saved/loaded from file
@@ -57,8 +60,9 @@ private:
             std::vector<Material>& materials);
 
     void process_gltf_nodes(
-            tinygltf::Node node, 
-            tinygltf::Model model);
+        tinygltf::Node& node,
+        tinygltf::Model& model,
+        model::Node* parent_node = nullptr);
 
     void process_gltf_textures(tinygltf::Model model,
             std::vector<ImageBuffer>& images);
@@ -84,6 +88,7 @@ private:
     std::vector<Material> model_materials;
     std::vector<ImageBuffer> model_images;
     std::vector<Primitive> primitives;
+    std::vector<std::unique_ptr<model::Node>> nodes;
     std::vector<glm::mat4> transforms;
 };
 

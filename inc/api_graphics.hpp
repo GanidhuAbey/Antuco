@@ -300,12 +300,12 @@ private:
             VkImageLayout dst_layout, 
             VkCommandBuffer command_buffer);
 
-	void create_vulkan_image(ImageBuffer& image, size_t i, size_t j);
+	void create_vulkan_image(const ImageBuffer& image, size_t i, size_t j);
 	void create_texture_image(std::string texturePath, size_t object, size_t texture_set); 
     void create_empty_image(size_t object, size_t texture_set);
 	void write_to_texture_set(ResourceCollection texture_set, mem::Image image);
 	void update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo);
-	void create_light_set();
+	void create_light_set(uint32_t set_count);
 	void create_light_layout();
 	void cleanup_swapchain();
 	void recreate_swapchain();

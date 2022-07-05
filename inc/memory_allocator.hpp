@@ -275,7 +275,7 @@ void createObject();
 void createBuffer(VkPhysicalDevice physicalDevice, VkDevice device, BufferCreateInfo* pCreateInfo, Memory* memory);
 void createImage(VkPhysicalDevice physicalDevice, VkDevice device, ImageCreateInfo* imageInfo, Memory* pMemory);
 void createImageView(VkDevice device, ImageViewCreateInfo viewInfo, Memory* pMemory);
-void mapMemory(VkDevice device, VkDeviceSize dataSize, Memory* pMemory, void* data);
+void mapMemory(VkDevice device, VkDeviceSize dataSize, Memory* pMemory, const void* data);
 uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 void createMemory(VkPhysicalDevice physicalDevice, VkDevice device, MemoryInfo* poolInfo, VkBuffer* buffer, Memory* maMemory);

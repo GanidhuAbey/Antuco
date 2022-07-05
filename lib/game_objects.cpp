@@ -3,8 +3,7 @@
 
 using namespace tuco;
 
-GameObject::GameObject() {
-	object_model = Model();
+GameObject::GameObject() : object_model() {
 	transform = {
 		1, 0, 0, 0,
 		0, 1, 0, 0,

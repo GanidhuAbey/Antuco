@@ -64,14 +64,12 @@ void Model::add_gltf_model(const std::string& filepath) {
 }
 
 void Model::process_gltf_nodes(
-     tinygltf::Node node,
-     tinygltf::Model model) {
+     tinygltf::Node& node,
+     tinygltf::Model& model,
+     model::Node* parent_node) {
 
-    if (node.mesh <= -1) {
-        return;
-    }
-    
-    const tinygltf::Mesh mesh = model.meshes[node.mesh];
+    auto unique_node = std::make_unique<model::Node>();
+    unique_node->add_parent(parent_node);
     
     //uint32_t index_point = model_indices.size();
     //uint32_t vertex_point = model_vertices.size();
@@ -79,12 +77,7 @@ void Model::process_gltf_nodes(
     auto vertex_point = uint32_t(0);
     uint32_t index_count = 0;
 
-    auto matrix = glm::mat4{
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1,
-    };
+    auto matrix = glm::mat4(1.0f);
 
     //process translations for nodes
     if (node.translation.size() == 3) {
@@ -101,47 +94,73 @@ void Model::process_gltf_nodes(
         matrix = glm::make_mat4x4(node.matrix.data());
     }
 
-    transforms.push_back(matrix);
+    unique_node->add_matrix(matrix);
 
-    for (size_t i = 0; i < mesh.primitives.size(); i++) {
-        const tinygltf::Primitive& primitive = mesh.primitives[i];
-        index_point = static_cast<uint32_t>(model_indices.size());
-        vertex_point = static_cast<uint32_t>(model_vertices.size());
-        //process vertices
-        process_gltf_vertices(model, primitive, model_vertices); 
+    //each node may have children
+    for (auto& children : node.children) {
+        process_gltf_nodes(model.nodes[children], model, unique_node.get());
+    }
 
-        //process indices
-        process_gltf_indices(
-                model, 
-                primitive, 
-                index_count, 
-                model_indices, 
-                index_point, 
+    if (node.mesh > -1) {
+        const tinygltf::Mesh mesh = model.meshes[node.mesh];
+        for (size_t i = 0; i < mesh.primitives.size(); i++) {
+            const tinygltf::Primitive& primitive = mesh.primitives[i];
+            index_point = static_cast<uint32_t>(model_indices.size());
+            vertex_point = static_cast<uint32_t>(model_vertices.size());
+            //process vertices
+            process_gltf_vertices(model, primitive, model_vertices);
+
+            //process indices
+            process_gltf_indices(
+                model,
+                primitive,
+                index_count,
+                model_indices,
+                index_point,
                 vertex_point);
 
-        //assign material to mesh
-        Primitive prim{};
-        prim.index_start = index_point;
-        prim.index_count = index_count;
-        prim.mat_index = primitive.material;
-        if (prim.mat_index == -1) {
-            prim.image_index = -1;
-            //create new material
-            auto mat = Material{};
-            mat.ambient = glm::vec4(1.0);
-            mat.diffuse = glm::vec4(1.0);
-            mat.opacity = 1.0f;
-            mat.specular = glm::vec4(0.0f);
-            
-            prim.mat_index = model_materials.size();
-            model_materials.push_back(mat);
+            //assign material to mesh
+            Primitive prim{};
+            prim.index_start = index_point;
+            prim.index_count = index_count;
+            prim.mat_index = primitive.material;
+            if (prim.mat_index == -1) {
+                prim.image_index = -1;
+                //create new material
+                auto mat = Material{};
+                mat.ambient = glm::vec4(1.0);
+                mat.diffuse = glm::vec4(1.0);
+                mat.opacity = 1.0f;
+                mat.specular = glm::vec4(0.0f);
+
+                prim.mat_index = model_materials.size();
+                model_materials.push_back(mat);
+            }
+            else {
+                prim.image_index = model_materials[prim.mat_index].image_index;
+            }
+            prim.transform_index = transforms.size();
+            primitives.push_back(prim);
         }
-        else {
-            prim.image_index = model_materials[prim.mat_index].image_index;
-        }
-        prim.transform_index = transforms.size() - 1;
-        primitives.push_back(prim);
     }
+    
+    //converge current transform with nodes parent transforms.
+    model::Node* prev_node = parent_node;
+    glm::mat4 final_matrix = matrix;
+    while (prev_node) {
+        final_matrix = prev_node->get_transform() * final_matrix;
+        prev_node = prev_node->get_parent();
+    }
+
+    transforms.push_back(final_matrix);
+
+    if (parent_node) {
+       parent_node->add_node(std::move(unique_node));
+    }
+    else {
+      nodes.push_back(std::move(unique_node));
+    }
+
 }    
 
 //NOTE: assumes model.images.size() == model.textures.size();
