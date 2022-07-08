@@ -96,7 +96,7 @@ int main() {
 #elif defined(_WIN32) || defined(_WIN64)
 	//another->add_mesh(root_project + "\\objects\\antuco-files\\windows\\cube_red.gltf", "grey_cube");
 	//light_mesh->add_mesh(root_project + "\\objects\\antuco-files\\windows\\surface.obj", "surfacef");
-	some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.glb");
+	some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\teapot.glb");
 #endif
 
 	//another->scale(glm::vec3(5, 0.1, 5));

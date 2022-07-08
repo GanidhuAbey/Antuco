@@ -1249,7 +1249,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
 		std::vector<VkClearValue> clear_values;
 
 		VkClearValue color_clear;
-		color_clear.color = { 0.0f, 0.0f, 0.0f, 1.0 }; 
+		color_clear.color = { 0.0f, 0.0f, 0.0f, 0.0f }; 
 
 		VkClearValue depth_clear;
 		depth_clear.depthStencil = {1.0, 0};

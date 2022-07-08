@@ -74,7 +74,7 @@ vec3 get_scattering(vec4 light_view) {
 }
 
 float map_to_zero_one(float value) {
-    return acos(value)*3.14/5;
+    return min(ceil(max(0, value)), 1);
 }
 
 
@@ -93,7 +93,7 @@ void main() {
     //this code treats a directional light as a point light...
     vec3 lightToObject = (light_position - vec3(vPos));
     //when the dot product should be at its highest, it seems to be at its lowest, and vice versa.
-    float diffuse = max(0.00f, dot(normalize(lightToObject), normalize(surfaceNormal))) / 3.14;
+    float diffuse = 1 / pi();
     vec3 diffuse_final = diffuse * normalize(mat.diffuse);
   
     vec3 camera_dir = normalize(camera_pos - vec3(vPos));
@@ -133,7 +133,7 @@ void main() {
     float G_2 = (x_c*x_l)/(1+v_c+v_l);
 
     //compute F
-    vec3 F = vec3(2.0f);
+    vec3 F = vec3(1); //mat.diffuse * (1 - mat.diffuse)*pow(1 - max(0, dot(surface_normal, light_dir)), 2);
 
     //compute specular
     float bottom = 4*abs(dot(surface_normal, light_dir))*abs(dot(surface_normal, camera_dir));
@@ -149,7 +149,11 @@ void main() {
     vec3 scattering = get_scattering(sample_value);
     
     //TODO: get rid of this if statement once everything works
+    float diffuse_component = 0.5f;
     vec3 result;
-    result = vec3(0.2) + spec;
-    outColor = vec4(result, mat.has_texture.g);
+    result = vec3(0.1) + 
+             max(vec3(0), vec3(1) * 
+             dot(surface_normal, light_dir) * 
+             ( diffuse_component * diffuse_final + (1 - diffuse_component) * spec ));
+    outColor = vec4(result, 1.0f);
 }
