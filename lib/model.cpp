@@ -226,6 +226,11 @@ std::vector<Material>& materials) {
             materials[i].specular.r = mat.values["roughnessFactor"].Factor();
         }
 
+        //load metallic factor
+        if (mat.values.find("metallicFactor") != mat.values.end()) {
+            materials[i].specular.g = mat.values["metallicFactor"].Factor();
+        }
+
         //get texture data
         if (mat.values.find("baseColorTexture") != mat.values.end()) {
             materials[i].image_index = mat.values["baseColorTexture"].TextureIndex();

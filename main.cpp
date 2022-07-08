@@ -76,10 +76,7 @@ int main() {
             light_position, 
             light_look_at, 
             glm::vec3(1.0, 1.0, 1.0), 
-            glm::vec3(0.0, 1.0, 0.0), true);
-
-	//tuco::Light* another_light = antuco.create_light(glm::vec3(0.0, 8.0f, 0.0f), glm::vec3(1.0, 1.0, 1.0));
-  
+            glm::vec3(0.0, 1.0, 0.0), true); 
 
 	//create a simple game object
 	//tuco::GameObject* another = antuco.create_object();
@@ -94,8 +91,7 @@ int main() {
 
 	
 #if defined(__APPLE__)
-	another->add_mesh(root_project + "/objects/antuco-files/mac/no_texture.obj", "no_texture");
-	some_object->add_mesh(root_project + "/objects/antuco-files/mac/bmw.obj", "bmw");
+	some_object->add_mesh(root_project + "/objects/antuco-files/mac/teapot.glb");
 	
 #elif defined(_WIN32) || defined(_WIN64)
 	//another->add_mesh(root_project + "\\objects\\antuco-files\\windows\\cube_red.gltf", "grey_cube");

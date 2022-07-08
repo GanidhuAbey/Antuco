@@ -40,6 +40,16 @@ set(SHADERC_SKIP_TESTS ON)
 
 find_package(Vulkan)
 
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/SPIRV-Cross")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/shaderc")
+
+add_library(
+    REQUIRED_LIBRARIES
+    ${SOURCES}
+     "render_examples/bmw.hpp" "render_examples/bmw.cpp")
+
+
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw")
 #these handle the include directores for all my external dependencies, in case one these don't link properly, you can use set
 #an absolute path from your root folder here
 include_directories("${Vulkan_INCLUDE_DIR}")
@@ -52,22 +62,9 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/stb")
 
 #find_library(SHADERC_LIBRARY libshaderc_combined.a)
 
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/SPIRV-Cross")
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/shaderc")
-
-add_library(
-    REQUIRED_LIBRARIES
-    ${SOURCES}
-     "render_examples/bmw.hpp" "render_examples/bmw.cpp")
-
-
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw")
-
 #set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
 #set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
 #add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/tinygltf")
-
-
 
 #engine composer
 

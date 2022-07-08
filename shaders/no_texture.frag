@@ -73,20 +73,71 @@ vec3 get_scattering(vec4 light_view) {
     return exp(-surface_depth * SCATTER_STRENGTH) * vec3(0.10f, 0.05f, 0.05f);
 }
 
+float map_to_zero_one(float value) {
+    return acos(value)*3.14/5;
+}
+
+
+float rand() {
+    vec3 x = vec3(vPos.x, vPos.y, vPos.z);
+    return normalize(fract(sin(dot(x, vec3(12.9898, 78.233, 43.2003)))*43758.5453123)); 
+}
+
+float pi() {
+    return 3.14159;
+}
+
 void main() {
     float dist = length(light_position - vec3(vPos));
 
     //this code treats a directional light as a point light...
     vec3 lightToObject = (light_position - vec3(vPos));
     //when the dot product should be at its highest, it seems to be at its lowest, and vice versa.
-    float diffuse_light = max(0.00f, dot(normalize(lightToObject), normalize(surfaceNormal))) / 3.14;
-    vec3 diffuse_final = diffuse_light * normalize(mat.diffuse);
+    float diffuse = max(0.00f, dot(normalize(lightToObject), normalize(surfaceNormal))) / 3.14;
+    vec3 diffuse_final = diffuse * normalize(mat.diffuse);
+  
+    vec3 camera_dir = normalize(camera_pos - vec3(vPos));
+    vec3 light_dir = normalize(light_position - vec3(vPos));
+    vec3 m = (light_dir + camera_dir) / length(light_dir + camera_dir);
+
+    //implement microfacet specular highlights
+    vec3 surface_normal = normalize(surfaceNormal);
+    float rough = pow(mat.specular.r, 2);
+
+    float alignment = dot(surface_normal, m);
+    float x = map_to_zero_one(alignment);
+    float b = pow(alignment, 4);
+
+    float a = (pow(alignment, 2) - 1)/(pow(rough, 2)*pow(alignment, 2));
+    float v = exp(a);
+   
+    float r_squared = pow(rough, 2);
+    float D_m = x*r_squared / (pi()*pow(1 + pow(alignment, 2)*(r_squared - 1), 2));
+
+    //compute G_2
+    float camera_alignment = dot(m, camera_dir);
+    float light_alignment = dot(m, light_dir);
+    float x_c = map_to_zero_one(camera_alignment);
+    float x_l = map_to_zero_one(light_alignment);
+
+
+    float macro_cam = pow(dot(surface_normal, camera_dir), 2);
+    float macro_lig = pow(dot(surface_normal, light_dir), 2);
+
+    float a_c =  macro_cam / (rough*(1-macro_cam));
+    float a_l =  macro_lig / (rough*(1-macro_lig)); 
+
+    float v_c = (-1 + sqrt(1 + 1/a_c))/2;
+    float v_l = (-1 + sqrt(1 + 1/a_l))/2;
     
-    vec3 reflected_light = reflect(lightToObject, surfaceNormal);
-    //need to pass data on the location of the camera
-    vec3 object_to_camera = normalize(camera_pos - vec3(vPos));
-    float specular_value = pow(max(0.f, dot(reflected_light, object_to_camera)), 32);
-    vec3 specular_light = specular_value * mat.specular * SPECULAR_STRENGTH;
+    float G_2 = (x_c*x_l)/(1+v_c+v_l);
+
+    //compute F
+    vec3 F = vec3(2.0f);
+
+    //compute specular
+    float bottom = 4*abs(dot(surface_normal, light_dir))*abs(dot(surface_normal, camera_dir));
+    vec3 spec = (F*G_2*D_m)/bottom;
 
     //analyze depth at the given coordinate of the object 
     float light_dist = length(light_position - vec3(vPos));
@@ -99,7 +150,6 @@ void main() {
     
     //TODO: get rid of this if statement once everything works
     vec3 result;
-    result = diffuse_final;
-
+    result = vec3(0.2) + spec;
     outColor = vec4(result, mat.has_texture.g);
 }
