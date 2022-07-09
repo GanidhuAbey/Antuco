@@ -24,6 +24,7 @@ float bias = 5e-3;
 
 int LIGHT_FACTOR = 1;
 float SPECULAR_STRENGTH = 0.5f;
+float FRESNEL_STRENGTH = 2.0f;
 float AMBIENCE_FACTOR = 0.001f;
 float DIFFUSE_STRENGTH = 0.5f;
 
@@ -133,7 +134,7 @@ void main() {
     float G_2 = (x_c*x_l)/(1+v_c+v_l);
 
     //compute F
-    vec3 F = vec3(1); //mat.diffuse * (1 - mat.diffuse)*pow(1 - max(0, dot(surface_normal, light_dir)), 2);
+    vec3 F = vec3(0.1) + mat.diffuse * (1 - mat.diffuse)*pow(1 - max(0, dot(surface_normal, light_dir)), 5);
 
     //compute specular
     float bottom = 4*abs(dot(surface_normal, light_dir))*abs(dot(surface_normal, camera_dir));
@@ -148,6 +149,9 @@ void main() {
 
     vec3 scattering = get_scattering(sample_value);
     
+    //debugPrintfEXT("<%f, %f, %f> \n", surface_normal.x, surface_normal.y, surface_normal.z);
+
+
     //TODO: get rid of this if statement once everything works
     float diffuse_component = 0.5f;
     vec3 result;
@@ -155,5 +159,7 @@ void main() {
              max(vec3(0), vec3(1) * 
              dot(surface_normal, light_dir) * 
              ( diffuse_component * diffuse_final + (1 - diffuse_component) * spec ));
+
+    //result = surfaceNormal;
     outColor = vec4(result, 1.0f);
 }

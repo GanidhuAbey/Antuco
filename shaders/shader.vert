@@ -60,7 +60,7 @@ void main() {
    
     gl_Position = ubo.projection * ubo.worldToCamera * ubo.modelToWorld * vec4(inPosition, 1.0); //opengl automatically divids the components of the vector by 'w'
 
-    surfaceNormal = vec3(ubo.modelToWorld * vec4(inNormal, 1.0));
+    surfaceNormal = vec3(ubo.modelToWorld * vec4(inNormal, 0.0));
     vPos = ubo.modelToWorld * vec4(inPosition, 1.0);
     light_perspective = (/*biasMat */ lbo.projection * lbo.world_to_light * lbo.model_to_world) * vec4(inPosition, 1.0);
     texCoord = inTexCoord;

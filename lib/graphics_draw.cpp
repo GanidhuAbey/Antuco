@@ -1177,7 +1177,7 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
             for (size_t k = 0; k < game_objects[j]->object_model.primitives.size(); k++) {
                 Primitive prim = game_objects[j]->object_model.primitives[k];
 
-                VkDescriptorSet descriptors[1] = { light_ubo[j].get_api_set(command_index) };
+                VkDescriptorSet descriptors[1] = { light_ubo[j].get_api_set(prim.transform_index) };
 
                 vkCmdBindDescriptorSets(command_buffers[command_index],
                     VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -1337,7 +1337,7 @@ void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects)
                     descriptor_1.resize(5);
                     descriptor_2.resize(4);
 
-                    descriptor_1[0] = light_ubo[j].get_api_set(i);
+                    descriptor_1[0] = light_ubo[j].get_api_set(prim.transform_index);
                     descriptor_1[1] = ubo_sets[j][prim.transform_index];
                     descriptor_1[3] = shadowmap_set;
                     descriptor_1[4] = mat_sets[j][prim.mat_index];

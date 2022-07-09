@@ -14,7 +14,7 @@ void ResourceCollection::init(VkDevice& device, VkDescriptorType type, VkDescrip
 bool ResourceCollection::check_size(size_t i) {
     if (i >= sets.size()) {
         LOG("[ERROR] - invalid allocation");
-
+        throw std::runtime_error("exection forcefully stopped");
         return false;
     }
 

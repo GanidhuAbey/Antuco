@@ -153,8 +153,8 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		lbo.worldToCamera = light_data[0].world_to_light;
 		lbo.projection = light_data[0].perspective;
 		for (size_t j = 0; j < model.transforms.size(); j++) {
-			ubo.modelToWorld = model.transforms[j];
-			lbo.modelToWorld = model.transforms[j];
+			ubo.modelToWorld = game_objects[i]->transform * model.transforms[j];
+			lbo.modelToWorld = game_objects[i]->transform * model.transforms[j];
 			update_uniform_buffer(ubo_offsets[offset + j], ubo);
 			//update light data (used for generating shadow map)	
 			update_uniform_buffer(light_offsets[offset + j], lbo);
