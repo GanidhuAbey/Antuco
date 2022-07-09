@@ -36,5 +36,9 @@ These are various screenshots I took through different stages of development in 
 ![BMW](antuco_screenshots/bmw_current.png?raw=true "BMW")
 credit to tyrant_monkey for the model
 
+#### Microfacet Material Reflections
+
+![Teapot](antuco_screenshots/microfacet_specular.JPG?raw=true "Teapot")
+
 
 ## Road Map
