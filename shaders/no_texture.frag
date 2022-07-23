@@ -150,12 +150,9 @@ void main() {
     vec3 scattering = get_scattering(sample_value);
     
     //debugPrintfEXT("<%f, %f, %f> \n", surface_normal.x, surface_normal.y, surface_normal.z);
-
-
-    //TODO: get rid of this if statement once everything works
-    float diffuse_component = 0.5f;
+    float diffuse_component = 1 - mat.specular.r;
     vec3 result;
-    result = vec3(0.1) + 
+    result = vec3(0.01) + 
              max(vec3(0), vec3(1) * 
              dot(surface_normal, light_dir) * 
              ( diffuse_component * diffuse_final + (1 - diffuse_component) * spec ));
