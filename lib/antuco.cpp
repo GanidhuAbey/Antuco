@@ -56,10 +56,10 @@ PointLight& Antuco::create_point_light(glm::vec3 pos, glm::vec3 colour) {
     return point_lights[point_lights.size() - 1];
 }
 
-Camera* Antuco::create_camera(glm::vec3 eye, glm::vec3 facing, glm::vec3 up, float yfov, float near, float far) {
+Camera* Antuco::create_camera(glm::vec3 eye, glm::vec3 facing, glm::vec3 up, float yfov, float n, float f) {
 	float aspect_ratio = pWindow->get_width() / (float) pWindow->get_height();
 	
-	Camera* camera = new Camera(eye, facing, up, yfov, aspect_ratio, near, far);
+	Camera* camera = new Camera(eye, facing, up, yfov, aspect_ratio, n, f);
 
 	cameras.push_back(camera);
 
@@ -67,11 +67,8 @@ Camera* Antuco::create_camera(glm::vec3 eye, glm::vec3 facing, glm::vec3 up, flo
 }
 
 GameObject* Antuco::create_object() {
-	GameObject* game_object = new GameObject;
-
-	objects.push_back(game_object);
-
-	return game_object;
+	objects.push_back(std::move(std::make_unique<GameObject>()));
+	return objects[objects.size() - 1].get();
 }
 
 void Antuco::render() {	

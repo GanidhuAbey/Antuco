@@ -80,9 +80,11 @@ void Model::process_gltf_nodes(
     auto matrix = glm::mat4(1.0f);
 
     //process translations for nodes
+    /*
     if (node.translation.size() == 3) {
         matrix = glm::translate(matrix, glm::vec3(glm::make_vec3(node.translation.data())));
     }
+    */
     if (node.rotation.size() == 4) {
         glm::quat q = glm::make_quat(node.rotation.data());
         matrix *= glm::mat4(q);
@@ -111,12 +113,13 @@ void Model::process_gltf_nodes(
             process_gltf_vertices(model, primitive, model_vertices);
 
             //process indices
+            index_count = 0;
             process_gltf_indices(
                 model,
                 primitive,
                 index_count,
                 model_indices,
-                index_point,
+                index_count, //can delete this from function
                 vertex_point);
 
             //assign material to mesh
@@ -266,7 +269,7 @@ uint32_t& vertex_start) {
 			const uint16_t* buf = reinterpret_cast<const uint16_t*>(
                     &buffer.data[accessor.byteOffset + buffer_view.byteOffset]);
 			for (size_t index = 0; index < accessor.count; index++) {
-				indices.push_back(static_cast<uint32_t>(buf[index]) + vertex_start);
+				indices.push_back(static_cast<uint32_t>(buf[index] + vertex_start));
 			}
 		    break;
 		}
@@ -274,7 +277,7 @@ uint32_t& vertex_start) {
 			const uint8_t* buf = reinterpret_cast<const uint8_t*>(
                     &buffer.data[accessor.byteOffset + buffer_view.byteOffset]);
 			for (size_t index = 0; index < accessor.count; index++) {
-			    indices.push_back(static_cast<uint32_t>(buf[index]) + vertex_start);
+			    indices.push_back(static_cast<uint32_t>(buf[index] + vertex_start));
 			}
 			break;
 		}

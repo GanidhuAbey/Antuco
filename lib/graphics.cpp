@@ -23,6 +23,6 @@ void Graphics::update_light(std::vector<DirectionalLight> lights, std::vector<in
 	p_graphics->update_light(lights, shadow_indices);
 }
 
-void Graphics::update_draw(std::vector<GameObject*> game_object) {
-	p_graphics->update_draw(game_object); //should probably send a pointer of this...
+void Graphics::update_draw(std::vector<std::unique_ptr<GameObject>>& game_objects) {
+	p_graphics->update_draw(game_objects);
 }

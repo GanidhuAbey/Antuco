@@ -79,8 +79,9 @@ int main() {
             glm::vec3(0.0, 1.0, 0.0), true); 
 
 	//create a simple game object
-	tuco::GameObject* another = antuco.create_object();
-	tuco::GameObject* some_object = antuco.create_object();
+	auto another = antuco.create_object();
+	auto some_object = antuco.create_object();
+	auto ref = antuco.create_object();
 	//tuco::GameObject* light_mesh = antuco.create_object();
 
 	//light_mesh->add_mesh("objects/test_object/white.obj");
@@ -96,13 +97,16 @@ int main() {
 #elif defined(_WIN32) || defined(_WIN64)
 	another->add_mesh(root_project + "\\objects\\antuco-files\\windows\\cube_red.gltf", "grey_cube");
 	//light_mesh->add_mesh(root_project + "\\objects\\antuco-files\\windows\\surface.obj", "surfacef");
-	some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\teapot.glb");
+	ref->add_mesh(root_project + "\\objects\\antuco-files\\windows\\teapot.glb");
+	some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\fail.glb");
 #endif
 
+	ref->scale(glm::vec3(0.1));
+
 	another->scale(glm::vec3(5, 0.1, 5));
-	//another->translate(glm::vec3(0, 0.6, 0));
 	another->translate(glm::vec3(0, -2, 0));
 
+	some_object->translate(glm::vec3(1, 1, 0));
 	some_object->scale(glm::vec3(0.2, 0.2, 0.2));
 	//light_mesh->scale(glm::vec3(0.2));
 

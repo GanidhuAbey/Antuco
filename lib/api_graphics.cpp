@@ -88,15 +88,12 @@ void GraphicsImpl::update_light(std::vector<DirectionalLight> lights, std::vecto
 //bugfixing to arrive at a working version.
 
 //NOTE: enable sync validation to check that ubo read-write hazard is not occuring
-void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
+void GraphicsImpl::update_draw(std::vector<std::unique_ptr<GameObject>>& game_objects) {
 	//now the question is what do we do here?
 	//we need to create some command buffers
 	//update vertex and index buffers
 
 	//store a pointer of all the objects in the scene, in case we have to render the image again for whatever reason
-	recent_objects = &game_objects;
-
-	bool update_command_buffers = false;
 	auto offset = 0;
 	for (size_t i = 0; i < game_objects.size(); i++) {
         const auto& model = game_objects[i]->object_model;
@@ -160,9 +157,6 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 			update_uniform_buffer(light_offsets[offset + j], lbo);
 		}
 		offset += model.transforms.size();
-
-        
-
 	}
 
 	if (!update_command_buffers) {
@@ -181,6 +175,8 @@ void GraphicsImpl::update_draw(std::vector<GameObject*> game_objects) {
 		create_command_buffers(game_objects);
 		update_command_buffers = false;
 	}
+
+	update_command_buffers = false;
 
 	draw_frame();
 }

@@ -38,7 +38,7 @@ private:
 	bool update_draw = true;
 
 private:
-	std::vector<GameObject*> objects;
+	std::vector<std::unique_ptr<GameObject>> objects;
 	//the camera at the zeroth index will always be the "main camera"
 	std::vector<Camera*> cameras;
 

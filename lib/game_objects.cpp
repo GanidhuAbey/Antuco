@@ -1,6 +1,8 @@
 #include "world_objects.hpp"
 #include "model.hpp"
 
+#include "glm/gtc/matrix_transform.hpp"
+
 using namespace tuco;
 
 GameObject::GameObject() : object_model() {
@@ -27,7 +29,7 @@ void GameObject::translate(glm::vec3 t) {
 		0, 0, 0, 1
 	};
 
-	transform = glm::transpose(translation) * transform;
+	transform = glm::translate(transform, t);
 }
 
 void GameObject::set_position(glm::vec3 t) {

@@ -57,7 +57,7 @@ public:
 
 	void update_camera(glm::mat4 world_to_camera, glm::mat4 projection, glm::vec4 eye);
 	void update_light(std::vector<DirectionalLight> lights, std::vector<int> shadow_casters);
-	void update_draw(std::vector<GameObject*> game_objects);
+	void update_draw(std::vector<std::unique_ptr<GameObject>>& game_objects);
 
 private:
 	glm::mat4 camera_view;
@@ -192,7 +192,7 @@ private:
 	bool not_created;
 
 	//not sure why these numbers are the best
-	std::vector<GameObject*>* recent_objects;
+	bool update_command_buffers = false;
 
 private:
     bool enable_portability = false;
@@ -257,10 +257,10 @@ private:
 	void create_texture_layout();
 	void create_texture_pool();
 	void create_texture_set(size_t mesh_count);
-	void create_command_buffers(std::vector<GameObject*> game_objects);
+	void create_command_buffers(const std::vector<std::unique_ptr<GameObject>>& game_objects);
 	
     void create_shadow_map(
-            std::vector<GameObject*> game_objects, 
+			const std::vector<std::unique_ptr<GameObject>>& game_objects,
             size_t command_index, 
             LightObject light);
 

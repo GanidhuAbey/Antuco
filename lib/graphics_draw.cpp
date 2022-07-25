@@ -1085,7 +1085,9 @@ void GraphicsImpl::free_command_buffers() {
     vkFreeCommandBuffers(*p_device, command_pool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
 }
 
-void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size_t command_index, LightObject light) {
+void GraphicsImpl::create_shadow_map(
+const std::vector<std::unique_ptr<GameObject>>& game_objects,
+size_t command_index, LightObject light) {
     VkRenderPassBeginInfo shadowpass_info{};
 
     shadowpass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1201,7 +1203,8 @@ void GraphicsImpl::create_shadow_map(std::vector<GameObject*> game_objects, size
     vkCmdEndRenderPass(command_buffers[command_index]);
 }
 
-void GraphicsImpl::create_command_buffers(std::vector<GameObject*> game_objects) {
+void GraphicsImpl::create_command_buffers(
+const std::vector<std::unique_ptr<GameObject>>& game_objects) {
     //allocate memory for command buffer, you have to create a draw command for each image
     command_buffers.resize(swapchain_images.size());
 
@@ -1698,8 +1701,9 @@ void GraphicsImpl::recreate_swapchain() {
     create_screen_pass();
     create_output_buffers();
     create_screen_buffer();
-        
-    create_command_buffers(*recent_objects);
+
+    //set command buffers to be updated next frame
+    update_command_buffers = true;
 }
 
 //TODO: need to make better use of cpu-cores

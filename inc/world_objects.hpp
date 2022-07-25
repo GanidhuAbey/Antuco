@@ -83,9 +83,8 @@ private:
 	Model object_model;
 	size_t back_end_data = 0;
 	uint32_t changed = 0;
-private:
-	GameObject();
 public:
+	GameObject();
 	~GameObject();
 	void add_mesh(const std::string& fileName, std::optional<std::string> name = std::nullopt);
 	void scale(glm::vec3 scale_vector);

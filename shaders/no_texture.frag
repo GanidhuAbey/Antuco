@@ -150,7 +150,7 @@ void main() {
     vec3 scattering = get_scattering(sample_value);
     
     //debugPrintfEXT("<%f, %f, %f> \n", surface_normal.x, surface_normal.y, surface_normal.z);
-    float diffuse_component = 1 - mat.specular.r;
+    float diffuse_component = mat.specular.r;
     vec3 result;
     result = vec3(0.01) + 
              max(vec3(0), vec3(1) * 
