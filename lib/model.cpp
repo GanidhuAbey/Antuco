@@ -1,6 +1,7 @@
 //the implementation of the Model class
 #include "model.hpp"
 
+#define GLM_FORCE_QUAT_DATA_XYZW
 #include "glm/gtc/type_ptr.hpp"
 #include "logger/interface.hpp"
 #include "config.hpp"
@@ -80,12 +81,11 @@ void Model::process_gltf_nodes(
     auto matrix = glm::mat4(1.0f);
 
     //process translations for nodes
-    /*
     if (node.translation.size() == 3) {
         matrix = glm::translate(matrix, glm::vec3(glm::make_vec3(node.translation.data())));
     }
-    */
     if (node.rotation.size() == 4) {
+        //auto v = ;
         glm::quat q = glm::make_quat(node.rotation.data());
         matrix *= glm::mat4(q);
     }
