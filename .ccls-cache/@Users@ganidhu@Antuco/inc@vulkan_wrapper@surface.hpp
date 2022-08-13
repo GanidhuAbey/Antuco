@@ -19,6 +19,8 @@ public:
         instance.destroySurfaceKHR(surface);
     }
 
+    vk::SurfaceKHR get() { return surface; }
+
     operator VkSurfaceKHR() { return surface; }
     
 };

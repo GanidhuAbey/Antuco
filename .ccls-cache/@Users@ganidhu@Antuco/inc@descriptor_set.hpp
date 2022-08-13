@@ -2,15 +2,16 @@
 
 #include "logger/interface.hpp"
 #include "memory_allocator.hpp"
+#include "vulkan_wrapper/device.hpp"
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 #include <vector>
 #include <string>
 
 namespace tuco {	
 class ResourceCollection {
 private:
-	VkDevice p_device;
+	v::Device* device;
 
 	bool buffer_add = false;
 	bool image_add = false;
@@ -22,7 +23,7 @@ private:
 
 	VkDescriptorType descriptor_type;
 
-	VkDescriptorPool api_pool;
+	uint32_t pool_index;
 
 	uint32_t binding;
 
@@ -30,13 +31,12 @@ private:
 
 public:
 	void init(
-            VkDevice& device, 
+            const v::Device& device, 
             VkDescriptorType type, 
             VkDescriptorSetLayout layout, 
-            size_t resource_size, 
+            uint32_t resource_size, 
             mem::Pool& pool);
 
-	ResourceCollection() {}
 	~ResourceCollection() {
 		destroy();
 	}
@@ -44,13 +44,13 @@ public:
 	void update_set();
 	void update_set(size_t i);
 
-	void add_image(VkImageLayout image_layout, mem::Image& image, VkSampler& image_sampler);
+	void add_image(VkImageLayout image_layout, mem::Image& image, vk::Sampler& image_sampler);
 
     //IMPLICIT: assumes that size of vector is equal to set size, throws error otherwise
 	void add_image(
             VkImageLayout image_layout, 
             std::vector<mem::Image>& images, 
-            VkSampler& image_sampler);
+            vk::Sampler& image_sampler);
 
 	void add_buffer(VkBuffer buffer, VkDeviceSize buffer_offset, VkDeviceSize buffer_range);
 	void set_binding(uint32_t binding);

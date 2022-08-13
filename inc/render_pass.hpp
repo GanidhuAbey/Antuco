@@ -1,5 +1,6 @@
-#include "vulkan/vulkan.h"
-#include "vulkan/vulkan_core.h"
+#include <vulkan/vulkan.hpp>
+
+#include "vulkan_wrapper/device.hpp"
 
 #include <vector>
 #include <memory>
@@ -12,14 +13,14 @@ struct DepthConfig {
 };
 
 struct ColourConfig {
-    VkFormat format;
+    vk::Format format;
     VkImageLayout initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkImageLayout final_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    vk::ImageLayout final_layout = vk::ImageLayout::ePresentSrcKHR;
 };
 
 class TucoPass {
     private:
-        VkDevice api_device;
+        v::Device* api_device;
 
         VkRenderPass render_pass;
         bool built = false;
@@ -30,28 +31,23 @@ class TucoPass {
         uint32_t depth_location;
 
         bool colour_attach = false;
-        VkAttachmentDescription colour_attachment{};
+        vk::AttachmentDescription colour_attachment{};
         VkAttachmentReference colour_ref{};
         uint32_t colour_location;
 
-        std::vector<VkAttachmentDescription> attachments;
-
-        std::shared_ptr<VkDevice> p_device;
+        std::vector<vk::AttachmentDescription> attachments;
 
         bool dependency = false;
-        std::vector<VkSubpassDependency> dependencies;
+        std::vector<vk::SubpassDependency> dependencies;
 
-        std::vector<VkSubpassDescription> subpasses;
+        std::vector<vk::SubpassDescription> subpasses;
 
     public:
-        TucoPass();
-        ~TucoPass();
-
         VkRenderPass get_api_pass();
-        void build(VkDevice& device, VkPipelineBindPoint bind_point);
+        void build(v::Device& device, VkPipelineBindPoint bind_point);
         void add_depth(uint32_t attachment, DepthConfig config = DepthConfig{});
         void add_colour(uint32_t attachment, ColourConfig config);
-        void add_dependency(std::vector<VkSubpassDependency> d);
+        void add_dependency(std::vector<vk::SubpassDependency> d);
         void create_subpass(VkPipelineBindPoint bind_point, bool colour, bool depth);
 
 

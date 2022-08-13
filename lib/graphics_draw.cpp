@@ -5,6 +5,8 @@
 #include "memory_allocator.hpp"
 #include "data_structures.hpp"
 
+#include "queue.hpp"
+
 #include "logger/interface.hpp"
 #include "vulkan/vulkan_core.h"
 
@@ -13,6 +15,7 @@
 #include <stb_image.h>
 
 #include <optional>
+#include <array>
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
@@ -25,40 +28,13 @@
 
 #define TIME_IT std::chrono::high_resolution_clock::now();
 
-//TODO: this isn't a great method considering if we move around our files the whole thing will break...
+//TODO: this isn't a great method considering if we move around our files 
+//      the whole thing will break...
 const std::string SHADER_PATH = get_project_root(__FILE__) + "/shaders/";
 
 const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
 
 using namespace tuco;
-
-/// <summary>
-///  create *p_device memory buffer to transfer data between the shadowmap texture (created by a render pass) to the shadowmap atlas
-/// </summary>
-void GraphicsImpl::create_shadowmap_transfer_buffer() {
-    //create 4 buffers to transfer a quarter of the image at a time (this way we only have to tranfer a regular shadow map size, and later on it'll be easy
-    //to multi-thread the code
-    
-    //because we plan to have variable shadowmaps in the future i'll make this buffer the same size as the shadow map atlas, since thats the largest
-    //shadowmap that we'll have to support
-    mem::BufferCreateInfo buffer_info{};
-    buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    buffer_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-    //maximum size stored is : region->bufferOffset + (((z * imageHeight) + y) * rowLength + x) * texelBlockSize
-    //imageHeight*rowLength + imageHeight*rowLength + rowLength
-    buffer_info.size = (2*shadowmap_height*shadowmap_width) * 128;
-    buffer_info.queueFamilyIndexCount = 1;
-    buffer_info.pQueueFamilyIndices = &graphics_family;
-    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    buffer_info.pNext = nullptr;
-
-    for (size_t i = 0; i < SHADOW_TRANSFER_BUFFERS; i++) {
-        //create all required buffers
-        shadowmap_buffers[i].init(physical_device.get(), *p_device, command_pool, &buffer_info);
-    } 
-}
-
 
 void GraphicsImpl::create_depth_pipeline() {
     PipelineConfig config{};
@@ -75,127 +51,137 @@ void GraphicsImpl::create_depth_pipeline() {
 }
 
 /// <summary>
-/// Creates a large image to contain the depth textures of all the lights in the scene
+/// Creates a large image to contain the depth 
+/// textures of all the lights in the scene
 /// </summary>
 void GraphicsImpl::create_shadowmap_atlas() {
-    mem::ImageCreateInfo shadow_image_info{};
-    shadow_image_info.extent = VkExtent3D{ shadowmap_atlas_width, shadowmap_atlas_height, 1 };
-    shadow_image_info.format = VK_FORMAT_D16_UNORM;
-    shadow_image_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    shadow_image_info.queueFamilyIndexCount = 1;
-    shadow_image_info.pQueueFamilyIndices = &graphics_family;
+    mem::ImageCreateInfo image_info{};
+    image_info.extent = vk::Extent3D( 
+            shadowmap_atlas_width, 
+            shadowmap_atlas_height, 
+            1
+        );
+    image_info.format = vk::Format::eD16Unorm;
+    image_info.usage = vk::ImageUsageFlagBits::eTransferDst | 
+                       vk::ImageUsageFlagBits::eSampled;
+    image_info.queueFamilyIndexCount = 1;
+    image_info.pQueueFamilyIndices = &device.get_graphics_family();
+
 
 	VkImageViewUsageCreateInfo usageInfo{};
 	usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
-	usageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	usageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | 
+	                  VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 	//setup create struct for image views
 	mem::ImageViewCreateInfo createInfo{};
 	createInfo.pNext = &usageInfo; 
-    createInfo.aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    createInfo.aspect_mask = vk::ImageAspectFlagBits::eDepth;
 
     mem::ImageData data{};
     data.name = "shadowmap";
-    data.image_info = shadow_image_info;
+    data.image_info = image_info;
     data.image_view_info = createInfo;
 
-    shadowmap_atlas.init(physical_device.get(), *p_device, data);
+    shadowmap_atlas.init(physical_device, device, data);
 }
 
 void GraphicsImpl::create_texture_sampler() {
-    /* Create Sampler */
-    VkSamplerCreateInfo samplerInfo{};
-    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerInfo.pNext = nullptr;
-    samplerInfo.flags = 0;
-    samplerInfo.magFilter = VK_FILTER_NEAREST;
-    samplerInfo.minFilter = VK_FILTER_NEAREST;
-    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.mipLodBias = 0.0f;
-    samplerInfo.anisotropyEnable = VK_FALSE;
-    samplerInfo.compareEnable = VK_FALSE;
-    samplerInfo.minLod = 0.0f;
-    samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
-    samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
-    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    auto sampler_info = vk::SamplerCreateInfo(
+            {},
+            vk::Filter::eNearest,
+            vk::Filter::eNearest,
+            vk::SamplerMipmapMode::eNearest,
+            vk::SamplerAddressMode::eClampToEdge, 
+            vk::SamplerAddressMode::eClampToEdge,
+            vk::SamplerAddressMode::eClampToEdge,
+            0.0f,
+            false,
+            0.0f,
+            false,
+            vk::CompareOp::eNever,
+            0.0f,
+            0.0f,
+            vk::BorderColor::eFloatOpaqueBlack,
+            false
+            );
 
-    if (vkCreateSampler(*p_device, &samplerInfo, nullptr, &texture_sampler) != VK_SUCCESS) {
-        LOG("[ERROR] - createTextureSampler() : failed to create sampler object");
-    }
+    texture_sampler = device.get().createSampler(sampler_info);
 }
 
 void GraphicsImpl::create_shadowmap_sampler() {
-    VkSamplerCreateInfo samplerInfo{};
+    auto sampler_info = vk::SamplerCreateInfo(
+            {},
+            vk::Filter::eNearest,
+            vk::Filter::eNearest,
+            vk::SamplerMipmapMode::eNearest,
+            vk::SamplerAddressMode::eClampToEdge, 
+            vk::SamplerAddressMode::eClampToEdge,
+            vk::SamplerAddressMode::eClampToEdge,
+            0.0f,
+            false,
+            0.0f,
+            false,
+            vk::CompareOp::eNever,
+            0.0f,
+            0.0f,
+            vk::BorderColor::eFloatOpaqueBlack,
+            false
+            );
 
-    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerInfo.pNext = nullptr;
-    samplerInfo.flags = 0;
-    samplerInfo.magFilter = VK_FILTER_NEAREST;
-    samplerInfo.minFilter = VK_FILTER_NEAREST;
-    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.mipLodBias = 0.0f;
-    samplerInfo.anisotropyEnable = VK_FALSE;
-    samplerInfo.compareEnable = VK_FALSE;
-    samplerInfo.minLod = 0.0f;
-    samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
-    samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
-    samplerInfo.unnormalizedCoordinates = VK_FALSE;
-
-    if (vkCreateSampler(*p_device, &samplerInfo, nullptr, &shadowmap_sampler) != VK_SUCCESS) {
-        LOG("[ERROR] - createTextureSampler() : failed to create sampler object");
-    }
+    shadowmap_sampler = device.get().createSampler(sampler_info);
 }
 
 void GraphicsImpl::create_shadowpass_buffer() {  
-    VkImageView image_views[1] = { shadow_pass_texture.get_api_image_view() };
-    create_frame_buffer(
+    vk::ImageView image_views[1] = { 
+        shadow_pass_texture.get_api_image_view() 
+    };
+
+    shadowpass_buffer = create_frame_buffer(
             shadowpass.get_api_pass(), 
             1, 
             image_views, 
             shadowmap_width, 
-            shadowmap_height, 
-            &shadowpass_buffer);
+            shadowmap_height);
 }
 
 void GraphicsImpl::create_output_buffers() {
-    size_t image_num = swapchain_images.size();
+    size_t image_num = swapchain.get_image_size();
     output_buffers.resize(image_num); 
     
-    for (size_t i = 0; i < swapchain_images.size(); i++) {
-        VkImageView image_views[2] = { 
+    for (size_t i = 0; i < image_num; i++) {
+        vk::ImageView image_views[2] = { 
             output_images[i].get_api_image_view(), 
             depth_image.get_api_image_view(),
         };
 
-        create_frame_buffer(
+        output_buffers[i] = create_frame_buffer(
                 render_pass.get_api_pass(), 
                 2, 
                 image_views, 
-                swapchain_extent.width, 
-                swapchain_extent.height, 
-                &output_buffers[i]);
+                swapchain.get_extent().width, 
+                swapchain.get_extent().height
+            );
     }
 }
 
-void GraphicsImpl::create_frame_buffer(VkRenderPass pass, uint32_t attachment_count, VkImageView* p_attachments, uint32_t width, uint32_t height, VkFramebuffer* frame_buffer) {
-    VkFramebufferCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    createInfo.renderPass = pass;
-    createInfo.attachmentCount = attachment_count;
-    createInfo.pAttachments = p_attachments;
-    createInfo.width = width;
-    createInfo.height = height;
-    createInfo.layers = 1;
+vk::Framebuffer GraphicsImpl::create_frame_buffer(
+vk::RenderPass pass, uint32_t attachment_count, 
+vk::ImageView* p_attachments, 
+uint32_t width, uint32_t height) {
+    auto info = vk::FramebufferCreateInfo(
+            {},
+            pass,
+            attachment_count,
+            p_attachments,
+            width,
+            height,
+            1
+        );
 
-    if (vkCreateFramebuffer(*p_device, &createInfo, nullptr, frame_buffer) != VK_SUCCESS) {
-        throw std::runtime_error("could not create a frame buffer");
-    }
+    auto frame_buffer = device.get().createFramebuffer(info);
+
+    return frame_buffer;
 }
 
 void GraphicsImpl::create_semaphores() {
@@ -207,8 +193,17 @@ void GraphicsImpl::create_semaphores() {
     render_finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        if (vkCreateSemaphore(*p_device, &semaphoreBegin, nullptr, &image_available_semaphores[i]) != VK_SUCCESS ||
-            vkCreateSemaphore(*p_device, &semaphoreBegin, nullptr, &render_finished_semaphores[i]) != VK_SUCCESS) {
+        if (vkCreateSemaphore(
+                device.get(), 
+                &semaphoreBegin, 
+                nullptr, 
+                &image_available_semaphores[i]) != VK_SUCCESS ||
+            vkCreateSemaphore(
+                device.get(), 
+                &semaphoreBegin, 
+                nullptr, 
+                &render_finished_semaphores[i]) != VK_SUCCESS) {
+
             throw std::runtime_error("could not create semaphore ready signal");
         }
     }
@@ -216,13 +211,18 @@ void GraphicsImpl::create_semaphores() {
 
 void GraphicsImpl::create_fences() {
     in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
-    images_in_flight.resize(swapchain_images.size(), VK_NULL_HANDLE);
+    images_in_flight.resize(swapchain.get_image_size(), VK_NULL_HANDLE);
     VkFenceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     createInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        if (vkCreateFence(*p_device, &createInfo, nullptr, &in_flight_fences[i]) != VK_SUCCESS) {
+        if (vkCreateFence(
+                device.get(),
+                &createInfo, 
+                nullptr, 
+                &in_flight_fences[i]) != VK_SUCCESS) {
+
             throw std::runtime_error("failed to create fences");
         };
     }
@@ -230,26 +230,32 @@ void GraphicsImpl::create_fences() {
 
 void GraphicsImpl::create_shadowpass_resources() {
     mem::ImageCreateInfo shadow_image_info{};
-    shadow_image_info.extent = VkExtent3D{ shadowmap_width, shadowmap_height, 1 };
-    shadow_image_info.format = VK_FORMAT_D16_UNORM;
-    shadow_image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    shadow_image_info.extent = VkExtent3D{ 
+        shadowmap_width, 
+        shadowmap_height, 
+        1 };
+
+    shadow_image_info.format = vk::Format::eD16Unorm;
+    shadow_image_info.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | 
+                              vk::ImageUsageFlagBits::eSampled;
     shadow_image_info.queueFamilyIndexCount = 1;
-    shadow_image_info.pQueueFamilyIndices = &graphics_family;
+    shadow_image_info.pQueueFamilyIndices = &device.get_graphics_family();
 
 	VkImageViewUsageCreateInfo usageInfo{};
 	usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
-	usageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	usageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | 
+	                  VK_IMAGE_USAGE_SAMPLED_BIT;
 
 	//setup create struct for image views
 	mem::ImageViewCreateInfo createInfo{};
 	createInfo.pNext = &usageInfo;
-	createInfo.aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	createInfo.aspect_mask = vk::ImageAspectFlagBits::eDepth;
 
     mem::ImageData data{};
     data.image_info = shadow_image_info;
     data.image_view_info = createInfo;
 
-    shadow_pass_texture.init(physical_device.get(), *p_device, data); 
+    shadow_pass_texture.init(physical_device, device, data); 
 }
 
 void GraphicsImpl::create_graphics_pipeline() {
@@ -288,45 +294,44 @@ void GraphicsImpl::create_graphics_pipeline() {
     config.push_ranges = push_ranges;
     config.pass = render_pass.get_api_pass();
     config.subpass_index = 0;
-    config.screen_extent = swapchain_extent;
+    config.screen_extent = swapchain.get_extent();
     config.blend_colours = true;
 
-    graphics_pipelines[0].init(*p_device, config);
+    msg::print_line(
+        std::to_string(config.binding_descriptions.size())
+    );
+
+    graphics_pipelines[0].init(device, config);
 
     auto it = config.descriptor_layouts.begin() + 2;
     config.descriptor_layouts.erase(it);
     config.frag_shader_path = SHADER_PATH + "no_texture.frag";
 
-    graphics_pipelines[1].init(*p_device, config);
+    graphics_pipelines[1].init(device, config);
 }
 
 void GraphicsImpl::create_oit_pass() {
     ColourConfig config{};
-    config.format = swapchain_format;
+    config.format = swapchain.get_format();
     config.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-    config.final_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    config.final_layout = vk::ImageLayout::eColorAttachmentOptimal;
 
     oit_pass.add_colour(0, config);
     oit_pass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, true, false);
-    oit_pass.build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);
+    oit_pass.build(device, VK_PIPELINE_BIND_POINT_GRAPHICS);
 }
 
 void GraphicsImpl::create_depth_resources() {
     //create image to represent depth
     mem::ImageCreateInfo depth_image_info{};
-    depth_image_info.arrayLayers = 1;
-    depth_image_info.extent = VkExtent3D{ swapchain_extent.width, swapchain_extent.height, 1 };
-    depth_image_info.flags = 0;
-    depth_image_info.imageType = VK_IMAGE_TYPE_2D;
-    depth_image_info.format = VK_FORMAT_D16_UNORM;
-    depth_image_info.mipLevels = 1;
-    depth_image_info.samples = VK_SAMPLE_COUNT_1_BIT;
-    depth_image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-    depth_image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    depth_image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    depth_image_info.extent = VkExtent3D{ 
+        swapchain.get_extent().width, 
+        swapchain.get_extent().height, 
+        1 };
+    depth_image_info.format = vk::Format::eD16Unorm;
+    depth_image_info.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
     depth_image_info.queueFamilyIndexCount = 1;
-    depth_image_info.pQueueFamilyIndices = &graphics_family;
-    depth_image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depth_image_info.pQueueFamilyIndices = &device.get_graphics_family();
     
     //create image view
     VkImageViewUsageCreateInfo usageInfo{};
@@ -336,41 +341,43 @@ void GraphicsImpl::create_depth_resources() {
     //setup create struct for image views
     mem::ImageViewCreateInfo depth_image_view_info{};
     depth_image_view_info.pNext = &usageInfo;
-    depth_image_view_info.format = VK_FORMAT_D16_UNORM;
+    depth_image_view_info.format = vk::Format::eD16Unorm;
 
-    //deciding on how many layers are in the image, and if we're using any mipmap levels.
-    //layers are used for steroscopic 3d applications in which you would provide multiple images to each eye, creating a 3D effect.
-    //mipmap levels are an optimization made so that lower quality textures are used when further away to save resources.
-    depth_image_view_info.aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    depth_image_view_info.aspect_mask = vk::ImageAspectFlagBits::eDepth;
 
     mem::ImageData data{};
     data.image_info = depth_image_info;
     data.image_view_info = depth_image_view_info;
 
-
-
     //create memory for image
-    depth_image.init(physical_device.get(), *p_device, data);
+    depth_image.init(physical_device, device, data);
 }
 
 void GraphicsImpl::create_shadowpass() {
-    std::vector<VkSubpassDependency> dependencies(2);
+    std::vector<vk::SubpassDependency> dependencies;
 
-    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[0].dstSubpass = 0;
-    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+    auto dependency_one = vk::SubpassDependency(
+            VK_SUBPASS_EXTERNAL,
+            0,
+            vk::PipelineStageFlagBits::eFragmentShader,
+            vk::PipelineStageFlagBits::eEarlyFragmentTests,
+            vk::AccessFlagBits::eShaderRead,
+            vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+            vk::DependencyFlagBits::eByRegion
+        );
 
-    dependencies[1].srcSubpass = 0;
-    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT; 
+    auto dependency_two = vk::SubpassDependency(
+            0,
+            VK_SUBPASS_EXTERNAL,
+            vk::PipelineStageFlagBits::eLateFragmentTests,
+            vk::PipelineStageFlagBits::eFragmentShader,
+            vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+            vk::AccessFlagBits::eShaderRead,
+            vk::DependencyFlagBits::eByRegion
+        );
+
+    dependencies.push_back(dependency_one);
+    dependencies.push_back(dependency_two);
 
     DepthConfig config{};
     config.final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -378,7 +385,7 @@ void GraphicsImpl::create_shadowpass() {
     shadowpass.add_depth(0, config);
     shadowpass.add_dependency(dependencies);
     shadowpass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, false, true);
-    shadowpass.build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);
+    shadowpass.build(device, VK_PIPELINE_BIND_POINT_GRAPHICS);
 }
 
 void GraphicsImpl::create_deffered_textures() {
@@ -391,68 +398,73 @@ void GraphicsImpl::create_geometry_buffer() {
 
 void GraphicsImpl::create_output_images() {
     mem::ImageData data{};
-    data.image_info.extent.width = swapchain_extent.width;
-    data.image_info.extent.height = swapchain_extent.height;
+    data.image_info.extent.width = swapchain.get_extent().width;
+    data.image_info.extent.height = swapchain.get_extent().height;
     data.image_info.extent.depth = 1.0;
 
-    data.image_info.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    data.image_info.format = vk::Format::eR32G32B32A32Sfloat;
 
     data.image_info.usage = 
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | 
-        VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-        VK_IMAGE_USAGE_SAMPLED_BIT;
+        vk::ImageUsageFlagBits::eColorAttachment | 
+        vk::ImageUsageFlagBits::eTransferSrc |
+        vk::ImageUsageFlagBits::eSampled;
 
-    data.image_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    data.image_info.memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 
     data.image_info.queueFamilyIndexCount = 1;
-    data.image_info.pQueueFamilyIndices = &graphics_family;
+    data.image_info.pQueueFamilyIndices = &device.get_graphics_family();
 
-    data.image_view_info.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
+    data.image_view_info.aspect_mask = vk::ImageAspectFlagBits::eColor;
 
-    output_images.resize(swapchain_images.size());
+    output_images.resize(swapchain.get_image_size());
 
     for (mem::Image& image : output_images) {
-        image.init(physical_device.get(), *p_device, data);
+        image.init(physical_device, device, data);
     }
 }
 
 void GraphicsImpl::create_render_pass() {
     ColourConfig config{};
-    config.format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    config.final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    config.format = vk::Format::eR32G32B32A32Sfloat;
+    config.final_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
  
-    std::vector<VkSubpassDependency> dependencies(3);
+    std::vector<vk::SubpassDependency> dependencies(3);
 
-    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[0].dstSubpass = 0;
-    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependencies[0].srcAccessMask = VK_ACCESS_NONE;
-    dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+    dependencies[0] = vk::SubpassDependency(
+            VK_SUBPASS_EXTERNAL,
+            0,
+            vk::PipelineStageFlagBits::eTopOfPipe,
+            vk::PipelineStageFlagBits::eColorAttachmentOutput,
+            vk::AccessFlagBits::eNone,
+            vk::AccessFlagBits::eColorAttachmentWrite,
+            vk::DependencyFlagBits::eByRegion
+        );
 
-    dependencies[1].srcSubpass = 0;
-    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+    dependencies[1] = vk::SubpassDependency(
+            0,
+            VK_SUBPASS_EXTERNAL,
+            vk::PipelineStageFlagBits::eColorAttachmentOutput,
+            vk::PipelineStageFlagBits::eFragmentShader,
+            vk::AccessFlagBits::eColorAttachmentWrite,
+            vk::AccessFlagBits::eShaderRead,
+            vk::DependencyFlagBits::eByRegion
+        );
 
-    //depth image dependency
-    dependencies[2].srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[2].dstSubpass = 0;
-    dependencies[2].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    dependencies[2].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    dependencies[2].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    dependencies[2].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    dependencies[2].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+    dependencies[2] = vk::SubpassDependency(
+            VK_SUBPASS_EXTERNAL,
+            0,
+            vk::PipelineStageFlagBits::eFragmentShader,
+            vk::PipelineStageFlagBits::eEarlyFragmentTests,
+            vk::AccessFlagBits::eShaderRead,
+            vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+            vk::DependencyFlagBits::eByRegion
+        );
 
     render_pass.add_colour(0, config);
     render_pass.add_depth(1);
     render_pass.add_dependency(dependencies);
     render_pass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, true, true);
-    render_pass.build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);
+    render_pass.build(device, VK_PIPELINE_BIND_POINT_GRAPHICS);
 }
 
 void GraphicsImpl::create_light_layout() {
@@ -470,7 +482,11 @@ void GraphicsImpl::create_light_layout() {
     layout_info.bindingCount = 1;
     layout_info.pBindings = &ubo_layout_binding;
 
-    if (vkCreateDescriptorSetLayout(*p_device, &layout_info, nullptr, &light_layout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(
+            device.get(), 
+            &layout_info, 
+            nullptr, 
+            &light_layout) != VK_SUCCESS) {
         ERR_V_MSG("COULD NOT CREATE DESCRIPTOR SET");
     }
 }
@@ -491,7 +507,11 @@ void GraphicsImpl::create_materials_layout() {
     layout_info.bindingCount = 1;
     layout_info.pBindings = &mat_layout_binding;
 
-    if (vkCreateDescriptorSetLayout(*p_device, &layout_info, nullptr, &mat_layout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(
+            device.get(), 
+            &layout_info, 
+            nullptr, 
+            &mat_layout) != VK_SUCCESS) {
         LOG("[ERROR] - could not create materials layout");
     }
 }
@@ -502,7 +522,7 @@ void GraphicsImpl::create_materials_pool() {
     pool_info.pool_size = MATERIALS_POOL_SIZE;
     pool_info.set_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
-    mat_pool = std::make_unique<mem::Pool>(*p_device, pool_info);
+    mat_pool = std::make_unique<mem::Pool>(device, pool_info);
 }
 
 void GraphicsImpl::create_materials_set(uint32_t mat_count) {
@@ -521,7 +541,10 @@ void GraphicsImpl::create_materials_set(uint32_t mat_count) {
    
     mat_sets.resize(mat_sets.size() + 1);
     mat_sets[mat_sets.size() - 1].resize(mat_count);
-    auto result = vkAllocateDescriptorSets(*p_device, &allocateInfo, mat_sets[mat_sets.size() - 1].data());
+    auto result = vkAllocateDescriptorSets(
+            device.get(), 
+            &allocateInfo, 
+            mat_sets[mat_sets.size() - 1].data());
     if (result != VK_SUCCESS) {
         LOG("failed to allocate descriptor sets!");
         throw std::runtime_error("");
@@ -545,60 +568,65 @@ void GraphicsImpl::create_screen_pipeline() {
     config.descriptor_layouts = descriptor_layouts;
     config.pass = screen_pass.get_api_pass();
     config.subpass_index = 0;
-    config.screen_extent = swapchain_extent;
+    config.screen_extent = swapchain.get_extent();
     config.blend_colours = false;
     config.attribute_descriptions = {};
     config.binding_descriptions = {};
     config.cull_mode = VK_CULL_MODE_FRONT_BIT;
     config.front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
-    screen_pipeline.init(*p_device, config);
+    screen_pipeline.init(device, config);
 }
 
 void GraphicsImpl::create_screen_pass() {
     ColourConfig config{};
-    config.format = swapchain_format;
-    config.final_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    config.format = swapchain.get_format();
+    config.final_layout = vk::ImageLayout::ePresentSrcKHR;
 
-    std::vector<VkSubpassDependency> dependencies(2);
+    std::vector<vk::SubpassDependency> dependencies(2);
 
-    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[0].dstSubpass = 0;
-    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependencies[0].srcAccessMask = VK_ACCESS_NONE;
-    dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-    dependencies[1].srcSubpass = 0;
-    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+    dependencies[0] = vk::SubpassDependency(
+            VK_SUBPASS_EXTERNAL,
+            0,
+            vk::PipelineStageFlagBits::eTopOfPipe,
+            vk::PipelineStageFlagBits::eColorAttachmentOutput,
+            vk::AccessFlagBits::eNone,
+            vk::AccessFlagBits::eColorAttachmentWrite,
+            vk::DependencyFlagBits::eByRegion
+        );
+
+    dependencies[1] = vk::SubpassDependency(
+            0,
+            VK_SUBPASS_EXTERNAL,
+            vk::PipelineStageFlagBits::eColorAttachmentOutput,
+            vk::PipelineStageFlagBits::eBottomOfPipe,
+            vk::AccessFlagBits::eColorAttachmentWrite,
+            vk::AccessFlagBits::eMemoryRead,
+            vk::DependencyFlagBits::eByRegion
+        );
 
     screen_pass.add_colour(0, config);
     screen_pass.create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, true, false);
-    screen_pass.build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);
+    screen_pass.build(device, VK_PIPELINE_BIND_POINT_GRAPHICS);
 }
 
 void GraphicsImpl::create_screen_buffer() { 
-    size_t image_num = swapchain_images.size();
+    uint32_t image_num = swapchain.get_image_size();
     screen_buffers.resize(image_num); 
     
-    for (size_t i = 0; i < swapchain_images.size(); i++) {
-        std::vector<VkImageView> image_views = { 
-            swapchain_images[i].get_api_image_view(),
+    for (size_t i = 0; i < image_num; i++) {
+        std::vector<vk::ImageView> image_views = { 
+            swapchain.get_image(i).get_api_image_view(),
         };
 
-        create_frame_buffer(
+        screen_buffers[i] = create_frame_buffer(
                 screen_pass.get_api_pass(), 
                 image_views.size(), 
                 image_views.data(), 
-                swapchain_extent.width, 
-                swapchain_extent.height, 
-                &screen_buffers[i]);
+                swapchain.get_extent().width, 
+                swapchain.get_extent().height
+            );
     }
 }
 
@@ -618,19 +646,24 @@ void GraphicsImpl::create_ubo_layout() {
     layout_info.bindingCount = 1;
     layout_info.pBindings = &ubo_layout_binding;
 
-    if (vkCreateDescriptorSetLayout(*p_device, &layout_info, nullptr, &ubo_layout) != VK_SUCCESS) {
+    auto result = vkCreateDescriptorSetLayout(
+        device.get(), 
+        &layout_info, 
+        nullptr, 
+        &ubo_layout
+    );
+
+    if (result != VK_SUCCESS) {
         throw std::runtime_error("could not create ubo layout");
     }
 }
 
 void GraphicsImpl::create_ubo_pool() {
-    //the previous system created both pools and descriptor sets as they were needed for new objects
-    //the choices are to create new pools/descriptor sets for every object, or to reuse old descroptor sets/pools when needed...
     mem::PoolCreateInfo pool_info{};
-    pool_info.pool_size = swapchain_images.size() * 50;
+    pool_info.pool_size = swapchain.get_image_size() * 50;
     pool_info.set_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
-    ubo_pool = std::make_unique<mem::Pool>(*p_device, pool_info);
+    ubo_pool = std::make_unique<mem::Pool>(device, pool_info);
 }
 
 //create swapchain image * set_count amount of descriptor sets.
@@ -647,16 +680,16 @@ void GraphicsImpl::create_ubo_set(uint32_t set_count) {
     allocateInfo.descriptorSetCount = set_count;
     allocateInfo.pSetLayouts = ubo_layouts.data();
 
-    //size_t currentSize = descriptorSets.size();
-    //descriptorSets.resize(currentSize + 1);
-    //descriptorSets[currentSize].resize(swapChainImages.size());
-
-    //TODO: now we know that having a ubo copy for each swap chain image is useless, so we should change
-    //      to only create one copy for every swapchain image.
     size_t current_size = ubo_sets.size();
     ubo_sets.resize(current_size + 1);
     ubo_sets[current_size].resize(set_count);
-    if (vkAllocateDescriptorSets(*p_device, &allocateInfo, ubo_sets[current_size].data()) != VK_SUCCESS) {
+
+    auto result = vkAllocateDescriptorSets(
+        device.get(), 
+        &allocateInfo, 
+        ubo_sets[current_size].data()
+    );
+    if (result != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     } 
 }
@@ -666,15 +699,15 @@ void GraphicsImpl::create_shadowmap_pool() {
     pool_info.pool_size = 100;
     pool_info.set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-    shadowmap_pool = std::make_unique<mem::Pool>(*p_device, pool_info);
+    shadowmap_pool = std::make_unique<mem::Pool>(device, pool_info);
 }
 
 void GraphicsImpl::create_texture_pool() { 
     mem::PoolCreateInfo pool_info{};
-    pool_info.pool_size = swapchain_images.size() * 100;
+    pool_info.pool_size = swapchain.get_image_size() * 100;
     pool_info.set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-    texture_pool = std::make_unique<mem::Pool>(*p_device, pool_info);
+    texture_pool = std::make_unique<mem::Pool>(device, pool_info);
 }
 
 void GraphicsImpl::create_shadowmap_set() {
@@ -688,36 +721,17 @@ void GraphicsImpl::create_shadowmap_set() {
     //descriptorSets.resize(currentSize + 1);
     //descriptorSet[currentSize].resize(swapChainImages.size());
 
-	if (vkAllocateDescriptorSets(*p_device, &allocateInfo, &shadowmap_set) != VK_SUCCESS) {
+	if (vkAllocateDescriptorSets(device.get(), &allocateInfo, &shadowmap_set) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate texture sets!");
 	}
 }
 
 void GraphicsImpl::create_texture_set(size_t mesh_count) {
-    /*
-    std::vector<VkDescriptorSetLayout> texture_layouts(mesh_count, texture_layout);
-
-    VkDescriptorSetAllocateInfo allocateInfo{};
-    allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.descriptorPool = texture_pool->pools[texture_pool->allocate(*p_device, mesh_count)];
-    allocateInfo.descriptorSetCount = mesh_count;
-    allocateInfo.pSetLayouts = texture_layouts.data();
-
-    size_t current_size = texture_sets.size();
-    texture_sets.resize(current_size + 1);
-    texture_sets[current_size].resize(mesh_count);
-
-    VkResult result = vkAllocateDescriptorSets(*p_device, &allocateInfo, texture_sets[current_size].data());
-    if (result != VK_SUCCESS) {
-        printf("[ERROR CODE %d] - could not allocate texture sets \n", result);
-        throw new std::runtime_error("");
-    }
-    */
     size_t current_size = texture_sets.size();
     texture_sets.resize(current_size + 1);
     //texture_sets[current_size] = create_set(texture_layout, mesh_count, *texture_pool);
     texture_sets[current_size].init(
-            *p_device, 
+            device, 
             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
             texture_layout, 
             mesh_count, 
@@ -734,7 +748,7 @@ std::vector<VkDescriptorSet> GraphicsImpl::create_set(VkDescriptorSetLayout layo
     allocateInfo.pSetLayouts = layouts.data();
 
     std::vector<VkDescriptorSet> sets(set_count);
-    VkResult result = vkAllocateDescriptorSets(*p_device, &allocateInfo, sets.data());
+    VkResult result = vkAllocateDescriptorSets(device.get(), &allocateInfo, sets.data());
 
     if (result != VK_SUCCESS) {
         printf("[ERROR CODE %d] - could not allocate sets \n", result);
@@ -759,7 +773,7 @@ void GraphicsImpl::create_shadowmap_layout() {
     layout_info.bindingCount = 1;
     layout_info.pBindings = &texture_layout_binding;
 
-    if (vkCreateDescriptorSetLayout(*p_device, &layout_info, nullptr, &shadowmap_layout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(device.get(), &layout_info, nullptr, &shadowmap_layout) != VK_SUCCESS) {
         throw std::runtime_error("could not create texture layout");
     }
 }
@@ -781,7 +795,7 @@ void GraphicsImpl::create_texture_layout() {
     layout_info.bindingCount = 1;
     layout_info.pBindings = &texture_layout_binding;
 
-    if (vkCreateDescriptorSetLayout(*p_device, &layout_info, nullptr, &texture_layout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(device.get(), &layout_info, nullptr, &texture_layout) != VK_SUCCESS) {
         throw std::runtime_error("could not create texture layout");
     }
 }
@@ -796,7 +810,7 @@ VkShaderModule GraphicsImpl::create_shader_module(std::vector<uint32_t> shaderCo
 
     createInfo.pCode = shaderCode.data();
 
-    if (vkCreateShaderModule(*p_device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+    if (vkCreateShaderModule(device.get(), &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
         throw std::runtime_error("could not create shader module");
     }
 
@@ -848,7 +862,7 @@ void GraphicsImpl::create_shadowpass_pipeline() {
     config.depth_bias_enable = VK_TRUE;
     config.push_ranges = push_ranges;
 
-    shadowmap_pipeline.init(*p_device, config);
+    shadowmap_pipeline.init(device, config);
 }
 
 VkDescriptorBufferInfo GraphicsImpl::setup_descriptor_set_buffer(uint32_t set_size) {
@@ -872,7 +886,7 @@ void GraphicsImpl::update_descriptor_set(VkDescriptorBufferInfo buffer_info, uin
     writeInfo.pBufferInfo = &buffer_info;
     writeInfo.dstArrayElement = 0;
 
-    vkUpdateDescriptorSets(*p_device, 1, &writeInfo, 0, nullptr);
+    vkUpdateDescriptorSets(device.get(), 1, &writeInfo, 0, nullptr);
 }
 
 void GraphicsImpl::write_to_materials(size_t mat_count) {
@@ -894,30 +908,30 @@ void GraphicsImpl::write_to_ubo() {
 }
 
 void GraphicsImpl::destroy_draw() {
-    vkDeviceWaitIdle(*p_device);
+    vkDeviceWaitIdle(device.get());
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vkDestroyFence(*p_device, in_flight_fences[i], nullptr);
+        vkDestroyFence(device.get(), in_flight_fences[i], nullptr);
 
-        vkDestroySemaphore(*p_device, render_finished_semaphores[i], nullptr);
+        vkDestroySemaphore(device.get(), render_finished_semaphores[i], nullptr);
 
-        vkDestroySemaphore(*p_device, image_available_semaphores[i], nullptr);
+        vkDestroySemaphore(device.get(), image_available_semaphores[i], nullptr);
     }
 
     uniform_buffer.destroy();
     vertex_buffer.destroy();
     index_buffer.destroy();
 
-    vkDestroyCommandPool(*p_device, command_pool, nullptr);
+    vkDestroyCommandPool(device.get(), command_pool, nullptr);
 
-    vkDestroyDescriptorSetLayout(*p_device, ubo_layout, nullptr);
-    vkDestroyDescriptorSetLayout(*p_device, light_layout, nullptr);
-    vkDestroyDescriptorSetLayout(*p_device, shadowmap_layout, nullptr);
-    vkDestroyDescriptorSetLayout(*p_device, texture_layout, nullptr);
-    vkDestroyDescriptorSetLayout(*p_device, mat_layout, nullptr);
+    vkDestroyDescriptorSetLayout(device.get(), ubo_layout, nullptr);
+    vkDestroyDescriptorSetLayout(device.get(), light_layout, nullptr);
+    vkDestroyDescriptorSetLayout(device.get(), shadowmap_layout, nullptr);
+    vkDestroyDescriptorSetLayout(device.get(), texture_layout, nullptr);
+    vkDestroyDescriptorSetLayout(device.get(), mat_layout, nullptr);
 
-    vkDestroySampler(*p_device, texture_sampler, nullptr);
-    vkDestroySampler(*p_device, shadowmap_sampler, nullptr);
+    vkDestroySampler(device.get(), texture_sampler, nullptr);
+    vkDestroySampler(device.get(), shadowmap_sampler, nullptr);
     
     for (auto& graphics_pipeline : graphics_pipelines) {
         graphics_pipeline.destroy();
@@ -927,13 +941,13 @@ void GraphicsImpl::destroy_draw() {
     
 
     for (const auto& output_buffer : output_buffers) {
-        vkDestroyFramebuffer(*p_device, output_buffer, nullptr);
+        vkDestroyFramebuffer(device.get(), output_buffer, nullptr);
     }
 
     for (const auto& screen_buffer : screen_buffers) {
-        vkDestroyFramebuffer(*p_device, screen_buffer, nullptr);
+        vkDestroyFramebuffer(device.get(), screen_buffer, nullptr);
     }
-    vkDestroyFramebuffer(*p_device, shadowpass_buffer, nullptr);
+    vkDestroyFramebuffer(device.get(), shadowpass_buffer, nullptr);
 
     texture_pool.get()->destroyPool();
     ubo_pool.get()->destroyPool();
@@ -945,10 +959,6 @@ void GraphicsImpl::destroy_draw() {
     }
 
     depth_image.destroy();
-
-    for (mem::Image& image : swapchain_images) {
-        image.destroy_image_view();
-    }
 
     for (size_t i = 0; i < texture_images.size(); i++) {
         for (mem::Image& image : texture_images[i]) {
@@ -962,104 +972,26 @@ void GraphicsImpl::destroy_draw() {
     render_pass.destroy();
     screen_pass.destroy();
     shadowpass.destroy();
-
-    vkDestroySwapchainKHR(*p_device, swapchain, nullptr);
 }
 
-VkSurfaceFormatKHR choose_best_format(std::vector<VkSurfaceFormatKHR> formats) {
+vk::SurfaceFormatKHR choose_best_surface_format(std::vector<vk::SurfaceFormatKHR> formats) {
     //from here we can probably choose the best format, though i don't really remember what the best formats looked like
-    
-    for (const auto& current_format : formats) {
-        //i understand the format but forget why this colourspace is appropriate...
-        if (current_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR && current_format.format == VK_FORMAT_B8G8R8A8_SRGB) {
-            return current_format;
-        }
+    for (const auto& format : formats) {
+      if (format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear && format.format == vk::Format::eR8G8B8A8Srgb) {
+        return format;
+      } 
     }
 
     //if we couldn't find the best, then we'll make due with whatever is supported
     return formats[0];
 }
 
-void GraphicsImpl::create_swapchain() {
-    //query the surface capabilities
-    VkSurfaceCapabilitiesKHR capabilities;
-    if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device.get(), surface, &capabilities) != VK_SUCCESS) {
-        LOG("[ERROR] - create_swapchain : could not query the surface capabilities");
-        throw std::runtime_error("");
-    }
-
-    uint32_t format_count = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device.get(), surface, &format_count, nullptr);
-    std::vector<VkSurfaceFormatKHR> formats(format_count);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device.get(), surface, &format_count, formats.data());
-
-    VkSurfaceFormatKHR best_format = choose_best_format(formats);
-
-
-    uint32_t min_image_num = capabilities.minImageCount;
-
-    //why does such a case even exist????????
-    if (capabilities.maxImageCount > 0 && min_image_num > capabilities.maxImageCount) {
-        min_image_num = capabilities.maxImageCount;
-    }
-
-    swapchain_format = best_format.format;
-
-
-    VkSwapchainCreateInfoKHR swapInfo{};
-    swapInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    swapInfo.pNext = nullptr;
-    swapInfo.flags = 0;
-    swapInfo.surface = surface;
-    swapInfo.minImageCount = min_image_num;
-    swapInfo.imageFormat = swapchain_format;
-    swapInfo.imageColorSpace = best_format.colorSpace;
-    swapchain_extent = capabilities.currentExtent;
-    swapInfo.imageExtent = swapchain_extent;
-    swapInfo.imageArrayLayers = 1;
-    swapInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    swapInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    swapInfo.preTransform = capabilities.currentTransform;
-    swapInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; //its not in the plans to mess with the opacity of of colours, maybe in the future when glass is introduced
-    swapInfo.clipped = VK_TRUE;
-    swapInfo.oldSwapchain = VK_NULL_HANDLE;
-
-    if (vkCreateSwapchainKHR(*p_device, &swapInfo, nullptr, &swapchain) != VK_SUCCESS) {
-        LOG("[ERROR] - create_swapchain : could not create swapchain \n");
-        throw std::runtime_error("");
-    }
-
-    //grab swapchain images
-    mem::ImageViewCreateInfo image_info{};
-    image_info.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_info.format = swapchain_format;
-
-    std::vector<VkImage> images;
-    
-    uint32_t swapchain_image_count = 0;
-    vkGetSwapchainImagesKHR(*p_device, swapchain, &swapchain_image_count, nullptr);
-    images.resize(swapchain_image_count);
-    swapchain_images.resize(swapchain_image_count);
-    vkGetSwapchainImagesKHR(*p_device, swapchain, &swapchain_image_count, images.data());
-
-    mem::ImageData data;
-    data.name = "swapchain";
-    data.image_view_info = image_info;
-
-    //transfer swapchain to present layout
-    for (size_t i = 0; i < swapchain_image_count; i++) {
-        swapchain_images[i].init(physical_device.get(), *p_device, images[i], data);
-        swapchain_images[i].transfer(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, graphics_queue, command_pool);
-    }
-}
-
-
 
 void GraphicsImpl::create_light_set(uint32_t set_count) { 
     size_t current_size = light_ubo.size();
     light_ubo.resize(current_size + 1);
     light_ubo[current_size].init(
-            *p_device,
+            device,
             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
             light_layout,
             set_count,
@@ -1080,9 +1012,9 @@ void GraphicsImpl::create_light_set(uint32_t set_count) {
 void GraphicsImpl::free_command_buffers() {
     if (command_buffers.size() == 0) return;
 
-    vkWaitForFences(*p_device, 1, &in_flight_fences[submitted_frame], VK_TRUE, UINT64_MAX);
-
-    vkFreeCommandBuffers(*p_device, command_pool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
+    vkWaitForFences(device.get(), 1, &in_flight_fences[submitted_frame], VK_TRUE, UINT64_MAX);
+    
+    device.get().freeCommandBuffers(command_pool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
 }
 
 void GraphicsImpl::create_shadow_map(
@@ -1148,12 +1080,7 @@ size_t command_index, LightObject light) {
         offsetof(Vertex, tex_coord) 
     };
 
-    vkCmdBindVertexBuffers(
-            command_buffers[command_index], 
-            0, 
-            1, 
-            &vertex_buffer.buffer, 
-            offsets);
+    command_buffers[command_index].bindVertexBuffers(0, 1, &vertex_buffer.buffer, offsets);
 
     vkCmdBindIndexBuffer(
             command_buffers[command_index], 
@@ -1206,19 +1133,19 @@ size_t command_index, LightObject light) {
 void GraphicsImpl::create_command_buffers(
 const std::vector<std::unique_ptr<GameObject>>& game_objects) {
     //allocate memory for command buffer, you have to create a draw command for each image
-    command_buffers.resize(swapchain_images.size());
-
     VkCommandBufferAllocateInfo bufferAllocate{};
-    bufferAllocate.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    bufferAllocate.sType = 
+        VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     bufferAllocate.commandPool = command_pool;
     bufferAllocate.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
-    uint32_t imageCount = static_cast<uint32_t>(command_buffers.size());
+    uint32_t imageCount = static_cast<uint32_t>(
+        swapchain.get_image_size()
+    );
     bufferAllocate.commandBufferCount = imageCount;
 
-    if (vkAllocateCommandBuffers(*p_device,&bufferAllocate,command_buffers.data())!=VK_SUCCESS){
-        throw std::runtime_error("could not allocate memory for command buffers");
-    }
+    command_buffers = device.get()
+        .allocateCommandBuffers(bufferAllocate);
 
     for (size_t i = 0; i < command_buffers.size(); i++) {
         VkCommandBufferBeginInfo beginInfo{};
@@ -1243,27 +1170,32 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
 		renderInfo.renderPass = render_pass.get_api_pass();
 		renderInfo.framebuffer = output_buffers[i];
 
-        VkRect2D render_area{};
-		render_area.offset = VkOffset2D{ 0, 0 };
-		render_area.extent = swapchain_extent;
-		renderInfo.renderArea = render_area;
+        auto render_area = vk::Rect2D(
+                vk::Offset2D( 0, 0 ),
+                swapchain.get_extent()
+            );
 
-		const size_t size_of_array = 3;
-		std::vector<VkClearValue> clear_values;
+	    std::vector<vk::ClearValue> clear_values;
+        auto color_clear = vk::ClearValue(
+                vk::ClearColorValue(std::array<float, 4>({0.f, 0.f, 0.f, 0.f}))
+            );
+        auto depth_clear = vk::ClearValue(
+                vk::ClearDepthStencilValue(1.0f, 0)
+            );
 
-		VkClearValue color_clear;
-		color_clear.color = { 0.0f, 0.0f, 0.0f, 0.0f }; 
+	    clear_values.push_back(color_clear);
+	    clear_values.push_back(depth_clear);
 
-		VkClearValue depth_clear;
-		depth_clear.depthStencil = {1.0, 0};
+        auto render_info = vk::RenderPassBeginInfo(
+                render_pass.get_api_pass(),
+                output_buffers[i],
+                render_area,
+                static_cast<uint32_t>(clear_values.size()),
+                clear_values.data()
+            );
 
-		clear_values.push_back(color_clear);
-		clear_values.push_back(depth_clear);
-		
-		renderInfo.clearValueCount = static_cast<uint32_t>(clear_values.size());
-		renderInfo.pClearValues = clear_values.data();
+        command_buffers[i].beginRenderPass(render_info, vk::SubpassContents::eInline);
 
-		vkCmdBeginRenderPass(command_buffers[i], &renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 		//run first subpass here?
 		//the question is what does the first subpass do?
 
@@ -1275,21 +1207,23 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
 		VkViewport newViewport{};
 		newViewport.x = 0;
 		newViewport.y = 0;
-		newViewport.width = (float)swapchain_extent.width;
-		newViewport.height = (float)swapchain_extent.height;
+		newViewport.width = (float)swapchain.get_extent().width;
+		newViewport.height = (float)swapchain.get_extent().height;
         newViewport.minDepth = 0.0;
 		newViewport.maxDepth = 1.0;
 		vkCmdSetViewport(command_buffers[i], 0, 1, &newViewport);
 
-		VkRect2D newScissor{};
-		newScissor.offset = { 0, 0 };
-		newScissor.extent = swapchain_extent;
-		vkCmdSetScissor(command_buffers[i], 0, 1, &newScissor);
+		auto scissor = vk::Rect2D(
+                vk::Offset2D(0, 0),
+                swapchain.get_extent()
+		    );
+
+		command_buffers[i].setScissor(0, 1, &scissor);
 
 		//time for the draw calls
 		const VkDeviceSize offset[] = {0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord)};
 
-		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffer.buffer, offset);
+        command_buffers[i].bindVertexBuffers(0, 1, &vertex_buffer.buffer, offset);
 		vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
 		//universal to every object so i can push the light constants before the for loop
@@ -1436,14 +1370,17 @@ void GraphicsImpl::memory_dependency(size_t i, VkAccessFlags src_a, VkAccessFlag
 }
 
 void GraphicsImpl::copy_to_swapchain(size_t i) {
-    swapchain_images[i].transfer(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, graphics_queue, command_pool, command_buffers[i]);
+    swapchain.get_image(i).transfer(
+            vk::ImageLayout::eTransferDstOptimal, 
+            device.get_graphics_queue(), 
+            command_buffers[i]);
 
     VkImageSubresourceLayers src_res{};
     VkOffset3D src_offset{};
     VkImageSubresourceLayers dst_res{};
     VkOffset3D dst_offset{};
 
-    VkExtent3D extent = { swapchain_extent.width, swapchain_extent.height, 1 };
+    VkExtent3D extent = { swapchain.get_extent().width, swapchain.get_extent().height, 1 };
 
     src_res.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     src_res.baseArrayLayer = 0;
@@ -1474,19 +1411,22 @@ void GraphicsImpl::copy_to_swapchain(size_t i) {
         command_buffers[i], 
         output_images[i].get_api_image(), 
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-        swapchain_images[i].get_api_image(), 
+        swapchain.get_image(i).get_api_image(), 
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
         1, &copy_info);
 
-    swapchain_images[i].transfer(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, graphics_queue, command_pool, command_buffers[i]);
+    swapchain.get_image(i).transfer(
+            vk::ImageLayout::ePresentSrcKHR, 
+            device.get_graphics_queue(), 
+            command_buffers[i]);
 }
 
 void GraphicsImpl::create_screen_set() {
     screen_resource.init(
-            *p_device,
+            device,
             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
             texture_layout,
-            swapchain_images.size(), 
+            swapchain.get_image_size(), 
             *texture_pool);
 
     screen_resource.add_image(
@@ -1494,37 +1434,34 @@ void GraphicsImpl::create_screen_set() {
             output_images,
             texture_sampler);
 
+
     screen_resource.set_binding(0);
 
     screen_resource.update_set(); 
 }
 
 void GraphicsImpl::render_to_screen(size_t i) {
-    VkRenderPassBeginInfo renderInfo{};
-    renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderInfo.renderPass = screen_pass.get_api_pass();
-    renderInfo.framebuffer = screen_buffers[i];
+    auto render_area = vk::Rect2D(
+            vk::Offset2D( 0, 0 ),
+            swapchain.get_extent()
+        );
 
-    VkRect2D render_area{};
-    render_area.offset = VkOffset2D{ 0, 0 };
-    render_area.extent = swapchain_extent;
-    renderInfo.renderArea = render_area;
-
-	std::vector<VkClearValue> clear_values;
-   
-    VkClearValue color_clear;
-    color_clear.color = { 0.0f, 0.0f, 0.0f, 1.0 }; 
-
+	std::vector<vk::ClearValue> clear_values;
+    auto color_clear = vk::ClearValue(
+            vk::ClearColorValue(std::array<float, 4>({0.f, 0.f, 0.f, 1.f}))
+        ); 
 	clear_values.push_back(color_clear);
 
-    renderInfo.clearValueCount = static_cast<uint32_t>(clear_values.size());
-    renderInfo.pClearValues = clear_values.data();
-    
-    vkCmdBeginRenderPass(
-            command_buffers[i],
-            &renderInfo,
-            VK_SUBPASS_CONTENTS_INLINE);
+    auto render_info = vk::RenderPassBeginInfo(
+            screen_pass.get_api_pass(),
+            screen_buffers[i],
+            render_area,
+            static_cast<uint32_t>(clear_values.size()),
+            clear_values.data()
+        );
 
+    command_buffers[i].beginRenderPass(render_info, vk::SubpassContents::eInline);
+    
     //bind pipeline
     vkCmdBindPipeline(
             command_buffers[i],
@@ -1554,37 +1491,37 @@ void GraphicsImpl::render_to_screen(size_t i) {
 void GraphicsImpl::create_uniform_buffer() {
     mem::BufferCreateInfo buffer_info{};
     buffer_info.size = (VkDeviceSize)BUFFER_SIZE;
-    buffer_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    buffer_info.queueFamilyIndexCount = 1;
-    buffer_info.pQueueFamilyIndices = &graphics_family;
-    buffer_info.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    buffer_info.usage = vk::BufferUsageFlagBits::eUniformBuffer;
+    buffer_info.sharing_mode = vk::SharingMode::eExclusive;
+    buffer_info.queue_family_index_count = 1;
+    buffer_info.p_queue_family_indices = &device.get_graphics_family();
+    buffer_info.memory_properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 
-    uniform_buffer.init(physical_device.get(), *p_device, &buffer_info);
+    uniform_buffer.init(physical_device, device, buffer_info);
 }
 
 void GraphicsImpl::create_vertex_buffer() {
     mem::BufferCreateInfo buffer_info{};
     buffer_info.size = (VkDeviceSize)BUFFER_SIZE;
-    buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    buffer_info.queueFamilyIndexCount = 1;
-    buffer_info.pQueueFamilyIndices = &graphics_family;
-    buffer_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    buffer_info.usage = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst;
+    buffer_info.sharing_mode = vk::SharingMode::eExclusive;
+    buffer_info.queue_family_index_count = 1;
+    buffer_info.p_queue_family_indices = &device.get_graphics_family();
+    buffer_info.memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 
-    vertex_buffer.init(physical_device.get(), *p_device, command_pool, &buffer_info);
+    vertex_buffer.init(physical_device, device, buffer_info);
 }
 
 void GraphicsImpl::create_index_buffer() {
     mem::BufferCreateInfo buffer_info{};
     buffer_info.size = (VkDeviceSize)BUFFER_SIZE;
-    buffer_info.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    buffer_info.queueFamilyIndexCount = 1;
-    buffer_info.pQueueFamilyIndices = &graphics_family;
-    buffer_info.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    buffer_info.usage = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst;
+    buffer_info.sharing_mode = vk::SharingMode::eExclusive;
+    buffer_info.queue_family_index_count = 1;
+    buffer_info.p_queue_family_indices = &device.get_graphics_family();
+    buffer_info.memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
     
-    index_buffer.init(physical_device.get(), *p_device, command_pool, &buffer_info);
+    index_buffer.init(physical_device, device, buffer_info);
 }
 
 
@@ -1625,7 +1562,7 @@ int32_t GraphicsImpl::update_vertex_buffer(std::vector<Vertex> vertex_data) {
 }
 
 void GraphicsImpl::copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer, VkDeviceSize dst_offset, VkDeviceSize data_size) {
-    VkCommandBuffer transferBuffer = begin_command_buffer(*p_device, command_pool);
+    auto transfer_buffer = begin_command_buffer(device, command_pool);
 
     //transfer between buffers
     VkBufferCopy copyData{};
@@ -1633,7 +1570,7 @@ void GraphicsImpl::copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer, V
     copyData.dstOffset = dst_offset;
     copyData.size = data_size;
 
-    vkCmdCopyBuffer(transferBuffer,
+    vkCmdCopyBuffer(transfer_buffer,
         src_buffer.buffer,
         dst_buffer.buffer,
         1,
@@ -1641,12 +1578,16 @@ void GraphicsImpl::copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer, V
     );
 
     //destroy transfer buffer, shouldnt need it after copying the data.
-    end_command_buffer(*p_device, graphics_queue, command_pool, transferBuffer);
+    end_command_buffer(
+            device, 
+            device.get_graphics_queue(),
+            command_pool,
+            transfer_buffer);
 }
 
 
 void GraphicsImpl::update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo) {
-    uniform_buffer.write(*p_device, memory_offset, sizeof(lbo), &lbo);
+    uniform_buffer.write(device.get(), memory_offset, sizeof(lbo), &lbo);
 }
 
 void GraphicsImpl::update_materials(VkDeviceSize memory_offset, Material mat) {
@@ -1661,41 +1602,41 @@ void GraphicsImpl::update_materials(VkDeviceSize memory_offset, Material mat) {
             mat.diffuse,
             mat.specular);
 
-    uniform_buffer.write(*p_device, memory_offset, sizeof(mat_obj), &mat_obj);
+    uniform_buffer.write(device.get(), memory_offset, sizeof(mat_obj), &mat_obj);
 }
 
 void GraphicsImpl::update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo) {
     //overwrite memory
-    uniform_buffer.write(*p_device, memory_offset, sizeof(ubo), &ubo);
+    uniform_buffer.write(device.get(), memory_offset, sizeof(ubo), &ubo);
 }
 
 /// <summary>
 /// When called, this function will destroy all objects associated with the swapchain.
 /// </summary>
 void GraphicsImpl::cleanup_swapchain() {
-    vkDeviceWaitIdle(*p_device);
+    vkDeviceWaitIdle(device.get());
 
     for (const auto& output_buffer : output_buffers) {
-        vkDestroyFramebuffer(*p_device, output_buffer, nullptr);
+        vkDestroyFramebuffer(device.get(), output_buffer, nullptr);
     }
 
     for (const auto& screen_buffer : screen_buffers) {
-        vkDestroyFramebuffer(*p_device, screen_buffer, nullptr);
+        vkDestroyFramebuffer(device.get(), screen_buffer, nullptr);
     }
-    vkDestroyFramebuffer(*p_device, shadowpass_buffer, nullptr);
+    vkDestroyFramebuffer(device.get(), shadowpass_buffer, nullptr);
     
     depth_image.destroy();
     render_pass.destroy();
     screen_pass.destroy();
 
-    vkDestroySwapchainKHR(*p_device, swapchain, nullptr);
+    swapchain.destroy();
 }
 
 /// <summary>
 /// When called, this function create all necesarry objects for the swapchain
 /// </summary>
 void GraphicsImpl::recreate_swapchain() {
-    create_swapchain();
+    swapchain.init(physical_device, surface);
     create_depth_resources();
     create_render_pass();
     create_screen_pass();
@@ -1709,58 +1650,59 @@ void GraphicsImpl::recreate_swapchain() {
 //TODO: need to make better use of cpu-cores
 void GraphicsImpl::draw_frame() {
     //make sure that the current frame thats being drawn in parallel is available
-    vkWaitForFences(*p_device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
+    vkWaitForFences(device.get(), 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
     //allocate memory to store next image
     uint32_t nextImage;
 
-    VkResult result = vkAcquireNextImageKHR(*p_device, swapchain, UINT64_MAX, image_available_semaphores[current_frame], VK_NULL_HANDLE, &nextImage);
+    VkResult result = vkAcquireNextImageKHR(
+            device.get(), 
+            swapchain.get(), 
+            UINT64_MAX, 
+            image_available_semaphores[current_frame], 
+            VK_NULL_HANDLE, 
+            &nextImage);
 
     if (result != VK_SUCCESS) {
         throw std::runtime_error("could not aquire image from swapchain");
     }
 
     if (images_in_flight[nextImage] != VK_NULL_HANDLE) {
-        vkWaitForFences(*p_device, 1, &images_in_flight[nextImage], VK_TRUE, UINT64_MAX);
+        vkWaitForFences(device.get(), 1, &images_in_flight[nextImage], VK_TRUE, UINT64_MAX);
         //imagesInFlight[nextImage] = VK_NULL_HANDLE;
     }
     // Mark the image as now being in use by this frame
     images_in_flight[nextImage] = in_flight_fences[current_frame];
 
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
     //add appropriate command buffer
-    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    VkSemaphore waitSemaphores[] = {image_available_semaphores[current_frame]};
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = waitSemaphores;
-    submitInfo.pWaitDstStageMask = waitStages;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &command_buffers[nextImage];
-    //signal to send when this command buffer has executed.
-    VkSemaphore signalSemaphores[] = {render_finished_semaphores[current_frame]};
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = signalSemaphores;
+    auto wait_stages = std::array<vk::PipelineStageFlags, 1>({vk::PipelineStageFlagBits::eColorAttachmentOutput});
+    auto wait_semaphores = std::array<vk::Semaphore, 1>({image_available_semaphores[current_frame]});
+    auto signal_semaphores = std::array<vk::Semaphore, 1>({render_finished_semaphores[current_frame]});
 
-    vkResetFences(*p_device, 1, &in_flight_fences[current_frame]);
+    auto submit_info = vk::SubmitInfo(
+            1,
+            wait_semaphores.data(),
+            wait_stages.data(),
+            1,
+            &command_buffers[nextImage],
+            1,
+            signal_semaphores.data()
+    );
 
-    if (vkQueueSubmit(graphics_queue, 1, &submitInfo, in_flight_fences[current_frame]) !=  VK_SUCCESS) {
-        throw std::runtime_error("could not submit command buffer to queue");
-    }
+    vkResetFences(device.get(), 1, &in_flight_fences[current_frame]);
 
-    VkPresentInfoKHR presentInfo{};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = signalSemaphores;
-    VkSwapchainKHR swapChains[] = {swapchain};
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = swapChains;
-    presentInfo.pImageIndices = &nextImage;
-    presentInfo.pResults = nullptr;
+    device.get_graphics_queue().submit(submit_info, in_flight_fences[current_frame]);
 
-    VkResult presentResult = vkQueuePresentKHR(present_queue, &presentInfo);
+    auto pi = vk::PresentInfoKHR(
+        1,
+        signal_semaphores.data(),
+        1,
+        &swapchain.get(),
+        &nextImage 
+    );
 
-    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR) {
+    auto present_result = device.get_present_queue().presentKHR(pi);
+
+    if (present_result == vk::Result::eErrorOutOfDateKHR || present_result == vk::Result::eSuboptimalKHR) {
         cleanup_swapchain();
         recreate_swapchain();
     }
@@ -1784,7 +1726,7 @@ void GraphicsImpl::write_to_shadowmap_set() {
     writeInfo.pImageInfo = &imageInfo;
     writeInfo.dstArrayElement = 0;
 
-    vkUpdateDescriptorSets(*p_device, 1, &writeInfo, 0, nullptr);
+    vkUpdateDescriptorSets(device.get(), 1, &writeInfo, 0, nullptr);
     
     //wonder if this is a fine time to transfer the image from undefined to shader
     //TODO: move this somewhere else (into its own function if you absolutely have to)
@@ -1792,24 +1734,7 @@ void GraphicsImpl::write_to_shadowmap_set() {
 }
 
 void GraphicsImpl::write_to_texture_set(ResourceCollection texture_set, mem::Image image) {
-    /*
-    VkDescriptorImageInfo imageInfo;
-    imageInfo.sampler = texture_sampler;
-    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    imageInfo.imageView = image_view;
-
-    VkWriteDescriptorSet writeInfo{};
-    writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeInfo.dstBinding = 0;
-    writeInfo.dstSet = texture_set;
-    writeInfo.descriptorCount = 1;
-    writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    writeInfo.pImageInfo = &imageInfo;
-    writeInfo.dstArrayElement = 0;
-
-    vkUpdateDescriptorSets(*p_device, 1, &writeInfo, 0, nullptr);
-    */
-
+    
     texture_set.add_image(
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
             image, 
@@ -1827,29 +1752,35 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
     texture_images[texture_images.size() - 1].resize(1);
 
     mem::ImageCreateInfo imageInfo{};
-    imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+    imageInfo.format = vk::Format::eR8G8B8A8Srgb;
     VkExtent3D extent{};
     extent.width = 1;
     extent.height = 1;
     extent.depth = 1; //this depth might be key to blending the textures...
     imageInfo.extent = extent;
-    imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    imageInfo.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
     imageInfo.queueFamilyIndexCount = 1;
-    imageInfo.pQueueFamilyIndices = &graphics_family;
-    imageInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    imageInfo.pQueueFamilyIndices = &device.get_graphics_family();
+    imageInfo.memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 
     mem::ImageViewCreateInfo viewInfo{};
-    viewInfo.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.aspect_mask = vk::ImageAspectFlagBits::eColor;
 
     mem::ImageData data{};
     data.name = "empty";
     data.image_info = imageInfo;
     data.image_view_info = viewInfo;
  
-    texture_images[texture_images.size() - 1][0].init(physical_device.get(), *p_device, data);
+    texture_images[texture_images.size() - 1][0].init(
+            physical_device, 
+            device, 
+            data);
 
     //transfer the image again to a more optimal layout for texture sampling?
-    texture_images[texture_images.size() - 1][0].transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool);
+    texture_images[texture_images.size() - 1][0].transfer(
+            vk::ImageLayout::eShaderReadOnlyOptimal, 
+            device.get_graphics_queue()
+        );
     //create image view for image
 
     //save texture image to mesh
@@ -1874,15 +1805,15 @@ void GraphicsImpl::create_vulkan_image(const ImageBuffer& image, size_t i, size_
     mem::ImageCreateInfo create{};
     mem::ImageViewCreateInfo view{};
 
-    create.format = VK_FORMAT_R8G8B8A8_SRGB;
-    create.extent = {image.width, image.height, 1};
-    create.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    create.format = vk::Format::eR8G8B8A8Srgb;
+    create.extent = vk::Extent3D(image.width, image.height, 1);
+    create.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
     create.queueFamilyIndexCount = 1;
-    create.pQueueFamilyIndices = &graphics_family;
+    create.pQueueFamilyIndices = &device.get_graphics_family();
     create.size = image.buffer_size;
-    create.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    create.memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 
-    view.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
+    view.aspect_mask = vk::ImageAspectFlagBits::eColor;
 
     data.image_view_info = view;
     data.image_info = create;
@@ -1890,32 +1821,42 @@ void GraphicsImpl::create_vulkan_image(const ImageBuffer& image, size_t i, size_
     texture_images.resize(texture_images.size() + 1);
     texture_images[texture_images.size() - 1].resize(1);
 
-    texture_images[texture_images.size() - 1][0].init(physical_device.get(), *p_device, data);
+    texture_images[texture_images.size() - 1][0].init(physical_device, device, data);
 
     //create cpu buffer
-    mem::BufferCreateInfo textureBufferInfo{};
-    textureBufferInfo.size = image.buffer_size;
-    textureBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    textureBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    textureBufferInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | 
-                                         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    textureBufferInfo.queueFamilyIndexCount = 1;
-    textureBufferInfo.pQueueFamilyIndices = &graphics_family;
+    mem::BufferCreateInfo texture_buffer_info{};
+    texture_buffer_info.size = image.buffer_size;
+    texture_buffer_info.usage = vk::BufferUsageFlagBits::eTransferSrc;
+    texture_buffer_info.sharing_mode = vk::SharingMode::eExclusive;
+    texture_buffer_info.queue_family_index_count = 1;
+    texture_buffer_info.p_queue_family_indices = &device.get_transfer_family();
 
     //TODO: make buffer at runtime specifically for transfer commands
-    mem::Memory buffer;
-    mem::createBuffer(physical_device, *p_device, &textureBufferInfo, &buffer);
+    auto buffer = mem::CPUBuffer();
+    buffer.init(physical_device, device, texture_buffer_info);
+    buffer.map(image.buffer_size,  &image.buffer[0]);
 
-    mem::allocateMemory(image.buffer_size, &buffer);
-    mem::mapMemory(*p_device, image.buffer_size, &buffer, &image.buffer[0]);
 
     //map from buffer to image
-    texture_images[texture_images.size() - 1][0].transfer(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, graphics_queue, command_pool);
-    VkOffset3D image_offset = { 0, 0, 0 };
-    texture_images[texture_images.size() - 1][0].copy_from_buffer(buffer.buffer, image_offset, std::nullopt, graphics_queue, command_pool);
-    texture_images[texture_images.size() - 1][0].transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool);
+    texture_images[texture_images.size() - 1][0].transfer(
+            vk::ImageLayout::eTransferDstOptimal, 
+            device.get_transfer_queue()
+        );
 
-    mem::destroyBuffer(*p_device, buffer);
+    VkOffset3D image_offset = { 0, 0, 0 };
+    texture_images[texture_images.size() - 1][0].copy_from_buffer(
+            buffer.get(), 
+            image_offset, 
+            std::nullopt, 
+            device.get_transfer_queue()
+        );
+    
+    texture_images[texture_images.size() - 1][0].transfer(
+            vk::ImageLayout::eShaderReadOnlyOptimal, 
+            device.get_graphics_queue()
+        );
+
+    buffer.destroy();
 
     //save to resource set
     mem::Image& vulkan_image = texture_images[texture_images.size() - 1][0];
@@ -1932,28 +1873,24 @@ void GraphicsImpl::create_texture_image(std::string texturePath, size_t object, 
     stbi_uc *pixels = stbi_load(texturePath.c_str(), &imageWidth, &imageHeight, &imageChannels, STBI_rgb_alpha);
 
     VkDeviceSize dataSize = 4 * (imageWidth * imageHeight);
-    mem::BufferCreateInfo textureBufferInfo{};
-    textureBufferInfo.size = dataSize;
-    textureBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    textureBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    textureBufferInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    textureBufferInfo.queueFamilyIndexCount = 1;
-    textureBufferInfo.pQueueFamilyIndices = &graphics_family;
+    mem::BufferCreateInfo texture_buffer_info{};
+    texture_buffer_info.size = dataSize;
+    texture_buffer_info.usage = vk::BufferUsageFlagBits::eTransferSrc;
+    texture_buffer_info.memory_properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+    texture_buffer_info.queue_family_index_count = 1;
+    texture_buffer_info.p_queue_family_indices = &device.get_graphics_family();
 
     //TODO: make buffer at runtime specifically for transfer commands
-    mem::Memory newBuffer;
-    mem::createBuffer(physical_device, *p_device, &textureBufferInfo, &newBuffer);
+    auto buffer = mem::CPUBuffer();
+    buffer.init(physical_device, device, texture_buffer_info);
+    buffer.map(dataSize, pixels);
     
-    mem::allocateMemory(dataSize, &newBuffer);
-    mem::mapMemory(*p_device, dataSize, &newBuffer, pixels);
-
     //use size of loaded image to create VkImage
     texture_images.resize(texture_images.size() + 1);
     texture_images[texture_images.size() - 1].resize(1);
 
     mem::ImageCreateInfo imageInfo{};
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+    imageInfo.format = vk::Format::eR8G8B8A8Srgb;
     VkExtent3D extent{};
     extent.width = static_cast<uint32_t>(imageWidth);
     extent.height = static_cast<uint32_t>(imageHeight);
@@ -1961,38 +1898,51 @@ void GraphicsImpl::create_texture_image(std::string texturePath, size_t object, 
     imageInfo.extent = extent;
     imageInfo.mipLevels = 1;
     imageInfo.arrayLayers = 1;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
     imageInfo.queueFamilyIndexCount = 1;
-    imageInfo.pQueueFamilyIndices = &graphics_family;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    imageInfo.pQueueFamilyIndices = &device.get_transfer_family();
+    imageInfo.memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 
     mem::ImageViewCreateInfo viewInfo{};
-    viewInfo.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.aspect_mask = vk::ImageAspectFlagBits::eColor;
 
     mem::ImageData data{};
     data.name = "texture";
     data.image_info = imageInfo;
     data.image_view_info = viewInfo;
 
-    texture_images[texture_images.size() - 1][0].init(physical_device.get(), *p_device, data);
+    texture_images[texture_images.size() - 1][0].init(
+            physical_device, 
+            device, 
+            data
+        );
     
 
     //mem::maAllocateMemory(dataSize, &newTextureImage);
     //transfer the image to appropriate layout for copying
    
-    texture_images[texture_images.size() - 1][0].transfer(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, graphics_queue, command_pool);
+    texture_images[texture_images.size() - 1][0].transfer(
+            vk::ImageLayout::eTransferDstOptimal, 
+            device.get_transfer_queue()
+        );
+
     VkOffset3D image_offset = {0, 0, 0};
-    texture_images[texture_images.size() - 1][0].copy_from_buffer(newBuffer.buffer, image_offset, std::nullopt, graphics_queue, command_pool);
-    texture_images[texture_images.size() - 1][0].transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, graphics_queue, command_pool);
+    texture_images[texture_images.size() - 1][0].copy_from_buffer(
+            buffer.get(), 
+            image_offset, 
+            std::nullopt, 
+            device.get_transfer_queue()
+        );
+
+    texture_images[texture_images.size() - 1][0].transfer(
+            vk::ImageLayout::eShaderReadOnlyOptimal, 
+            device.get_graphics_queue()
+        );
+
     //transfer the image again to a more optimal layout for texture sampling?
 
     //create image view for image
-
-    mem::destroyBuffer(*p_device, newBuffer);
+    buffer.destroy();
 
     //save texture image to mesh
     mem::ImageSize image_dimensions{};

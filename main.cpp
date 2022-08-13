@@ -24,7 +24,8 @@ const std::string SOURCE_PATH = CURRENT_FILE.substr(0, CURRENT_FILE.rfind("\\"))
 /// <param name="rotation_point"> the point that is being rotated around </param>
 /// <param name="rotation_angle"> the amount that rotation_item will be rotated by in degrees </param>
 /// <returns> new point thats rotated around a point </returns>
-glm::vec2 rotate_around_point(glm::vec2 rotation_item, glm::vec2 rotation_point, float rotation_angle) {
+glm::vec2 rotate_around_point(glm::vec2 rotation_item, 
+glm::vec2 rotation_point, float rotation_angle) {
 	//define rotation matrix
 	float theta = glm::radians(rotation_angle);
 	glm::mat2 rotation_matrix = {
@@ -43,10 +44,13 @@ int main() {
 	//when beginning a new game, one must first create the window, but user should only ever interact with the library wrapper "Antuco_lib"
 	tuco::Antuco& antuco = tuco::Antuco::get_engine();
 
-  std::string root_project = get_project_root(__FILE__);
+	std::string root_project = get_project_root(__FILE__);
 	
 	//create window
-	tuco::Window* window = antuco.init_window(WIDTH, HEIGHT, "SOME COOL TITLE");
+	tuco::Window* window = antuco.init_window(
+		WIDTH, 
+		HEIGHT, 
+		"SOME COOL TITLE");
 
 	//create engine here so the title exists?
 	antuco.init_graphics();
@@ -64,19 +68,19 @@ int main() {
 	glm::vec3 camera_orientation = glm::vec3(0.0, -1.0, 0.0);
 
 	tuco::Camera* main_camera = antuco.create_camera(
-            camera_pos, 
-            camera_face, 
-            camera_orientation, 
-            glm::radians(45.0f), 0.1f, 150.0f);
+        camera_pos, 
+        camera_face, 
+        camera_orientation, 
+        glm::radians(45.0f), 0.1f, 150.0f);
 		
 	//create some light for the scene
 	glm::vec3 light_position = glm::vec3(-3.58448f, 7.69584f, 11.7122f);
 	glm::vec3 light_look_at = glm::vec3(0.0f, 0.0f, 0.0f);
 	tuco::DirectionalLight& light = antuco.create_spotlight(
-            light_position, 
-            light_look_at, 
-            glm::vec3(1.0, 1.0, 1.0), 
-            glm::vec3(0.0, 1.0, 0.0), true); 
+        light_position, 
+        light_look_at, 
+        glm::vec3(1.0, 1.0, 1.0), 
+        glm::vec3(0.0, 1.0, 0.0), true); 
 
 	//create a simple game object
 	auto some_object = antuco.create_object();
@@ -137,9 +141,17 @@ int main() {
 		yaw += offset_x;
 		pitch = glm::clamp(pitch - offset_y, -89.0, 89.0);
 
-		camera_face.x = (float) (glm::sin(glm::radians(yaw))) * glm::cos(glm::radians(pitch));
-		camera_face.y = (float) glm::sin(glm::radians(pitch));
-		camera_face.z = (float) (glm::cos(glm::radians(yaw))) * glm::cos(glm::radians(pitch));
+		camera_face.x = static_cast<float>((
+			glm::sin(glm::radians(yaw))) * 
+			glm::cos(glm::radians(pitch)
+		));
+		camera_face.y = static_cast<float>(
+			glm::sin(glm::radians(pitch))
+		);
+		camera_face.z = static_cast<float>((
+			glm::cos(glm::radians(yaw))) * 
+			glm::cos(glm::radians(pitch)
+		));
 
 		camera_face = glm::normalize(camera_face);
 
@@ -148,19 +160,24 @@ int main() {
 			camera_pos += PLAYER_SPEED * camera_face * (float)delta;
 		}	
 		else if (window->get_key_state(tuco::WindowInput::A)) {
-			camera_pos -= glm::normalize(glm::cross(camera_face, camera_orientation)) * PLAYER_SPEED * (float)delta;
+			camera_pos -= glm::normalize(
+				glm::cross(camera_face, camera_orientation)) * 
+				PLAYER_SPEED * 
+				static_cast<float>(delta);
 		}	
 		else if (window->get_key_state(tuco::WindowInput::D)) {	
-			camera_pos += glm::normalize(glm::cross(camera_face, camera_orientation)) * PLAYER_SPEED * (float)delta;
+			camera_pos += glm::normalize(
+				glm::cross(camera_face, camera_orientation)) * 
+				PLAYER_SPEED * 
+				static_cast<float>(delta);
 		}
 		else if (window->get_key_state(tuco::WindowInput::S)) {
-			camera_pos -= PLAYER_SPEED * camera_face * (float)delta;
+			camera_pos -= PLAYER_SPEED * 
+				camera_face * 
+				static_cast<float>(delta);
 		}
-
 		if (window->get_key_state(tuco::WindowInput::X)) {
-			//std::cout << camera_pos.x << "|" << camera_pos.y << "|" << camera_pos.z << std::endl;
 			light.update(camera_pos);
-			//light_mesh->set_position(camera_pos);
 		}
 		
 		//render the objects onto the screen
@@ -178,7 +195,9 @@ int main() {
 		delta = delta_time.count() * 0.001;
 			
 
-		game_loop = !window->check_window_status(tuco::WindowStatus::CLOSE_REQUEST);
+		game_loop = !window->check_window_status(
+			tuco::WindowStatus::CLOSE_REQUEST
+		);
 
 		//close input
 		if (window->get_key_state(tuco::WindowInput::Q)) {

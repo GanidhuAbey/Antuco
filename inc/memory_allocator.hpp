@@ -7,7 +7,7 @@
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 
-//#include "engine_graphics.hpp"
+#include "vulkan_wrapper/device.hpp"
 
 #include <stdexcept>
 #include <iostream>
@@ -30,52 +30,52 @@ namespace mem {
 
 struct BufferCreateInfo {
     const void* pNext = nullptr;
-    VkBufferCreateFlags flags = 0;
-    VkDeviceSize size;
-    VkBufferUsageFlags usage;
-    VkSharingMode sharingMode;
-    uint32_t queueFamilyIndexCount;
-    const uint32_t* pQueueFamilyIndices;
-    VkMemoryPropertyFlags memoryProperties;
+    vk::BufferCreateFlags flags = {};
+    vk::DeviceSize size;
+    vk::BufferUsageFlags usage;
+    vk::SharingMode sharing_mode = vk::SharingMode::eExclusive;
+    uint32_t queue_family_index_count;
+    const uint32_t* p_queue_family_indices;
+    vk::MemoryPropertyFlags memory_properties;
 };
 
 
 struct ImageCreateInfo {
-    VkImageCreateFlags flags = 0;   
-    VkImageType imageType = VK_IMAGE_TYPE_2D;
-    VkFormat format;
-    VkExtent3D extent;
+    vk::ImageCreateFlagBits flags = {};
+    vk::ImageType image_type = vk::ImageType::e2D;
+    vk::Format format;
+    vk::Extent3D extent;
     uint32_t mipLevels = 1;
     uint32_t arrayLayers = 1;
-    VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
-    VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
-    VkImageUsageFlags usage;
-    VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkDeviceSize size;
-    VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    vk::SampleCountFlagBits samples = vk::SampleCountFlagBits::e1;
+    vk::ImageTiling tiling = vk::ImageTiling::eOptimal;
+    vk::ImageUsageFlags usage;
+    vk::ImageLayout initial_layout = vk::ImageLayout::eUndefined;
+    vk::DeviceSize size;
+    vk::SharingMode sharingMode = vk::SharingMode::eExclusive;
     uint32_t queueFamilyIndexCount;
     const uint32_t* pQueueFamilyIndices;
 
-    VkMemoryPropertyFlags memoryProperties;
+    vk::MemoryPropertyFlags memory_properties;
 };
 
 struct ImageViewCreateInfo {
     void* pNext = nullptr;
-    VkImageViewCreateFlags flags = 0;
-    VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_2D;
-    std::optional<VkFormat> format = std::nullopt;
+    vk::ImageViewCreateFlags flags = {};
+    vk::ImageViewType view_type = vk::ImageViewType::e2D;
+    std::optional<vk::Format> format = std::nullopt;
     
-    VkComponentSwizzle r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    VkComponentSwizzle b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    VkComponentSwizzle g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    VkComponentSwizzle a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    vk::ComponentSwizzle r = vk::ComponentSwizzle::eIdentity;
+    vk::ComponentSwizzle b = vk::ComponentSwizzle::eIdentity; 
+    vk::ComponentSwizzle g = vk::ComponentSwizzle::eIdentity;
+    vk::ComponentSwizzle a = vk::ComponentSwizzle::eIdentity;
     
     //image subresource
     uint32_t layer_count = 1;
     uint32_t base_array_layer = 0;
     uint32_t level_count = 1;
     uint32_t base_mip_level = 0;
-    VkImageAspectFlags aspect_mask;
+    vk::ImageAspectFlags aspect_mask;
 };
 
 struct ImageData {
@@ -86,35 +86,45 @@ struct ImageData {
 
 class Image {
 private:
-    VkDevice device;
-    VkPhysicalDevice phys_device;
+    v::Device* device;
+    v::PhysicalDevice* phys_device;
 
     ImageData data;
 
-    VkImage image;
-    VkImageView image_view;
+    vk::Image image;
+    vk::ImageView image_view;
     VkDeviceMemory memory;
+
+    vk::CommandPool command_pool;
 
     bool write = false;
 public:
-    Image();
-    ~Image();
-    void init(vk::PhysicalDevice& physical_device, VkDevice& device, ImageData info);
-    void init(vk::PhysicalDevice& physical_device, VkDevice& device, VkImage image, ImageData info);
+    void init(v::PhysicalDevice& physical_device, v::Device& device, ImageData info);
+    void init(v::PhysicalDevice& physical_device, v::Device& device, VkImage image, ImageData info);
     //can only be called after init()
     void destroy();
     void destroy_image_view();
-    VkImage get_api_image();
-    VkImageView get_api_image_view();
+    vk::Image get_api_image();
+    vk::ImageView get_api_image_view();
 
     void transfer(
-        VkImageLayout output_layout, 
-        VkQueue queue, 
-        VkCommandPool pool, 
-        std::optional<VkCommandBuffer> command_buffer = std::nullopt, 
-        VkImageLayout current_layout = VK_IMAGE_LAYOUT_UNDEFINED);
-    void copy_to_buffer(VkBuffer buffer, VkDeviceSize dst_offset, VkQueue queue, VkCommandPool command_pool, std::optional<VkCommandBuffer> command_buffer = std::nullopt);
-    void copy_from_buffer(VkBuffer buffer, VkOffset3D image_offset, std::optional<VkExtent3D> map_size, VkQueue queue, VkCommandPool command_pool, std::optional<VkCommandBuffer> command_buffer = std::nullopt);
+        vk::ImageLayout output_layout, 
+        vk::Queue queue, 
+        std::optional<vk::CommandBuffer> command_buffer = std::nullopt, 
+        vk::ImageLayout current_layout = vk::ImageLayout::eUndefined);
+    
+    void copy_to_buffer(
+            vk::Buffer buffer, 
+            VkDeviceSize dst_offset, 
+            vk::Queue queue, 
+            std::optional<vk::CommandBuffer> command_buffer = std::nullopt);
+
+    void copy_from_buffer(
+            vk::Buffer buffer, 
+            vk::Offset3D image_offset, 
+            std::optional<vk::Extent3D> map_size, 
+            vk::Queue queue, 
+            std::optional<vk::CommandBuffer> command_buffer = std::nullopt);
 
     void set_write(bool write) { Image::write = write; }
 
@@ -127,25 +137,42 @@ private:
 //amount of memory visible to both CPU and GPU is limited in systems so should only be
 //used temporary cases.
 class CPUBuffer {
+private:
+    vk::Buffer buffer;
+    vk::DeviceMemory memory;
 
+    v::Device* device;
+    
+public:
+    void init(v::PhysicalDevice& physical_device, v::Device& device, BufferCreateInfo& buffer_info);
+    void map(vk::DeviceSize size, const void* data);
+    void destroy();
+
+    vk::Buffer& get() { return buffer; }
 };
 
 class SearchBuffer {
 private:
     std::vector<VkDeviceSize> memory_locations;
-    VkDeviceSize memory_offset;
-    VkDeviceMemory buffer_memory;
+    vk::DeviceSize memory_offset;
+    vk::DeviceMemory buffer_memory;
 
-    VkDevice api_device;
+    v::Device* api_device;
 public:
-    VkBuffer buffer;
+    vk::Buffer buffer;
 public:
-    SearchBuffer();
-    ~SearchBuffer();
-public:
-    void init(VkPhysicalDevice physical_device, VkDevice& device, BufferCreateInfo* p_buffer_info);
+    void init(
+        v::PhysicalDevice& physical_device, 
+        v::Device& device, 
+        BufferCreateInfo& buffer_info);
+
     void destroy();
-    void write(VkDevice device, VkDeviceSize offset, VkDeviceSize data_size, void* p_data);
+    void write(
+        VkDevice device, 
+        VkDeviceSize offset, 
+        VkDeviceSize data_size, 
+        void* p_data);
+
     VkDeviceSize allocate(VkDeviceSize allocation_size);
     void free(VkDeviceSize offset);
 };
@@ -157,28 +184,28 @@ private:
     VkDeviceSize offset;
     VkDeviceMemory buffer_memory;
     //i need a shared pointer of the device...
-    VkCommandPool command_pool;
+    vk::CommandPool command_pool;
     //pair with allocation size and offset? 
     std::vector<std::pair<VkDeviceSize, VkDeviceSize>> allocations;
 
-    VkQueue transfer_queue;
+    vk::Queue transfer_queue;
     uint32_t transfer_family;
 
-    VkBuffer inter_buffer;
-    VkDeviceMemory inter_memory;
+    vk::Buffer inter_buffer;
+    vk::DeviceMemory inter_memory;
 
-    VkDevice device;
-    VkPhysicalDevice phys_device;
-
-public:
-    VkBuffer buffer;
+    v::Device* device;
+    v::PhysicalDevice* phys_device;
 
 public:
-    StackBuffer();
-    ~StackBuffer();
+    vk::Buffer buffer;
 
 public:
-    void init(vk::PhysicalDevice& physical_device, VkDevice& device, VkCommandPool& command_pool, BufferCreateInfo* p_buffer_info);
+    void init(
+        v::PhysicalDevice& physical_device, 
+        v::Device& device, 
+        BufferCreateInfo& p_buffer_info);
+
     VkDeviceSize map(VkDeviceSize data_size, void* data);
     void destroy();
     void free(VkDeviceSize delete_offset);
@@ -186,10 +213,8 @@ public:
     
 private: 
     void setup_queues();
-    void create_inter_buffer(VkDeviceSize buffer_size, VkMemoryPropertyFlags memory_properties, VkBuffer* buffer, VkDeviceMemory* memory);
+    void create_inter_buffer(vk::DeviceSize buffer_size, vk::MemoryPropertyFlags memory_properties, vk::Buffer& buffer, vk::DeviceMemory& memory);
     VkDeviceSize allocate(VkDeviceSize allocation_size);
-    VkCommandBuffer begin_command_buffer();
-    void end_command_buffer(VkCommandBuffer command_buffer);
     void copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize dst_offset, VkDeviceSize data_size);
 };
 
@@ -209,12 +234,11 @@ private:
     std::vector<uint32_t> allocations;
     PoolCreateInfo pool_create_info;
     
-    VkDevice api_device;
+    v::Device* api_device;
 
 
 public:
-    Pool(VkDevice& device, PoolCreateInfo create_info);
-    ~Pool();
+    Pool(v::Device& device, PoolCreateInfo create_info);
 public:   
     std::vector<VkDescriptorPool> pools;
     
@@ -271,17 +295,9 @@ struct MemoryData {
 
 
 
-void createObject();
-void createBuffer(VkPhysicalDevice physicalDevice, VkDevice device, BufferCreateInfo* pCreateInfo, Memory* memory);
-void createImage(VkPhysicalDevice physicalDevice, VkDevice device, ImageCreateInfo* imageInfo, Memory* pMemory);
-void createImageView(VkDevice device, ImageViewCreateInfo viewInfo, Memory* pMemory);
-void mapMemory(VkDevice device, VkDeviceSize dataSize, Memory* pMemory, const void* data);
-uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
-
-void createMemory(VkPhysicalDevice physicalDevice, VkDevice device, MemoryInfo* poolInfo, VkBuffer* buffer, Memory* maMemory);
-void allocateMemory(VkDeviceSize allocationSize, Memory* pMemory, VkDeviceSize* force_offset=nullptr);
-void freeMemory(FreeMemoryInfo freeInfo, Memory* pMemory);
-void destroyBuffer(VkDevice device, Memory maMemory);
-void destroyImage(VkDevice device, Memory maMemory);
+uint32_t findMemoryType(
+    v::PhysicalDevice& physical_device, 
+    uint32_t typeFilter, 
+    vk::MemoryPropertyFlags properties);
 
 } // namespace mem

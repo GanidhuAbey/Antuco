@@ -10,6 +10,9 @@
 #include <optional>
 #include <iostream>
 
+#include "vulkan_wrapper/surface.hpp"
+#include "vulkan_wrapper/physical_device.hpp"
+
 namespace tuco {
 class QueueData {
 public:
@@ -18,7 +21,7 @@ public:
     std::optional<uint32_t> transferFamily;
 
 public:
-    QueueData(VkPhysicalDevice device, VkSurfaceKHR surface) {
+    QueueData(v::PhysicalDevice& device, v::Surface& surface) {
         find_queue_families(device, surface);
     }
     QueueData(VkPhysicalDevice device) {
@@ -57,20 +60,20 @@ private:
             LOG("required queues not found");
         }
     }
-    void find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
+    void find_queue_families(v::PhysicalDevice& device, v::Surface& surface) {
         //logic to fill indices struct up
         uint32_t queueCount = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueCount, nullptr);
+        vkGetPhysicalDeviceQueueFamilyProperties(device.get(), &queueCount, nullptr);
 
         std::vector<VkQueueFamilyProperties> queueFamilies(queueCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueCount, queueFamilies.data());
+        vkGetPhysicalDeviceQueueFamilyProperties(device.get(), &queueCount, queueFamilies.data());
 
         //NOTE: the reason for the const auto& is to specify that the data being read from the for loop is NOT being modified
         int i = 0;
 
         for (const auto& queue : queueFamilies) {
             VkBool32 presentSupport = false;
-            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+            vkGetPhysicalDeviceSurfaceSupportKHR(device.get(), i, surface.get(), &presentSupport);
 
             if (presentSupport) {
                 presentFamily = i;

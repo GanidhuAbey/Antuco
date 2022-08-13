@@ -2,8 +2,10 @@
 
 using namespace tuco;
 
-void ResourceCollection::init(VkDevice& device, VkDescriptorType type, VkDescriptorSetLayout layout, size_t resource_size, mem::Pool& pool) {
-    p_device = device;
+void ResourceCollection::init(
+const v::Device& device, VkDescriptorType type, 
+VkDescriptorSetLayout layout, uint32_t resource_size, mem::Pool& pool) {
+    ResourceCollection::device = const_cast<v::Device*>(&device);
 
     sets.resize(resource_size);
     descriptor_type = type;
@@ -32,17 +34,22 @@ VkDescriptorSet ResourceCollection::get_api_set(size_t i) {
 void ResourceCollection::destroy() {
 }
 
-void ResourceCollection::create_set(VkDescriptorSetLayout layout, mem::Pool& pool) {
+void ResourceCollection::create_set(VkDescriptorSetLayout layout, 
+mem::Pool& pool) {
     std::vector<VkDescriptorSetLayout> layouts(sets.size(), layout);
 
-    VkDescriptorSetAllocateInfo allocateInfo{};
-    api_pool = pool.pools[pool.allocate(sets.size())];
+    pool_index = pool.allocate(sets.size());
+
+    VkDescriptorSetAllocateInfo allocateInfo{}; 
     allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.descriptorPool = api_pool;
-    allocateInfo.descriptorSetCount = sets.size();
+    allocateInfo.descriptorPool = pool.pools[pool_index];
+    allocateInfo.descriptorSetCount = static_cast<uint32_t>(sets.size());
     allocateInfo.pSetLayouts = layouts.data();
 
-    VkResult result = vkAllocateDescriptorSets(p_device, &allocateInfo, sets.data());
+    VkResult result = vkAllocateDescriptorSets(
+        device->get(), 
+        &allocateInfo, 
+        sets.data());
 
     if (result != VK_SUCCESS) {
         msg::print_line("[ERROR CODE " + std::to_string(result) + "] - could not allocate sets");
@@ -85,7 +92,7 @@ void ResourceCollection::update_set(size_t i) {
     }
     writeInfo.dstArrayElement = 0;
 
-    vkUpdateDescriptorSets(p_device, 1, &writeInfo, 0, nullptr);
+    vkUpdateDescriptorSets(device->get(), 1, &writeInfo, 0, nullptr);
 }
 
 void ResourceCollection::remove_buffer() {
@@ -108,7 +115,7 @@ void ResourceCollection::add_buffer(VkBuffer buffer, VkDeviceSize buffer_offset,
     buffer_info.offset = buffer_offset;
     buffer_info.range = buffer_range;
 }
-void ResourceCollection::add_image(VkImageLayout image_layout, mem::Image& image, VkSampler& image_sampler) {
+void ResourceCollection::add_image(VkImageLayout image_layout, mem::Image& image, vk::Sampler& image_sampler) {
 	if (buffer_add) {
 		LOG("[ERROR] - attempted to add image data to buffer set");
 		return;
@@ -124,7 +131,7 @@ void ResourceCollection::add_image(VkImageLayout image_layout, mem::Image& image
 
 void ResourceCollection::add_image(VkImageLayout image_layout,
         std::vector<mem::Image>& images, 
-        VkSampler& image_sampler) {
+        vk::Sampler& image_sampler) {
 
 	if (buffer_add) {
 		LOG("[ERROR] - attempted to add image data to buffer set");

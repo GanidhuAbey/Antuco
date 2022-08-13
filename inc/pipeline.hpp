@@ -5,6 +5,8 @@
 #include <memory>
 #include <vulkan/vulkan.hpp>
 
+#include "vulkan_wrapper/device.hpp"
+
 #include <vector>
 #include <optional>
 #include <string>
@@ -28,7 +30,7 @@ namespace tuco {
  *      it can be used be, this parameter will set that.
  *  subpass_index : similiar to the above this will control which subpass within the renderpass
  *      the pipeline will be used by.
- *  blend_colours : when set to true, the alpha value of a fragment will be accounted for when computing
+ *  blend_colours : when set to true, :the alpha value of a fragment will be accounted for when computing
  *      the final colour of a pixel.
  *  
  * --------------------------------------------------------------------------------
@@ -36,7 +38,7 @@ namespace tuco {
 
 
 struct PipelineConfig {
-    VkExtent2D screen_extent;
+    vk::Extent2D screen_extent;
     std::optional<std::string> vert_shader_path = std::nullopt;
     std::optional<std::string> frag_shader_path = std::nullopt;
     std::optional<std::string> compute_shader_path = std::nullopt;
@@ -50,15 +52,32 @@ struct PipelineConfig {
     std::vector<VkDescriptorSetLayout> descriptor_layouts;
     std::vector<VkPushConstantRange> push_ranges = std::vector<VkPushConstantRange>(0);
 
-    std::vector<VkVertexInputBindingDescription> binding_descriptions = {
-        {0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX},
+    std::vector<vk::VertexInputBindingDescription> 
+    binding_descriptions = {
+        vk::VertexInputBindingDescription({
+            0, 
+            sizeof(Vertex), 
+            VK_VERTEX_INPUT_RATE_VERTEX})
     };
 
     //attribute description
-    std::vector<VkVertexInputAttributeDescription> attribute_descriptions = {
-        {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, position)}, //position
-        {1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, normal)}, //normal
-        {2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, tex_coord)}, //texture coord
+    std::vector<vk::VertexInputAttributeDescription> 
+    attribute_descriptions = {
+        vk::VertexInputAttributeDescription({
+                0, 
+                0, 
+                VK_FORMAT_R32G32B32_SFLOAT, 
+                offsetof(Vertex, position)}), //position
+        vk::VertexInputAttributeDescription({
+                1, 
+                0, 
+                VK_FORMAT_R32G32B32_SFLOAT, 
+                offsetof(Vertex, normal)}), //normal
+        vk::VertexInputAttributeDescription({
+                2, 
+                0, 
+                VK_FORMAT_R32G32_SFLOAT, 
+                offsetof(Vertex, tex_coord)}) //texture coord
     };
 
     VkCullModeFlags cull_mode = VK_CULL_MODE_BACK_BIT;
@@ -67,14 +86,12 @@ struct PipelineConfig {
 
 class TucoPipeline {
     private:
-        VkPipeline pipeline_;
-        VkPipelineLayout layout_;
+        vk::Pipeline pipeline_;
+        vk::PipelineLayout layout_;
 
-        VkDevice api_device;
+        v::Device* api_device;
     public:
-        void init(VkDevice& device, const PipelineConfig& config);
-        TucoPipeline();
-        ~TucoPipeline();
+        void init(v::Device& device, const PipelineConfig& config);
 
         VkPipeline get_api_pipeline();
         VkPipelineLayout get_api_layout();
@@ -90,8 +107,11 @@ class TucoPipeline {
     private:
         
         VkPipelineColorBlendAttachmentState enable_alpha_blending();
-        VkShaderModule create_shader_module(std::vector<uint32_t> shaderCode);
-        VkPipelineShaderStageCreateInfo fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
+        vk::ShaderModule create_shader_module(std::vector<uint32_t> shaderCode);
+        vk::PipelineShaderStageCreateInfo fill_shader_stage_struct(
+                vk::ShaderStageFlagBits stage, 
+                vk::ShaderModule shaderModule
+            );
         void create_pipeline_layout(const std::vector<VkDescriptorSetLayout>& set_layouts,
                                     const std::vector<VkPushConstantRange>& push_ranges);
 };

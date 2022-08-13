@@ -16,6 +16,8 @@ private:
     uint32_t score_physical_device(vk::PhysicalDevice);
 
 public:
+    PhysicalDevice() {}
+
     PhysicalDevice(Instance& instance);
     ~PhysicalDevice();
 

@@ -3,6 +3,7 @@
 #include "api_window.hpp"
 #include "logger/interface.hpp"
 #include "config.hpp"
+#include "api_config.hpp"
 
 #include <glm/ext.hpp>
 
@@ -11,22 +12,24 @@ using namespace tuco;
 GraphicsImpl::GraphicsImpl(Window* pWindow)
     : instance(pWindow->get_title(), VK_MAKE_API_VERSION(0, 1, 1, 0)),
       physical_device(instance),
-      surface(instance, pWindow->pWindow->apiWindow) {
+      surface(instance, pWindow->pWindow->apiWindow),
+      device(physical_device, surface, false),
+      swapchain(physical_device, device, surface) {
+
 	not_created = true;
 	raytracing = false; //set this as an option in the pre-configuration settings.
 	oit_layers = 1;
 	depth_bias_constant = 7.0f;
 	depth_bias_slope = 9.0f;
-	print_debug = true;
 #ifdef APPLE_M1
     print_debug = false;
     raytracing = false;
 #endif
-	create_logical_device();
-	create_command_pool();
+    command_pool = create_command_pool(
+            device,
+            device.get_graphics_family()); 
 
 	//graphics draw
-	create_swapchain();
 	//create_shadowmap_atlas();
 	//create_shadowmap_transfer_buffer();
 	create_depth_resources();
@@ -64,7 +67,7 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
     create_screen_pass();
     create_screen_buffer();
     create_screen_pipeline();
-	create_screen_set();
+    create_screen_set();
 }
 
 GraphicsImpl::~GraphicsImpl() {
@@ -88,42 +91,48 @@ void GraphicsImpl::update_light(std::vector<DirectionalLight> lights, std::vecto
 //bugfixing to arrive at a working version.
 
 //NOTE: enable sync validation to check that ubo read-write hazard is not occuring
-void GraphicsImpl::update_draw(std::vector<std::unique_ptr<GameObject>>& game_objects) {
+void GraphicsImpl::update_draw(
+std::vector<std::unique_ptr<GameObject>>& game_objects) {
 	//now the question is what do we do here?
 	//we need to create some command buffers
 	//update vertex and index buffers
 
-	//store a pointer of all the objects in the scene, in case we have to render the image again for whatever reason
 	auto offset = 0;
 	for (size_t i = 0; i < game_objects.size(); i++) {
         const auto& model = game_objects[i]->object_model;
 
-		//TODO: make light buffer object a ubo with only 2 matricies for the respective light data.
-		//		it will make the whole thing more elegant once we have more light data to deal with
-
 		if (game_objects[i]->update) {
             //update the buffer data of game objects
-			uint32_t index_mem = update_index_buffer(model.model_indices);
-			uint32_t vertex_mem = update_vertex_buffer(model.model_vertices);
+			uint32_t index_mem = update_index_buffer(
+			    model.model_indices
+			);
+			uint32_t vertex_mem = update_vertex_buffer(
+			    model.model_vertices
+			);
 
 			update_command_buffers = true;
 			game_objects[i]->update = false;
-			create_ubo_set(static_cast<uint32_t>(model.transforms.size()));	
+			create_ubo_set(
+			    static_cast<uint32_t>(model.transforms.size())
+			);	
 			write_to_ubo();
-			create_light_set(static_cast<uint32_t>(model.transforms.size()));
+			create_light_set(
+			    static_cast<uint32_t>(model.transforms.size())
+			);
             
-			//TODO: for some reason model_meshes or object_model does not exist
-			//      and the program crashes when it attempts to access the data here.
 			auto primitives = model.primitives;
 			//create texture data
-			if (model.model_images.size() > 0) create_texture_set(model.model_images.size());
+			if (model.model_images.size() > 0) {
+			    create_texture_set(model.model_images.size());
+			}
 			if (model.model_materials.size() > 0) {
 				create_materials_set(model.model_materials.size());
 				write_to_materials(model.model_materials.size());
 			}
 			for (auto& prim : primitives) {
 				if (prim.mat_index >= 0) {
-					auto material = model.model_materials[prim.mat_index];
+					auto material = model
+					    .model_materials[prim.mat_index];
 					update_materials(
 						mat_offsets[i][prim.mat_index],
 						material);
@@ -131,13 +140,13 @@ void GraphicsImpl::update_draw(std::vector<std::unique_ptr<GameObject>>& game_ob
 
 				//create vulkan image
 				//why is textures even a vector???
-                if (0 < prim.image_index && prim.image_index < model.model_images.size()) {
+                if (0 < prim.image_index && 
+                prim.image_index < model.model_images.size()) {
 					create_vulkan_image(
 						model.model_images[prim.image_index], 
 						i, 
 						prim.image_index);
                 }
-				//TODO: create alternative for when primitive does not have image.
 			}
 		}
 

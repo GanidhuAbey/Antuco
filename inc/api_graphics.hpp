@@ -23,8 +23,10 @@
 #include "config.hpp"
 #include "descriptor_set.hpp"
 
+#include "vulkan_wrapper/swapchain.hpp"
 #include "vulkan_wrapper/instance.hpp"
 #include "vulkan_wrapper/physical_device.hpp"
+#include "vulkan_wrapper/device.hpp"
 #include "vulkan_wrapper/surface.hpp"
 
 #include "pipeline.hpp"
@@ -36,8 +38,8 @@
 
 const uint32_t API_VERSION_1_0 = 0;
 
-//TODO: would be nice if we had a config file/page implemented to add some tweakable values
-//In case use wants many buffers it wouldn't be a good idea to create as many buffers as shadow casters
+//TODO: pass parameter values through config file, prevent
+//      recompilation
 const uint32_t SHADOW_TRANSFER_BUFFERS = MAX_SHADOW_CASTERS;
 
 const uint32_t BUFFER_SIZE = 2e8;
@@ -72,16 +74,15 @@ private:
     v::Instance instance; 
     v::Surface surface;
     v::PhysicalDevice physical_device;
-    std::shared_ptr<VkDevice> p_device;
+	v::Device device;
+	v::Swapchain swapchain;
 	VkDebugUtilsMessengerEXT debug_messenger;
-    bool print_debug = true;
 
-	uint32_t graphics_family;
-	uint32_t present_family;
-
-	VkQueue graphics_queue;
-	VkQueue present_queue;
-
+#ifdef APPLE_M1
+    bool print_debug = false;
+#else
+	bool print_debug = true;
+#endif
 
 //pre-configuration settings
 private:
@@ -103,7 +104,6 @@ private:
 	void create_logical_device();
 	void enable_raytracing();
 	void pick_physical_device();
-	void create_command_pool();
 	uint32_t score_physical_device(VkPhysicalDevice physical_device);
 	void destroy_initialize();
 
@@ -143,12 +143,7 @@ private:
     VkDescriptorSetLayout mat_layout;
 	VkDescriptorSetLayout light_layout;
 
-	VkSwapchainKHR swapchain;
-	VkExtent2D swapchain_extent;
-	VkFormat swapchain_format;
-	std::vector<mem::Image> swapchain_images;
-
-	VkSampler texture_sampler;
+	vk::Sampler texture_sampler;
 
 	std::vector<VkFramebuffer> output_buffers;
     std::vector<VkFramebuffer> screen_buffers;
@@ -178,8 +173,8 @@ private:
 	VkDescriptorSet shadowmap_set;
 	ResourceCollection screen_resource;
 
-	VkCommandPool command_pool;
-	std::vector<VkCommandBuffer> command_buffers;
+	vk::CommandPool command_pool;
+	std::vector<vk::CommandBuffer> command_buffers;
 
 	std::vector<VkDeviceSize> ubo_offsets; //holds the offset data for a objects ubo information within the uniform buffer
 	std::vector<std::vector<VkDeviceSize>> mat_offsets;
@@ -215,10 +210,10 @@ private:
     float depth_bias_constant = 3.5f;
     float depth_bias_slope = 9.5f;
 
-	VkSampler shadowmap_sampler;	
+	vk::Sampler shadowmap_sampler;	
 	VkDescriptorSetLayout shadowmap_layout;
 	
-	VkFramebuffer shadowpass_buffer;
+	vk::Framebuffer shadowpass_buffer;
 
     mem::Image shadow_pass_texture;
  
@@ -276,7 +271,6 @@ private:
 	void draw_frame();
 	void create_semaphores();
 	void create_fences();
-	void create_swapchain();
 	void create_depth_resources();
     void create_output_buffers();
     void create_screen_buffer();
@@ -319,7 +313,12 @@ private:
 private:
     VkDescriptorBufferInfo setup_descriptor_set_buffer(uint32_t set_size);
     void update_descriptor_set(VkDescriptorBufferInfo buffer_info, uint32_t dst_binding, VkDescriptorSet set);
-	void create_frame_buffer(VkRenderPass pass, uint32_t attachment_count, VkImageView* p_attachments, uint32_t width, uint32_t height, VkFramebuffer* frame_buffer);
+	vk::Framebuffer create_frame_buffer(
+			vk::RenderPass pass, 
+			uint32_t attachment_count, 
+			vk::ImageView* p_attachments, 
+			uint32_t width, 
+			uint32_t height);
 	void memory_dependency(
 		size_t i,
 		VkAccessFlags src_a = VK_ACCESS_MEMORY_WRITE_BIT,

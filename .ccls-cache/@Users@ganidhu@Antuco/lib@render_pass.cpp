@@ -8,17 +8,13 @@
 
 using namespace tuco;
 
-TucoPass::TucoPass() {}
-TucoPass::~TucoPass() {
-    //destroy();
-}
 
 void TucoPass::destroy() {
-    vkDestroyRenderPass(api_device, render_pass, nullptr);
+    api_device->get().destroyRenderPass(render_pass);
 }
 
-void TucoPass::build(VkDevice& device, VkPipelineBindPoint bind_point) {
-    api_device = device;
+void TucoPass::build(v::Device& device, VkPipelineBindPoint bind_point) {
+    api_device = &device;
     
     create_render_pass(bind_point);
 }
@@ -53,22 +49,25 @@ void TucoPass::add_colour(uint32_t attachment, ColourConfig config) {
 
     colour_location = attachment;
 
-    colour_attachment.format = config.format;
-    colour_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    colour_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colour_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colour_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colour_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colour_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; //the other subpass does not affect the layout of the image this subpass uses.
-    colour_attachment.finalLayout = config.final_layout;
-
     colour_ref.attachment = attachment;
     colour_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    colour_attachment = vk::AttachmentDescription(
+            {}, 
+            config.format, 
+            vk::SampleCountFlagBits::e1, 
+            vk::AttachmentLoadOp::eClear, 
+            vk::AttachmentStoreOp::eStore, 
+            vk::AttachmentLoadOp::eDontCare, 
+            vk::AttachmentStoreOp::eDontCare, 
+            vk::ImageLayout::eUndefined, 
+            config.final_layout
+        );
 
     attachments.push_back(colour_attachment);
 }
 
-void TucoPass::add_dependency(std::vector<VkSubpassDependency> d) {
+void TucoPass::add_dependency(std::vector<vk::SubpassDependency> d) {
     dependencies = d;
     dependency = true; 
 }
@@ -99,22 +98,15 @@ void TucoPass::create_render_pass(VkPipelineBindPoint bind_point) {
 
     msg::print_line("subpass count: " + std::to_string(subpasses.size()));
 
-    VkRenderPassCreateInfo info{};
-    info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    info.pNext = nullptr;
-    info.flags = 0;
-    info.attachmentCount = attachments.size();
-    info.pAttachments = attachments.data();
+    auto info = vk::RenderPassCreateInfo(
+            {},
+            static_cast<uint32_t>(attachments.size()),
+            attachments.data(),
+            static_cast<uint32_t>(subpasses.size()),
+            subpasses.data(),
+            static_cast<uint32_t>(dependencies.size()),
+            dependencies.data()
+        );
     
-    info.subpassCount = subpasses.size();
-    info.pSubpasses = subpasses.data();
-
-    info.dependencyCount = dependencies.size();
-    info.pDependencies = dependencies.data();
-
-    VkResult result = vkCreateRenderPass(api_device, &info, nullptr, &render_pass);
-
-    if (result != VK_SUCCESS) {
-        printf("[ERROR - %d] could not create render pass \n", result);    
-    }
+    render_pass = api_device->get().createRenderPass(info); 
 }

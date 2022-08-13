@@ -11,8 +11,8 @@ using namespace tuco;
 //PURPOSE: create a vulkan pipeline with desired configuration
 //PARAMETERS:
 //<PipelineConfig config> - configuration settings for pipeline
-void TucoPipeline::init(VkDevice& device, const PipelineConfig& config) {
-    api_device = device;
+void TucoPipeline::init(v::Device& device, const PipelineConfig& config) {
+    api_device = &device;
 
     //distinguish render/compute pipeline
     if (config.compute_shader_path.has_value()) {
@@ -23,15 +23,9 @@ void TucoPipeline::init(VkDevice& device, const PipelineConfig& config) {
     }
 }
 
-TucoPipeline::TucoPipeline() {}
-
-TucoPipeline::~TucoPipeline() {
-    //if (api_device != VK_NULL_HANDLE) destroy();
-}
-
 void TucoPipeline::destroy() {
-    vkDestroyPipeline(api_device, pipeline_, nullptr);
-    vkDestroyPipelineLayout(api_device, layout_, nullptr);
+    api_device->get().destroyPipeline(pipeline_);
+    api_device->get().destroyPipelineLayout(layout_);
 }
 
 VkPipeline TucoPipeline::get_api_pipeline() {
@@ -43,57 +37,53 @@ VkPipelineLayout TucoPipeline::get_api_layout() {
 }
 
 
-VkShaderModule TucoPipeline::create_shader_module(std::vector<uint32_t> shaderCode) {
-    VkShaderModule shaderModule;
-
+vk::ShaderModule TucoPipeline::create_shader_module(std::vector<uint32_t> shaderCode) {
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     createInfo.codeSize = shaderCode.size() * sizeof(uint32_t);
 
     createInfo.pCode = shaderCode.data();
 
-    if (vkCreateShaderModule(api_device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-        throw std::runtime_error("could not create shader module");
-    }
+    auto create = vk::ShaderModuleCreateInfo(
+            {},
+            static_cast<size_t>(shaderCode.size() * sizeof(uint32_t)),
+            shaderCode.data()
+        );
 
-    return shaderModule;
+    auto shader_module = api_device->get().createShaderModule(create);
+
+    return shader_module;
 }
 
-VkPipelineShaderStageCreateInfo TucoPipeline::fill_shader_stage_struct(VkShaderStageFlagBits stage, VkShaderModule shaderModule) {
-    VkPipelineShaderStageCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    createInfo.stage = stage;
-    createInfo.module = shaderModule;
-    createInfo.pName = "main";
+vk::PipelineShaderStageCreateInfo TucoPipeline::fill_shader_stage_struct(vk::ShaderStageFlagBits stage, vk::ShaderModule shaderModule) {
+    auto create = vk::PipelineShaderStageCreateInfo(
+            {},
+            stage,
+            shaderModule,
+            "main"
+        ); 
 
-    return createInfo;
+    return create;
 }
 
 void TucoPipeline::create_compute_pipeline(const PipelineConfig& config) {
-    VkShaderModule compute_shader;
-    VkPipelineShaderStageCreateInfo shader_info;
+    vk::ShaderModule compute_shader;
+    vk::PipelineShaderStageCreateInfo shader_info;
 
     ShaderText compute_code(config.compute_shader_path.value(), ShaderKind::COMPUTE_SHADER); 
     compute_shader = create_shader_module(compute_code.get_code());
-    shader_info = fill_shader_stage_struct(VK_SHADER_STAGE_COMPUTE_BIT, compute_shader);
+    shader_info = fill_shader_stage_struct(vk::ShaderStageFlagBits::eCompute, compute_shader);
 
     create_pipeline_layout(config.descriptor_layouts, config.push_ranges);
 
-    VkComputePipelineCreateInfo pipeline_info{};
-    pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipeline_info.pNext = nullptr;
-    pipeline_info.flags = 0;
-    pipeline_info.stage = shader_info;
-    pipeline_info.layout = layout_;
-    pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
-    pipeline_info.basePipelineIndex = -1;
+    auto pipeline_info = vk::ComputePipelineCreateInfo(
+            {},
+            shader_info,
+            layout_
+        );
 
 
-    if (vkCreateComputePipelines(api_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline_) != VK_SUCCESS) {
-        LOG("could not create compute shader");
-    }
-
-    //for each layout a new pipeline is required
+    pipeline_ = api_device->get().createComputePipeline(VK_NULL_HANDLE, pipeline_info).value;
 }
 
 VkPipelineColorBlendAttachmentState TucoPipeline::enable_alpha_blending() {
@@ -112,81 +102,50 @@ VkPipelineColorBlendAttachmentState TucoPipeline::enable_alpha_blending() {
 
 void TucoPipeline::create_render_pipeline(const PipelineConfig& config) {
     //might have two might have one
-    VkShaderModule vert_shader;
-    VkShaderModule frag_shader;
-    VkPipelineShaderStageCreateInfo vert_shader_info;
-    VkPipelineShaderStageCreateInfo frag_shader_info;
+    vk::ShaderModule vert_shader;
+    vk::ShaderModule frag_shader;
+    vk::PipelineShaderStageCreateInfo vert_shader_info;
+    vk::PipelineShaderStageCreateInfo frag_shader_info;
 
-    std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
+    std::vector<vk::PipelineShaderStageCreateInfo> shader_stages;
 
     if (config.vert_shader_path.has_value()) {
         ShaderText vert_code(config.vert_shader_path.value(), ShaderKind::VERTEX_SHADER);
         vert_shader = create_shader_module(vert_code.get_code());
-        vert_shader_info = fill_shader_stage_struct(VK_SHADER_STAGE_VERTEX_BIT, vert_shader);
+        vert_shader_info = fill_shader_stage_struct(vk::ShaderStageFlagBits::eVertex, vert_shader);
         shader_stages.push_back(vert_shader_info);
     }
     if (config.frag_shader_path.has_value()) {
         ShaderText frag_code(config.frag_shader_path.value(), ShaderKind::FRAGMENT_SHADER);
         frag_shader = create_shader_module(frag_code.get_code());
-        frag_shader_info = fill_shader_stage_struct(VK_SHADER_STAGE_FRAGMENT_BIT, frag_shader);
+        frag_shader_info = fill_shader_stage_struct(vk::ShaderStageFlagBits::eFragment, frag_shader);
         shader_stages.push_back(frag_shader_info);
     }
 
-    VkPipelineVertexInputStateCreateInfo vertex_input_info{};
-    vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertex_input_info.vertexBindingDescriptionCount = config.binding_descriptions.size(); 
-    vertex_input_info.pVertexBindingDescriptions = config.binding_descriptions.data();
+    auto viewport = vk::Viewport(
+            0,
+            0,
+            static_cast<float>(config.screen_extent.width),
+            static_cast<float>(config.screen_extent.height),
+            0.f,
+            1.f
+        );
 
-    vertex_input_info.vertexAttributeDescriptionCount = config.attribute_descriptions.size();
-    vertex_input_info.pVertexAttributeDescriptions = config.attribute_descriptions.data();
 
-    VkPipelineInputAssemblyStateCreateInfo input_assembly_info{};
-    input_assembly_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    input_assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    input_assembly_info.primitiveRestartEnable = VK_FALSE;
+    auto scissor = vk::Rect2D(
+            vk::Offset2D(0, 0),
+            config.screen_extent
+        ); 
 
-    VkViewport viewport{};
-    viewport.x = 0;
-    viewport.y = 0;
-    viewport.width = (float)config.screen_extent.width;
-    viewport.height = (float)config.screen_extent.height;
-    viewport.minDepth = 0.0;
-    viewport.maxDepth = 1.0;
-
-    VkRect2D scissor{   };
-    scissor.offset = { 0, 0 };
-    scissor.extent = config.screen_extent;
- 
-    VkPipelineViewportStateCreateInfo viewport_info{};
-
-    viewport_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewport_info.viewportCount = 1;
-    viewport_info.pViewports = &viewport;
-    viewport_info.scissorCount = 1;
-    viewport_info.pScissors = &scissor;
-
-    VkPipelineRasterizationStateCreateInfo rasterization_info{};
-    rasterization_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterization_info.depthClampEnable = VK_FALSE;
-    rasterization_info.rasterizerDiscardEnable = VK_FALSE;
-    rasterization_info.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterization_info.lineWidth = 1.0f;
-    rasterization_info.cullMode = config.cull_mode;
-    rasterization_info.frontFace = config.front_face;
-    rasterization_info.depthBiasEnable = config.depth_bias_enable;
-    rasterization_info.depthBiasConstantFactor = 0.0f; // Optional
-    rasterization_info.depthBiasClamp = 0.0f; // Optional
-    rasterization_info.depthBiasSlopeFactor = 0.0f; // Optional
-    
-    VkPipelineMultisampleStateCreateInfo multisampling{};
-    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    multisampling.minSampleShading = 1.0f; // Optional
-    multisampling.pSampleMask = nullptr; // Optional
-    multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
-    multisampling.alphaToOneEnable = VK_FALSE; // Optional
-    
+    VkPipelineMultisampleStateCreateInfo multisampling_old{};
+    multisampling_old.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling_old.sampleShadingEnable = VK_FALSE;
+    multisampling_old.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampling_old.minSampleShading = 1.0f; // Optional
+    multisampling_old.pSampleMask = nullptr; // Optional
+    multisampling_old.alphaToCoverageEnable = VK_FALSE; // Optional
+    multisampling_old.alphaToOneEnable = VK_FALSE; // Optional
+   
     VkPipelineColorBlendAttachmentState color_blend_attachment{};
     color_blend_attachment.colorWriteMask = 
         VK_COLOR_COMPONENT_R_BIT | 
@@ -200,67 +159,98 @@ void TucoPipeline::create_render_pipeline(const PipelineConfig& config) {
         color_blend_attachment = enable_alpha_blending();
     }
 
-    VkPipelineColorBlendStateCreateInfo color_blend_info{};
-    color_blend_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    color_blend_info.logicOpEnable = VK_FALSE;
-    color_blend_info.attachmentCount = 1;
-    color_blend_info.pAttachments = &color_blend_attachment;
+    VkPipelineColorBlendStateCreateInfo color_blend_info_old{};
+    color_blend_info_old.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    color_blend_info_old.logicOpEnable = VK_FALSE;
+    color_blend_info_old.attachmentCount = 1;
+    color_blend_info_old.pAttachments = &color_blend_attachment;
     
-    VkPipelineDepthStencilStateCreateInfo depth_stencil_info{};
-    depth_stencil_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depth_stencil_info.pNext = nullptr;
-    depth_stencil_info.flags = 0;
-    depth_stencil_info.depthTestEnable = VK_TRUE;
-    depth_stencil_info.depthWriteEnable = VK_TRUE;
-    depth_stencil_info.depthCompareOp = config.depth_compare_op;
-    depth_stencil_info.depthBoundsTestEnable = VK_FALSE;
-    depth_stencil_info.stencilTestEnable = VK_FALSE;
+    VkPipelineDepthStencilStateCreateInfo depth_stencil_info_old{};
+    depth_stencil_info_old.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depth_stencil_info_old.pNext = nullptr;
+    depth_stencil_info_old.flags = 0;
+    depth_stencil_info_old.depthTestEnable = VK_TRUE;
+    depth_stencil_info_old.depthWriteEnable = VK_TRUE;
+    depth_stencil_info_old.depthCompareOp = config.depth_compare_op;
+    depth_stencil_info_old.depthBoundsTestEnable = VK_FALSE;
+    depth_stencil_info_old.stencilTestEnable = VK_FALSE;
 
     float blendValues[4] = { 0.0, 0.0, 0.0, 0.5 };
-    color_blend_info.blendConstants[0] = blendValues[0];
-    color_blend_info.blendConstants[1] = blendValues[1];
-    color_blend_info.blendConstants[2] = blendValues[2];
-    color_blend_info.blendConstants[3] = blendValues[3];
+    color_blend_info_old.blendConstants[0] = blendValues[0];
+    color_blend_info_old.blendConstants[1] = blendValues[1];
+    color_blend_info_old.blendConstants[2] = blendValues[2];
+    color_blend_info_old.blendConstants[3] = blendValues[3];
 
-    VkPipelineDynamicStateCreateInfo dynamic_info{};
-    dynamic_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamic_info.dynamicStateCount = static_cast<uint32_t>(config.dynamic_states.size());
-    dynamic_info.pDynamicStates = config.dynamic_states.data();
+    VkPipelineDynamicStateCreateInfo dynamic_info_old{};
+    dynamic_info_old.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamic_info_old.dynamicStateCount = static_cast<uint32_t>(config.dynamic_states.size());
+    dynamic_info_old.pDynamicStates = config.dynamic_states.data();
+
+    auto vertex_input_info = vk::PipelineVertexInputStateCreateInfo(
+            {},
+            static_cast<uint32_t>(config.binding_descriptions.size()),
+            config.binding_descriptions.data(),
+            static_cast<uint32_t>(config.attribute_descriptions.size()),
+            config.attribute_descriptions.data()
+        );
+
+    auto input_assembly_info = vk::PipelineInputAssemblyStateCreateInfo(
+            {},
+            vk::PrimitiveTopology::eTriangleList,
+            false
+        );
+    
+    auto viewport_info = vk::PipelineViewportStateCreateInfo( {},
+            1,
+            &viewport,
+            1,
+            &scissor
+        ); 
+   
+    auto rasterization_info = vk::PipelineRasterizationStateCreateInfo(
+            {},
+            false,
+            false,
+            vk::PolygonMode::eFill,
+            vk::CullModeFlags(config.cull_mode),
+            vk::FrontFace(config.front_face),
+            config.depth_bias_enable,
+            0.f,
+            0.f,
+            0.f,
+            1.f
+        );
+   
+    auto multisampling = vk::PipelineMultisampleStateCreateInfo(multisampling_old);
+    auto color_blend_info = vk::PipelineColorBlendStateCreateInfo(color_blend_info_old);
+    auto depth_stencil_info = vk::PipelineDepthStencilStateCreateInfo(depth_stencil_info_old);
+    auto dynamic_info = vk::PipelineDynamicStateCreateInfo(dynamic_info_old);
 
     create_pipeline_layout(config.descriptor_layouts, config.push_ranges);
 
-    VkGraphicsPipelineCreateInfo create_pipeline_info{};
-    create_pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    create_pipeline_info.stageCount = static_cast<uint32_t>(shader_stages.size());
-    create_pipeline_info.pStages = shader_stages.data();
-    create_pipeline_info.pVertexInputState = &vertex_input_info;
-    create_pipeline_info.pInputAssemblyState = &input_assembly_info;
-    create_pipeline_info.pViewportState = &viewport_info;
-    create_pipeline_info.pRasterizationState = &rasterization_info;
-    create_pipeline_info.pMultisampleState = &multisampling;
-    create_pipeline_info.pColorBlendState = &color_blend_info;
-    create_pipeline_info.pDepthStencilState = &depth_stencil_info;
-    create_pipeline_info.pDynamicState = &dynamic_info;
-    create_pipeline_info.layout = layout_;
-    create_pipeline_info.renderPass = config.pass;
-    create_pipeline_info.subpass = config.subpass_index;
-    
-    VkResult result = vkCreateGraphicsPipelines(
-        api_device, 
-        VK_NULL_HANDLE, 
-        1, 
-        &create_pipeline_info, 
-        nullptr, 
-        &pipeline_);
-    
-    if (result != VK_SUCCESS) {
-        throw std::runtime_error("could not create graphics pipeline");
-    }
+    auto create_info = vk::GraphicsPipelineCreateInfo(
+            {}, 
+            static_cast<uint32_t>(shader_stages.size()), 
+            shader_stages.data(), 
+            &vertex_input_info, 
+            &input_assembly_info, 
+            {}, 
+            &viewport_info, 
+            &rasterization_info, 
+            &multisampling, 
+            &depth_stencil_info, 
+            &color_blend_info, 
+            &dynamic_info, 
+            layout_, 
+            config.pass, 
+            config.subpass_index
+        );
+
+    pipeline_ = api_device->get().createGraphicsPipeline(VK_NULL_HANDLE, create_info).value;
 
     //destroy the used shader object
-    if (config.vert_shader_path.has_value()) vkDestroyShaderModule(api_device, vert_shader, nullptr);
-    if (config.frag_shader_path.has_value()) vkDestroyShaderModule(api_device, frag_shader, nullptr);
-
+    if (config.vert_shader_path.has_value()) api_device->get().destroyShaderModule(vert_shader);
+    if (config.frag_shader_path.has_value()) api_device->get().destroyShaderModule(frag_shader);
 }
 
 void TucoPipeline::create_pipeline_layout(const std::vector<VkDescriptorSetLayout>& set_layouts,
@@ -274,10 +264,13 @@ const std::vector<VkPushConstantRange>& push_ranges) {
     info.pSetLayouts = set_layouts.data();
     info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
-    auto result = vkCreatePipelineLayout(api_device, &info, nullptr, &layout_);
+    VkPipelineLayout old_layout;
+    auto result = vkCreatePipelineLayout(api_device->get(), &info, nullptr, &old_layout);
+
+    layout_ = vk::PipelineLayout(old_layout);
 
     if (result != VK_SUCCESS) {
-        msg::print_line("could not create layout, error code: " + result);
+        msg::print_line("could not create layout, error code: " + std::to_string(result));
         throw std::runtime_error("");
     }
 }
