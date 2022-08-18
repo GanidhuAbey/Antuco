@@ -110,7 +110,6 @@ void Image::destroy() {
     destroy_image_view();
     device->get().destroyImage(image, nullptr);
     device->get().freeMemory(memory, nullptr);
-    
 }
 
 void Image::destroy_image_view() {

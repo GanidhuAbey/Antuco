@@ -36,7 +36,7 @@ vk::CommandPool& command_pool,
 vk::CommandBuffer& command_buffer);
 
 
-inline vk::CommandPool& create_command_pool(
+inline vk::CommandPool create_command_pool(
 v::Device& device, 
 uint32_t queue_family) {
 	auto pool_info = vk::CommandPoolCreateInfo(

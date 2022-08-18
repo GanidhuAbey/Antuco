@@ -21,6 +21,7 @@ mono_crash.*
 
 # Mac Build Files
 build/
+.ccls-cache/
 
 # Ignore Object Files
 # objects/

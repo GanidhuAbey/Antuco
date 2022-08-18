@@ -45,7 +45,11 @@ const bool enableValidationLayers = true;
         properties = current_best_device.getProperties();
 		
 		printf("[DEBUG] - CHOSEN GPU: %s \n", 
+<<<<<<< HEAD
                 properties.deviceName.data());
+=======
+                std::string(properties.deviceName).c_str());
+>>>>>>> cedc8eaf0dabf92dae9736e7806a58989fd506a8
 		printf("[DEBUG] - MAXIMUM PUSH CONSTANT RANGE: %u \n", 
                 properties.limits.maxPushConstantsSize);
 	}

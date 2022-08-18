@@ -134,10 +134,11 @@ void main() {
     float G_2 = (x_c*x_l)/(1+v_c+v_l);
 
     //compute F
-    vec3 F = vec3(0.1) + mat.diffuse * (1 - mat.diffuse)*pow(1 - max(0, dot(surface_normal, light_dir)), 5);
+    vec3 F = () + (1 - mat.diffuse)*pow(1 - max(0, dot(surface_normal, light_dir)), 5);
 
     //compute specular
     float bottom = 4*abs(dot(surface_normal, light_dir))*abs(dot(surface_normal, camera_dir));
+    
     vec3 spec = (F*G_2*D_m)/bottom;
 
     //analyze depth at the given coordinate of the object 
@@ -152,10 +153,11 @@ void main() {
     //debugPrintfEXT("<%f, %f, %f> \n", surface_normal.x, surface_normal.y, surface_normal.z);
     float diffuse_component = mat.specular.r;
     vec3 result;
-    result = vec3(0.01) + 
+    result = vec3(0.05) + 
              max(vec3(0), vec3(1) * 
              dot(surface_normal, light_dir) * 
-             ( diffuse_component * diffuse_final + (1 - diffuse_component) * spec ));
+             ( diffuse_component * diffuse_final + 
+               (1 - diffuse_component) * spec )  );
 
     //result = surfaceNormal;
     outColor = vec4(result, 1.0f);

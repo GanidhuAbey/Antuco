@@ -24,7 +24,11 @@ Swapchain::~Swapchain() {
 
 void Swapchain::destroy() {
     for (auto& image : swapchain_images) {
+<<<<<<< HEAD
         image.destroy_image_view();
+=======
+      image.destroy();
+>>>>>>> cedc8eaf0dabf92dae9736e7806a58989fd506a8
     }
     
     device->get().destroySwapchainKHR(swapchain);

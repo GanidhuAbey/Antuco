@@ -83,7 +83,7 @@ int main() {
         glm::vec3(0.0, 1.0, 0.0), true); 
 
 	//create a simple game object
-	auto some_object = antuco.create_object();
+	auto floor = antuco.create_object();
 	//tuco::GameObject* light_mesh = antuco.create_object();
 
 	//light_mesh->add_mesh("objects/test_object/white.obj");
@@ -94,12 +94,16 @@ int main() {
 
 	
 #if defined(__APPLE__)
-	some_object->add_mesh(root_project + "/objects/antuco-files/mac/teapot.glb");
-	
+	floor->add_mesh(root_project + "/objects/antuco-files/mac/surface.glb");
+	floor->scale(glm::vec3(10, 0.1, 10));	
 #elif defined(_WIN32) || defined(_WIN64)
 	some_object->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.glb");
 #endif
+<<<<<<< HEAD
 
+=======
+	
+>>>>>>> cedc8eaf0dabf92dae9736e7806a58989fd506a8
 	//light_mesh->scale(glm::vec3(0.2));
 
 	auto t2 = TIME_IT;
