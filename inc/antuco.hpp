@@ -8,7 +8,6 @@
 #include "window.hpp"
 #include "world_objects.hpp"
 #include "graphics.hpp"
-#include "antuco_enums.hpp"
 #include "config.hpp"
 
 #include <vector>
@@ -19,10 +18,11 @@ class Antuco {
 	/* Window */
 public:
 	Window* init_window(int w, int h, const char* title);
-	void init_graphics();
+	void init_graphics(RenderEngine api);
 private:
 	Window* pWindow;
 	Graphics* p_graphics;
+	RenderEngine api;
 	
 	/* World Objects */
 public:

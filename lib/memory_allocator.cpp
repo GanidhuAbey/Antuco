@@ -11,59 +11,39 @@
 
 using namespace mem;
 
+void SearchBuffer::init(v::PhysicalDevice& physical_device, 
+v::Device& device, BufferCreateInfo& buffer_info) { 
+    api_device = &device;
 
-SearchBuffer::SearchBuffer() {}
-SearchBuffer::~SearchBuffer() {
-    //destroy(api_device);
-}
+    auto create_info = vk::BufferCreateInfo(
+            {},
+            buffer_info.size,
+            buffer_info.usage,
+            buffer_info.sharing_mode,
+            buffer_info.queue_family_index_count,
+            buffer_info.p_queue_family_indices
+        );
 
-void SearchBuffer::init(VkPhysicalDevice physical_device, VkDevice& device, BufferCreateInfo* p_buffer_info) { 
-    api_device = device;
+    buffer = device.get().createBuffer(create_info);
+    
+    auto mem_req = device.get().getBufferMemoryRequirements(buffer);
 
-    VkBufferCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    createInfo.pNext = p_buffer_info->pNext;
-    createInfo.flags = p_buffer_info->flags;
-    createInfo.usage = p_buffer_info->usage;
-    createInfo.size = p_buffer_info->size;
-    createInfo.sharingMode = p_buffer_info->sharingMode;
-    createInfo.queueFamilyIndexCount = p_buffer_info->queueFamilyIndexCount;
-    createInfo.pQueueFamilyIndices = p_buffer_info->pQueueFamilyIndices;
+    auto mem_info = vk::MemoryAllocateInfo(
+            mem_req.size,
+            findMemoryType(physical_device, mem_req.memoryTypeBits, buffer_info.memory_properties)
+        );
 
-    if (vkCreateBuffer(device, &createInfo, nullptr, &buffer) != VK_SUCCESS) {
-        throw std::runtime_error("could not create buffer");
-    };
+    buffer_memory = device.get().allocateMemory(mem_info);
 
-    //allocate desired memory to buffer
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
-
-    //allocate memory for buffer
-    VkMemoryAllocateInfo memoryInfo{};
-    memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryInfo.allocationSize = memRequirements.size;
-    //too lazy to even check if this exists will do later TODO
-    memoryInfo.memoryTypeIndex = findMemoryType(physical_device, memRequirements.memoryTypeBits, p_buffer_info->memoryProperties);
-
-    VkResult allocResult = vkAllocateMemory(device, &memoryInfo, nullptr, &buffer_memory);
-
-    if (allocResult != VK_SUCCESS) {
-        throw std::runtime_error("could not allocate memory for memory pool");
-    }
-
-    if (vkBindBufferMemory(device, buffer, buffer_memory, 0) != VK_SUCCESS) {
-        throw std::runtime_error("could not bind allocated memory to buffer");
-    }
+    device.get().bindBufferMemory(buffer, buffer_memory, 0);
 
     memory_offset = 0;
 }
 
 void SearchBuffer::destroy() {
-    vkDeviceWaitIdle(api_device);
-
-    vkFreeMemory(api_device, buffer_memory, nullptr);
-
-    vkDestroyBuffer(api_device, buffer, nullptr);
+    api_device->get().waitIdle();
+    api_device->get().free(buffer_memory);
+    api_device->get().destroyBuffer(buffer);
 }
 
 VkDeviceSize SearchBuffer::allocate(VkDeviceSize allocation_size) {
@@ -88,109 +68,141 @@ void SearchBuffer::write(VkDevice device, VkDeviceSize offset, VkDeviceSize data
 void SearchBuffer::free(VkDeviceSize offset) {
 }
 
+void CPUBuffer::destroy() {
+    device->get().freeMemory(memory);
+    device->get().destroyBuffer(buffer);
+}
 
-Image::Image() {}
+void CPUBuffer::init(v::PhysicalDevice& physical_device, v::Device& device, BufferCreateInfo& buffer_info) {
+    CPUBuffer::device = &device;
 
-Image::~Image() {
-    //destroy();
+    auto create_info = vk::BufferCreateInfo(
+            {},
+            buffer_info.size,
+            buffer_info.usage,
+            buffer_info.sharing_mode,
+            buffer_info.queue_family_index_count,
+            buffer_info.p_queue_family_indices
+        );
+
+    buffer = device.get().createBuffer(create_info);
+    
+    auto mem_req = device.get().getBufferMemoryRequirements(buffer);
+
+    auto mem_info = vk::MemoryAllocateInfo(
+            mem_req.size,
+            findMemoryType(physical_device, mem_req.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible)
+        );
+
+    memory = device.get().allocateMemory(mem_info);
+
+    device.get().bindBufferMemory(buffer, memory, 0);
+}
+
+void CPUBuffer::map(vk::DeviceSize size, const void* data) {
+    auto p_data = device->get().mapMemory(memory, 0, size);
+    memcpy(p_data, data, size);
+    device->get().unmapMemory(memory);
 }
 
 void Image::destroy() {
     LOG(data.name.c_str());
     destroy_image_view();
-    vkFreeMemory(device, memory, nullptr);
-    vkDestroyImage(device, image, nullptr);
+    device->get().destroyImage(image, nullptr);
+    device->get().freeMemory(memory, nullptr);
+    
 }
 
 void Image::destroy_image_view() {
-    vkDestroyImageView(device, image_view, nullptr);
+    device->get().destroyImageView(image_view, nullptr);
+    device->get().destroyCommandPool(command_pool);
 }
 
-VkImage Image::get_api_image() {
+vk::Image Image::get_api_image() {
     return image;
 }
 
-void mem::Image::init(vk::PhysicalDevice& physical_device, VkDevice& device, VkImage image, ImageData info) {
+void mem::Image::init(v::PhysicalDevice& physical_device, v::Device& device, VkImage image, ImageData info) {
     data = info;
 
-    Image::device = device;
-    Image::phys_device = physical_device;
+    Image::device = &device;
+    Image::phys_device = &physical_device;
 
     Image::image = image;
     create_image_view(info.image_view_info);
+
+    //create command pool
+    auto pool_info = vk::CommandPoolCreateInfo(
+        {},
+        device.get_transfer_family()
+    ); 
+
+    command_pool = device.get().createCommandPool(pool_info);
 }
 
-VkImageView Image::get_api_image_view() {
+vk::ImageView Image::get_api_image_view() {
     return image_view;
 }
 
-void Image::init(vk::PhysicalDevice& physical_device, VkDevice& device, ImageData info) {
-    Image::device = device;
-    Image::phys_device = physical_device;
+void Image::init(v::PhysicalDevice& physical_device, v::Device& device, ImageData info) {
+    Image::device = &device;
+    Image::phys_device = &physical_device;
     data = info;
 
     create_image(info.image_info);
     create_image_view(info.image_view_info);
+
+    auto pool_info = vk::CommandPoolCreateInfo(
+        {},
+        device.get_transfer_family()
+    );
+
+    command_pool = device.get().createCommandPool(pool_info);
 }
 
 void Image::create_image(ImageCreateInfo info) {
-    VkImageCreateInfo image_info{};
-    image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    image_info.pNext = nullptr;
-    image_info.flags = info.flags;
-    image_info.imageType = info.imageType;
-    image_info.format = info.format;
-    image_info.extent = info.extent;
-    image_info.mipLevels = info.mipLevels;
-    image_info.arrayLayers = info.arrayLayers;
-    image_info.samples = info.samples;
-    image_info.tiling = info.tiling;
-    image_info.usage = info.usage;
-    image_info.sharingMode = info.sharingMode;
-    image_info.queueFamilyIndexCount = info.queueFamilyIndexCount;
-    image_info.pQueueFamilyIndices = info.pQueueFamilyIndices;
-    image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    auto image_info = vk::ImageCreateInfo(
+            info.flags,
+            info.image_type,
+            info.format,
+            info.extent,
+            info.mipLevels,
+            info.arrayLayers,
+            info.samples,
+            info.tiling,
+            info.usage,
+            info.sharingMode,
+            info.queueFamilyIndexCount,
+            info.pQueueFamilyIndices,
+            vk::ImageLayout::eUndefined);
 
-    VkResult image_create = vkCreateImage(device, &image_info, nullptr, &image);
-
-    if (image_create != VK_SUCCESS) {
-        printf("[ERROR %d] - could not create image \n", image_create);
-    }
+    image = device->get().createImage(image_info);
 
     //allocate memory
-    VkMemoryRequirements memory_req{};
-    vkGetImageMemoryRequirements(device, image, &memory_req);
+    auto memory_req = device->get().getImageMemoryRequirements(image);
+    auto memory_prop = phys_device->get().getMemoryProperties();
 
-    //create some memory for the image
-    VkMemoryAllocateInfo memory_alloc{};
-    memory_alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memory_alloc.allocationSize = memory_req.size;
-
-    VkPhysicalDeviceMemoryProperties memoryProperties;
-    vkGetPhysicalDeviceMemoryProperties(phys_device, &memoryProperties);
-
-    VkMemoryPropertyFlags properties = info.memoryProperties;
-
-    uint32_t memoryIndex = 0;
+    auto memory_index = uint32_t(0);
+    auto properties = info.memory_properties;
     //uint32_t suitableMemoryForBuffer = 0;
-    for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++) {
-        if (memory_req.memoryTypeBits & (1 << i) && ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)) {
-            memoryIndex = i;
+    for (uint32_t i = 0; i < memory_prop.memoryTypeCount; i++) {
+        if (memory_req.memoryTypeBits & (1 << i) && ((memory_prop.memoryTypes[i].propertyFlags & properties) == properties)) {
+            memory_index = i;
             break;
         }
     }
 
-    memory_alloc.memoryTypeIndex = findMemoryType(phys_device, memory_req.memoryTypeBits, info.memoryProperties);
+    auto alloc = vk::MemoryAllocateInfo(
+            memory_req.size,
+            memory_index
+    );
 
-    VkResult alloc_result = vkAllocateMemory(device, &memory_alloc, nullptr, &memory);
 
-    if (alloc_result != VK_SUCCESS) {
-        msg::print_line("[ERROR - " + std::to_string(alloc_result) + "] - could not allocate memory");
-    }
+    alloc.memoryTypeIndex = findMemoryType(*phys_device, memory_req.memoryTypeBits, info.memory_properties);
 
-    if (vkBindImageMemory(device, image, memory, 0) != VK_SUCCESS) {
-        throw std::runtime_error("could not bind memory to image");
-    }
+    memory = device->get().allocateMemory(alloc);
+
+    device->get().bindImageMemory(image, memory, 0);
 }
 
 
@@ -203,41 +215,41 @@ void Image::create_image(ImageCreateInfo info) {
 ///     - VkExtent3D map_size : describes the size of the image that the buffer is copying,
 //                              if null, will use default size of image
 /// RETURNS - VOID
-void Image::copy_from_buffer(VkBuffer buffer, VkOffset3D image_offset, std::optional<VkExtent3D> map_size, VkQueue queue, VkCommandPool command_pool, std::optional<VkCommandBuffer> command_buffer) {
+void Image::copy_from_buffer(vk::Buffer buffer, 
+vk::Offset3D image_offset, std::optional<vk::Extent3D> map_size, 
+vk::Queue queue, std::optional<vk::CommandBuffer> command_buffer) {
     //create command buffer
     bool delete_buffer = false;
     if (!command_buffer.has_value()) {
-        command_buffer = begin_command_buffer(device, command_pool);
+        command_buffer = tuco::begin_command_buffer(
+            *device, 
+            command_pool);
         delete_buffer = true;
     }
 
-    VkImageSubresourceLayers image_layers{};
-    image_layers.aspectMask = data.image_view_info.aspect_mask;
-    image_layers.mipLevel = data.image_view_info.base_mip_level;
-    image_layers.layerCount = data.image_info.arrayLayers;
-    image_layers.baseArrayLayer = data.image_view_info.base_array_layer;
+    auto image_layers = vk::ImageSubresourceLayers(
+            data.image_view_info.aspect_mask,
+            data.image_view_info.base_mip_level,
+            data.image_info.arrayLayers,
+            data.image_view_info.base_array_layer
+        );
 
-    //note for future me: this isn't about the size of destination image, its about the size of image in the buffer that your copying over.
+    auto copy = vk::BufferImageCopy(
+            static_cast<vk::DeviceSize>(0),
+            0,
+            0,
+            image_layers,
+            image_offset,
+            map_size.has_value() ? map_size.value() : data.image_info.extent
+        );
 
-    VkBufferImageCopy bufferCopy{};
-    bufferCopy.bufferOffset = 0;
-    bufferCopy.bufferRowLength = 0;
-    bufferCopy.bufferImageHeight = 0;
-    bufferCopy.imageSubresource = image_layers;
-    bufferCopy.imageOffset = image_offset;
-    bufferCopy.imageExtent = map_size.has_value() ? map_size.value() : data.image_info.extent;
+    command_buffer.value().copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, 1, &copy);
 
-    vkCmdCopyBufferToImage(command_buffer.value(),
-        buffer,
-        image,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1,
-        &bufferCopy
-    );
-
-    //destroy transfer buffer, shouldnt need it after copying the data.
     if (delete_buffer) {
-        end_command_buffer(device, queue, command_pool, command_buffer.value());
+        tuco::end_command_buffer(
+            *device, queue, 
+            command_pool, 
+            command_buffer.value());
     }
 }
 
@@ -246,354 +258,354 @@ void Image::copy_from_buffer(VkBuffer buffer, VkOffset3D image_offset, std::opti
 /// </summary>
 /// <param name="buffer"> buffer the image data will be copied to </param>
 /// <param name="dst_offset"> the location in the buffer where the image data is mapped to</param>
-void Image::copy_to_buffer(VkBuffer buffer, VkDeviceSize dst_offset, VkQueue queue, VkCommandPool command_pool, std::optional<VkCommandBuffer> command_buffer)  {
+void Image::copy_to_buffer(vk::Buffer buffer, VkDeviceSize dst_offset, vk::Queue queue, std::optional<vk::CommandBuffer> command_buffer)  {
     bool delete_buffer = false; 
     if (!command_buffer.has_value()) { 
-        command_buffer = begin_command_buffer(device, command_pool);
+        command_buffer = tuco::begin_command_buffer(
+            *device, 
+            command_pool);
         delete_buffer = true;
     }
 
-    //we won't be dealing with mipmap levels for a while i think so i can change this then
-    VkImageSubresourceLayers image_layers{};
-    image_layers.aspectMask = data.image_view_info.aspect_mask;
-    image_layers.mipLevel = data.image_view_info.base_mip_level;
-    image_layers.layerCount = data.image_info.arrayLayers;
-    image_layers.baseArrayLayer = data.image_view_info.base_array_layer;
+    auto image_layers = vk::ImageSubresourceLayers(
+            data.image_view_info.aspect_mask,
+            data.image_view_info.base_mip_level,
+            data.image_info.arrayLayers,
+            data.image_view_info.base_array_layer
+        );
 
-    VkBufferImageCopy copy_data{};
-    copy_data.bufferOffset = dst_offset;
-    copy_data.bufferImageHeight = 0.0f; //ignore
-    copy_data.bufferRowLength = 0.0f;
-    copy_data.imageSubresource = image_layers;
-    copy_data.imageOffset = VkOffset3D{ 0, 0, 0 };
-    copy_data.imageExtent = VkExtent3D{ data.image_info.extent.width, data.image_info.extent.height, data.image_info.extent.depth };
+    auto copy_data = vk::BufferImageCopy(
+            dst_offset,
+            0.0f,
+            0.0f,
+            image_layers,
+            vk::Offset3D(0, 0, 0),
+            vk::Extent3D( data.image_info.extent.width, data.image_info.extent.height, data.image_info.extent.depth)
+        );
 
-    //copy image to buffer
-    //TODO: contain this various image data within the memory object so the user doesnt have to keep track of it
-    vkCmdCopyImageToBuffer(command_buffer.value(), image, data.image_info.initialLayout, buffer, 1, &copy_data);
+    command_buffer.value().copyImageToBuffer(image, data.image_info.initial_layout, buffer, 1, &copy_data);
 
     if (delete_buffer) { 
-        end_command_buffer(device, queue, command_pool, command_buffer.value());
+        tuco::end_command_buffer(
+            *device, 
+            queue, 
+            command_pool, 
+            command_buffer.value());
     }
 }
 
 
-void Image::transfer(VkImageLayout output_layout, VkQueue queue, VkCommandPool pool, std::optional<VkCommandBuffer> command_buffer, VkImageLayout current_layout) {
+void Image::transfer(vk::ImageLayout output_layout, vk::Queue queue, std::optional<vk::CommandBuffer> command_buffer, vk::ImageLayout current_layout) {
     //begin command buffer
     bool delete_buffer = false;
     if (!command_buffer.has_value()) {
-        command_buffer = begin_command_buffer(device, pool);
+        command_buffer = tuco::begin_command_buffer(
+            *device, 
+            command_pool);
         delete_buffer = true;
     }
-    VkImageLayout initial_layout = data.image_info.initialLayout;
-    if (current_layout != VK_IMAGE_LAYOUT_UNDEFINED) initial_layout = current_layout;
-    data.image_info.initialLayout = output_layout;
 
-    //transfer image layout
-    VkImageMemoryBarrier imageTransfer{};
-    imageTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageTransfer.pNext = nullptr;
-    imageTransfer.oldLayout = initial_layout;
-    imageTransfer.newLayout = output_layout;
-    imageTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageTransfer.image = image;
-    imageTransfer.subresourceRange.aspectMask = data.image_view_info.aspect_mask;
-    imageTransfer.subresourceRange.baseMipLevel = 0;
-    imageTransfer.subresourceRange.levelCount = 1;
-    imageTransfer.subresourceRange.baseArrayLayer = 0;
-    imageTransfer.subresourceRange.layerCount = 1;
+    vk::ImageLayout initial_layout = data.image_info.initial_layout;
+    if (current_layout != vk::ImageLayout::eUndefined) initial_layout = current_layout;
+    data.image_info.initial_layout = output_layout;
 
-    VkPipelineStageFlags sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    VkPipelineStageFlags destinationStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    auto src_access = vk::AccessFlagBits();
+    auto dst_access = vk::AccessFlagBits();
 
-    if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    auto src_stage = vk::PipelineStageFlagBits();
+    auto dst_stage = vk::PipelineStageFlagBits();
 
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    if (output_layout == vk::ImageLayout::eTransferSrcOptimal && initial_layout == vk::ImageLayout::eColorAttachmentOptimal) {
+        src_access = vk::AccessFlagBits::eColorAttachmentWrite;
+        dst_access = vk::AccessFlagBits::eTransferRead;
+
+        src_stage = vk::PipelineStageFlagBits::eTransfer;
+        dst_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    else if (output_layout == vk::ImageLayout::eColorAttachmentOptimal && initial_layout == vk::ImageLayout::eTransferSrcOptimal) {
+        src_access = vk::AccessFlagBits::eTransferWrite;
+        dst_access = vk::AccessFlagBits::eColorAttachmentWrite;
 
-        sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        src_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+        dst_stage = vk::PipelineStageFlagBits::eTransfer;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    else if (output_layout == vk::ImageLayout::eShaderReadOnlyOptimal && initial_layout == vk::ImageLayout::eColorAttachmentOptimal) {
+        src_access = vk::AccessFlagBits::eColorAttachmentWrite;
+        dst_access = vk::AccessFlagBits::eShaderRead;
 
-        sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        src_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+        dst_stage = vk::PipelineStageFlagBits::eFragmentShader;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    else if (output_layout == vk::ImageLayout::eColorAttachmentOptimal && initial_layout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+        src_access = vk::AccessFlagBits::eShaderRead;
+        dst_access = vk::AccessFlagBits::eColorAttachmentWrite;
 
-        sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        src_stage = vk::PipelineStageFlagBits::eFragmentShader;
+        dst_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR && initial_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
-        imageTransfer.srcAccessMask = 0;
-        imageTransfer.dstAccessMask = 0;
+    else if (output_layout == vk::ImageLayout::ePresentSrcKHR && initial_layout == vk::ImageLayout::eUndefined) {
+        src_access = {};
+        dst_access = {};
 
-        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        destinationStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        src_stage = vk::PipelineStageFlagBits::eTopOfPipe;
+        dst_stage = vk::PipelineStageFlagBits::eBottomOfPipe;        
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
-        imageTransfer.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    else if (output_layout == vk::ImageLayout::eTransferDstOptimal && initial_layout == vk::ImageLayout::ePresentSrcKHR) {
+        src_access = vk::AccessFlagBits::eColorAttachmentRead;
+        dst_access = vk::AccessFlagBits::eTransferWrite;
 
-        sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        src_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+        dst_stage = vk::PipelineStageFlagBits::eTransfer;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR && initial_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        imageTransfer.dstAccessMask = 0;
+    else if (output_layout == vk::ImageLayout::ePresentSrcKHR && initial_layout == vk::ImageLayout::eTransferDstOptimal) {
+        src_access = vk::AccessFlagBits::eTransferWrite;
+        dst_access = {};
 
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        src_stage = vk::PipelineStageFlagBits::eTransfer;
+        dst_stage = vk::PipelineStageFlagBits::eBottomOfPipe;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
-        imageTransfer.srcAccessMask = 0; // this basically means none or doesnt matter
-        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    else if (output_layout == vk::ImageLayout::eTransferDstOptimal && initial_layout == vk::ImageLayout::eUndefined) {
+        src_access = {};
+        dst_access = vk::AccessFlagBits::eTransferWrite;
 
-        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        src_stage = vk::PipelineStageFlagBits::eTopOfPipe;
+        dst_stage = vk::PipelineStageFlagBits::eTransfer;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    else if (output_layout == vk::ImageLayout::eTransferDstOptimal && initial_layout == vk::ImageLayout::eTransferSrcOptimal) {
+        src_access = vk::AccessFlagBits::eShaderRead;
+        dst_access = vk::AccessFlagBits::eTransferWrite;
 
-        sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        src_stage = vk::PipelineStageFlagBits::eFragmentShader;
+        dst_stage = vk::PipelineStageFlagBits::eTransfer;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    else if (output_layout == vk::ImageLayout::eShaderReadOnlyOptimal && initial_layout == vk::ImageLayout::eTransferDstOptimal) {
+        src_access = vk::AccessFlagBits::eTransferWrite;
+        dst_access = vk::AccessFlagBits::eShaderRead;
 
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        src_stage = vk::PipelineStageFlagBits::eTransfer;
+        dst_stage = vk::PipelineStageFlagBits::eFragmentShader;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    else if (output_layout == vk::ImageLayout::eShaderReadOnlyOptimal && initial_layout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
+        src_access = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+        dst_access = vk::AccessFlagBits::eShaderRead;
 
-
-        sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        src_stage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+        dst_stage = vk::PipelineStageFlagBits::eFragmentShader;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
-        imageTransfer.srcAccessMask = 0;
-        imageTransfer.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    else if (output_layout == vk::ImageLayout::eDepthStencilAttachmentOptimal && initial_layout == vk::ImageLayout::eUndefined) {
+        src_access = {};
+        dst_access = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 
-        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        src_stage = vk::PipelineStageFlagBits::eTopOfPipe;
+        dst_stage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    else if (output_layout == vk::ImageLayout::eDepthStencilAttachmentOptimal && initial_layout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+        src_access = vk::AccessFlagBits::eShaderRead;
+        dst_access = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 
-        sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        src_stage = vk::PipelineStageFlagBits::eFragmentShader;
+        dst_stage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
-        imageTransfer.srcAccessMask = 0;
-        imageTransfer.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    else if (output_layout == vk::ImageLayout::eShaderReadOnlyOptimal && initial_layout == vk::ImageLayout::eUndefined) {
+        src_access = {};
+        dst_access = vk::AccessFlagBits::eShaderRead;
 
-        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        src_stage = vk::PipelineStageFlagBits::eTopOfPipe;
+        dst_stage = vk::PipelineStageFlagBits::eFragmentShader;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+    else if (output_layout == vk::ImageLayout::eDepthStencilReadOnlyOptimal && initial_layout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
+        src_access = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+        dst_access = vk::AccessFlagBits::eDepthStencilAttachmentRead;
 
-        sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        src_stage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+        dst_stage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    else if (output_layout == vk::ImageLayout::eTransferSrcOptimal && initial_layout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
+        src_access = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+        dst_access = vk::AccessFlagBits::eTransferRead;
 
-        sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        src_stage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+        dst_stage = vk::PipelineStageFlagBits::eTransfer;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
-        imageTransfer.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        imageTransfer.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    else if (output_layout == vk::ImageLayout::eDepthStencilAttachmentOptimal && initial_layout == vk::ImageLayout::eTransferSrcOptimal) {
+        src_access = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+        dst_access = vk::AccessFlagBits::eTransferRead;
 
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        src_stage = vk::PipelineStageFlagBits::eTransfer;
+        dst_stage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL) {
-        imageTransfer.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-        imageTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    else if (output_layout == vk::ImageLayout::eTransferSrcOptimal && initial_layout == vk::ImageLayout::eDepthStencilReadOnlyOptimal) {
+        src_access = vk::AccessFlagBits::eDepthStencilAttachmentRead;
+        dst_access = vk::AccessFlagBits::eTransferRead;
 
-        sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        src_stage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+        dst_stage = vk::PipelineStageFlagBits::eTransfer;
     }
-    else if (output_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL && initial_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
-        imageTransfer.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-        imageTransfer.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    else if (output_layout == vk::ImageLayout::eDepthStencilReadOnlyOptimal && initial_layout == vk::ImageLayout::eTransferSrcOptimal) {
+        src_access = vk::AccessFlagBits::eDepthStencilAttachmentRead;
+        dst_access = vk::AccessFlagBits::eTransferRead;
 
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        src_stage = vk::PipelineStageFlagBits::eTransfer;
+        dst_stage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
     }
 
-    vkCmdPipelineBarrier(
-        command_buffer.value(),
-        sourceStage,
-        destinationStage,
-        VK_DEPENDENCY_BY_REGION_BIT,
-        0, nullptr,
-        0, nullptr,
-        1, &imageTransfer
-    );
+    auto subresource = vk::ImageSubresourceRange(
+            data.image_view_info.aspect_mask,
+            0,
+            1,
+            0,
+            1
+        );
+
+    auto image_transfer = vk::ImageMemoryBarrier(
+            src_access,
+            dst_access,
+            initial_layout,
+            output_layout,
+            VK_QUEUE_FAMILY_IGNORED,
+            VK_QUEUE_FAMILY_IGNORED,
+            image,
+            subresource
+        );
+
+    command_buffer.value().pipelineBarrier(
+            src_stage,
+            dst_stage,
+            vk::DependencyFlagBits::eByRegion,
+            0, nullptr,
+            0, nullptr,
+            1, &image_transfer
+        );
     //end command buffer
     if (delete_buffer) {
-        end_command_buffer(device, queue, pool, command_buffer.value());
+        tuco::end_command_buffer(
+            *device, 
+            queue, 
+            command_pool, 
+            command_buffer.value());
     }
 }
 
 void Image::create_image_view(ImageViewCreateInfo info) {
-    VkImageViewCreateInfo view_info{};
+    auto format = data.image_info.format;
+    if (info.format.has_value()) format = info.format.value();
 
-    view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    view_info.pNext = info.pNext;
-    view_info.flags = info.flags;
-    view_info.format = data.image_info.format;
-    if (info.format.has_value()) {
-        view_info.format = info.format.value();
-    }
-    view_info.components.r = info.r;
-    view_info.components.b = info.b;
-    view_info.components.g = info.g;
-    view_info.components.a = info.a;
+    auto components = vk::ComponentMapping(
+            info.r,
+            info.g,
+            info.b,
+            info.a
+        );
 
-    view_info.image = image;
-    
-    VkImageSubresourceRange subresource{};
-    subresource.aspectMask = info.aspect_mask;
-    subresource.baseArrayLayer = info.base_array_layer;
-    subresource.baseMipLevel = info.base_mip_level;
-    subresource.layerCount = info.layer_count;
-    subresource.levelCount = info.level_count;
+    auto resource_range = vk::ImageSubresourceRange(
+            info.aspect_mask, 
+            info.base_mip_level, 
+            info.level_count, 
+            info.base_array_layer, 
+            info.layer_count
+        );
 
-    view_info.subresourceRange = subresource;
-    view_info.viewType = info.view_type;
+    auto create_info = vk::ImageViewCreateInfo(
+            {},
+            image,
+            info.view_type,
+            format,
+            components,
+            resource_range
+        );
 
-    VkResult view_create = vkCreateImageView(device, &view_info, nullptr, &image_view);
-
-    if (view_create != VK_SUCCESS) {
-        printf("[ERROR %d] - could not create image view \n", view_create);
-    }
+    image_view = device->get().createImageView(create_info);
 }
-
-
-StackBuffer::StackBuffer() {}
-
-StackBuffer::~StackBuffer() {
-    //destroy the buffer
-    //destroy();
-}
+ 
 
 void StackBuffer::destroy() {
-    vkFreeMemory(device, inter_memory, nullptr);
-    vkFreeMemory(device, buffer_memory, nullptr);
-    vkDestroyBuffer(device, buffer, nullptr);
-    vkDestroyBuffer(device, inter_buffer, nullptr);
+    device->get().free(inter_memory);
+    device->get().free(buffer_memory);
+    device->get().destroyBuffer(buffer);
+    device->get().destroyBuffer(inter_buffer);
+    device->get().destroyCommandPool(command_pool);
 }
 
-void StackBuffer::init(vk::PhysicalDevice& physical_device, VkDevice& device, VkCommandPool& command_pool, BufferCreateInfo* p_buffer_info) {
-    StackBuffer::device = device;
-    StackBuffer::phys_device = physical_device;
-    StackBuffer::command_pool = command_pool;
-    //create buffer 
-    VkBufferCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    createInfo.pNext = p_buffer_info->pNext;
-    createInfo.flags = p_buffer_info->flags;
-    createInfo.usage = p_buffer_info->usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    createInfo.size = p_buffer_info->size;
-    createInfo.sharingMode = p_buffer_info->sharingMode;
-    createInfo.queueFamilyIndexCount = p_buffer_info->queueFamilyIndexCount;
-    createInfo.pQueueFamilyIndices = p_buffer_info->pQueueFamilyIndices;
+void StackBuffer::init(
+v::PhysicalDevice& physical_device, 
+v::Device& device, 
+BufferCreateInfo& buffer_info) {
 
-    if (vkCreateBuffer(device, &createInfo, nullptr, &buffer) != VK_SUCCESS) {
-        throw std::runtime_error("could not create buffer");
-    };
+    StackBuffer::device = &device;
+    StackBuffer::phys_device = &physical_device;
 
-    //allocate desired memory to buffer
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+    StackBuffer::command_pool = tuco::create_command_pool(
+            device, 
+            device.get_transfer_family());
 
-    //allocate memory for buffer
-    VkMemoryAllocateInfo memoryInfo{};
-    memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryInfo.allocationSize = memRequirements.size;
-    //too lazy to even check if this exists will do later TODO
-    memoryInfo.memoryTypeIndex = findMemoryType(physical_device, memRequirements.memoryTypeBits, p_buffer_info->memoryProperties);
 
-    VkResult allocResult = vkAllocateMemory(device, &memoryInfo, nullptr, &buffer_memory);
+    auto create_info = vk::BufferCreateInfo(
+            {},
+            buffer_info.size,
+            buffer_info.usage,
+            buffer_info.sharing_mode,
+            buffer_info.queue_family_index_count,
+            buffer_info.p_queue_family_indices
+        );
 
-    if (allocResult != VK_SUCCESS) {
-        throw std::runtime_error("could not allocate memory for memory pool");
-    }
+    buffer = device.get().createBuffer(create_info);
+    
+    auto mem_req = device.get().getBufferMemoryRequirements(buffer);
 
-    if (vkBindBufferMemory(device, buffer, buffer_memory, 0) != VK_SUCCESS) {
-        throw std::runtime_error("could not bind allocated memory to buffer");
-    }
+    auto mem_info = vk::MemoryAllocateInfo(
+            mem_req.size,
+            findMemoryType(physical_device, mem_req.memoryTypeBits, buffer_info.memory_properties)
+        );
 
-    buffer_size = p_buffer_info->size;
+    buffer_memory = device.get().allocateMemory(mem_info);
+
+    device.get().bindBufferMemory(buffer, buffer_memory, 0);
+
+    buffer_size = buffer_info.size;
     offset = 0;
 
     //setup command buffer pool for defragmentation
     setup_queues();
-    create_inter_buffer(INTER_BUFFER_SIZE, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &inter_buffer, &inter_memory);
+
+    create_inter_buffer(
+            INTER_BUFFER_SIZE, 
+            vk::MemoryPropertyFlagBits::eDeviceLocal, 
+            inter_buffer, 
+            inter_memory);
 }
 
 
 void StackBuffer::setup_queues() {
-    tuco::QueueData indices(phys_device);
+    tuco::QueueData indices(*phys_device);
     transfer_family = indices.transferFamily.value();
 
-    vkGetDeviceQueue(device, transfer_family, 0, &transfer_queue);
+    transfer_queue = device->get().getQueue(transfer_family, 0);
 }
 
-void StackBuffer::create_inter_buffer(VkDeviceSize buffer_size, VkMemoryPropertyFlags memory_properties, VkBuffer* buffer, VkDeviceMemory* memory) {
-    VkBufferCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    createInfo.pNext = nullptr;
-    createInfo.flags = 0;
-    createInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    createInfo.size = buffer_size;
-    createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+void StackBuffer::create_inter_buffer(
+vk::DeviceSize buffer_size, vk::MemoryPropertyFlags memory_properties, 
+vk::Buffer& buffer, vk::DeviceMemory& memory) { 
+    auto create_info = vk::BufferCreateInfo(
+            {},
+            buffer_size,
+            vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst,
+            vk::SharingMode::eExclusive,
+            1, 
+            &transfer_family
+        );
 
-    if (vkCreateBuffer(device, &createInfo, nullptr, buffer) != VK_SUCCESS) {
-        throw std::runtime_error("could not create buffer");
-    };
+    buffer = device->get().createBuffer(create_info);
+    
+    auto mem_req = device->get().getBufferMemoryRequirements(buffer);
 
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(device, *buffer, &memRequirements);
+    auto mem_info = vk::MemoryAllocateInfo(
+            mem_req.size,
+            findMemoryType(*phys_device, mem_req.memoryTypeBits, memory_properties)
+        );
 
-    //allocate memory for buffer
-    VkMemoryAllocateInfo memoryInfo{};
-    memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryInfo.allocationSize = memRequirements.size;
-    //too lazy to even check if this exists will do later TODO
-    memoryInfo.memoryTypeIndex = findMemoryType(phys_device, memRequirements.memoryTypeBits, memory_properties);
+    memory = device->get().allocateMemory(mem_info);
 
-    VkResult allocResult = vkAllocateMemory(device, &memoryInfo, nullptr, memory);
-
-    if (vkBindBufferMemory(device, *buffer, *memory, 0) != VK_SUCCESS) {
-        throw std::runtime_error("could not bind allocated memory to buffer");
-    }
-
-    if (allocResult != VK_SUCCESS) {
-        LOG("could not create intermediary buffer for StackBuffer");
-    }
+    device->get().bindBufferMemory(buffer, memory, 0);
 }
 
 ///
@@ -616,28 +628,10 @@ void StackBuffer::sort() {
     //accomplish this with vkCmdCopyBuffer() command. once this data is in the buffer we can make a second vkCmdCopyBuffer() call 
     //that will push our data back into the main buffer at a new offset
 
-    VkCommandBuffer transfer_buffer;
- 
-    VkCommandBufferAllocateInfo bufferAllocate{};
-    bufferAllocate.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    bufferAllocate.commandPool = command_pool;
-    bufferAllocate.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    bufferAllocate.commandBufferCount = 1;
+    auto transfer_buffer = tuco::begin_command_buffer(
+        *device, 
+        command_pool);
     
-    if (vkAllocateCommandBuffers(device, &bufferAllocate, &transfer_buffer) != VK_SUCCESS) {
-        throw std::runtime_error("could not allocate memory for transfer buffer");
-    }
-
-    //begin command buffer
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = 0; // Optional
-    beginInfo.pInheritanceInfo = nullptr;
-
-    if (vkBeginCommandBuffer(transfer_buffer, &beginInfo) != VK_SUCCESS) {
-        throw std::runtime_error("one of the command buffers failed to begin");
-    }
-
     //copy to buffer
     
     while (true) {
@@ -682,16 +676,20 @@ void StackBuffer::sort() {
         throw std::runtime_error("could not create succesfully end transfer buffer");
     };
 
-    //destroy transfer buffer, shouldnt need it after copying the data.
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &transfer_buffer;
+    auto submit_info = vk::SubmitInfo(
+            0,
+            nullptr,
+            nullptr,
+            1,
+            &transfer_buffer,
+            0,
+            nullptr
+        );
 
-    vkQueueSubmit(transfer_queue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(transfer_queue);
+    transfer_queue.submit(submit_info);
+    transfer_queue.waitIdle();
 
-    vkFreeCommandBuffers(device, command_pool, 1, &transfer_buffer);
+    device->get().free(command_pool, transfer_buffer);
 }
 
 VkDeviceSize StackBuffer::allocate(VkDeviceSize allocation_size) {
@@ -713,81 +711,39 @@ VkDeviceSize StackBuffer::allocate(VkDeviceSize allocation_size) {
     return push_to;
 }
 
-VkCommandBuffer StackBuffer::begin_command_buffer() {
-    //create command buffer
-    VkCommandBuffer transferBuffer;
-
-    VkCommandBufferAllocateInfo bufferAllocate{};
-    bufferAllocate.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    bufferAllocate.commandPool = command_pool;
-    bufferAllocate.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    bufferAllocate.commandBufferCount = 1;
-
-    if (vkAllocateCommandBuffers(device, &bufferAllocate, &transferBuffer) != VK_SUCCESS) {
-        throw std::runtime_error("could not allocate memory for transfer buffer");
-    }
-
-    //begin command buffer
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = 0; // Optional
-    beginInfo.pInheritanceInfo = nullptr;
-
-    if (vkBeginCommandBuffer(transferBuffer, &beginInfo) != VK_SUCCESS) {
-        throw std::runtime_error("one of the command buffers failed to begin");
-    }
-
-    return transferBuffer;
-}
-
-
-void StackBuffer::end_command_buffer(VkCommandBuffer commandBuffer) {
-    //end command buffer
-    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-        throw std::runtime_error("could not create succesfully end transfer buffer");
-    };
-
-    //destroy transfer buffer, shouldnt need it after copying the data.
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
-
-    vkQueueSubmit(transfer_queue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(transfer_queue);
-
-    vkFreeCommandBuffers(device, command_pool, 1, &commandBuffer);
-}
-
 //EFFECTS: maps a given chunk of data to this buffer and returns the memory location of where it was mapped
 VkDeviceSize StackBuffer::map(VkDeviceSize data_size, void* data) {
     VkDeviceSize memory_loc = allocate(data_size);
 
-    VkBuffer temp_buffer;
-    VkDeviceMemory temp_memory;
-    create_inter_buffer(data_size, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &temp_buffer, &temp_memory);
+    vk::Buffer temp_buffer;
+    vk::DeviceMemory temp_memory;
+    create_inter_buffer(
+            data_size, 
+            vk::MemoryPropertyFlagBits::eHostVisible, 
+            temp_buffer, 
+            temp_memory
+        );
 
-    void* pData;
-    if (vkMapMemory(device, temp_memory, 0, data_size, 0, &pData) != VK_SUCCESS) {
-        throw std::runtime_error("could not map data to memory");
-    }
-    memcpy(pData, data, data_size);
+    auto p_data = device->get().mapMemory(temp_memory, 0, data_size);
+
+    memcpy(p_data, data, data_size);
     
     //map memory to buffer
     copy_buffer(temp_buffer, buffer, memory_loc, data_size);
     
-
-    vkUnmapMemory(device, temp_memory);
-
-    //TODO: should minimize the amount of temp buffers created, having one at a set size only recreating a new temp buffer if our previous one was too small.
-    vkFreeMemory(device, temp_memory, nullptr);
-    vkDestroyBuffer(device, temp_buffer, nullptr);
+    device->get().unmapMemory(temp_memory);
+    device->get().freeMemory(temp_memory);
+    device->get().destroyBuffer(temp_buffer);
 
     return memory_loc;
 }
 
-void StackBuffer::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize dst_offset, VkDeviceSize data_size) {
-    VkCommandBuffer transferBuffer = begin_command_buffer();
+void StackBuffer::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, 
+VkDeviceSize dst_offset, VkDeviceSize data_size) {
+    
+    auto transfer_buffer = tuco::begin_command_buffer(
+        *device, 
+        command_pool);
 
     //transfer between buffers
     VkBufferCopy copyData{};
@@ -795,15 +751,18 @@ void StackBuffer::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDevice
     copyData.dstOffset = dst_offset;
     copyData.size = data_size;
 
-    vkCmdCopyBuffer(transferBuffer,
+    vkCmdCopyBuffer(transfer_buffer,
         src_buffer,
         dst_buffer,
         1,
         &copyData
     );
 
-    //destroy transfer buffer, shouldnt need it after copying the data.
-    end_command_buffer(transferBuffer);
+    tuco::end_command_buffer(
+        *device, 
+        transfer_queue, 
+        command_pool, 
+        transfer_buffer);
 }
 
 void StackBuffer::free(VkDeviceSize delete_offset) {
@@ -821,20 +780,15 @@ void StackBuffer::free(VkDeviceSize delete_offset) {
     }
 }
 
-Pool::Pool(VkDevice& device, PoolCreateInfo create_info) {
-    api_device = device;
+Pool::Pool(v::Device& device, PoolCreateInfo create_info) {
+    api_device = &device;
     pool_create_info = create_info;
     createPool(create_info);
 }
 
-Pool::~Pool() {
-    //msg::print_line("deleting buffer...");
-    //destroyPool();
-}
-
 void Pool::destroyPool() {
     for (size_t i = 0; i < pools.size(); i++) {
-        vkDestroyDescriptorPool(api_device, pools[i], nullptr);
+        api_device->get().destroyDescriptorPool(pools[i]);
     }
 }
 
@@ -852,7 +806,7 @@ void Pool::createPool(PoolCreateInfo create_info) {
 
     size_t current_size = pools.size();
     pools.resize(current_size + 1);
-    vkCreateDescriptorPool(api_device, &pool_info, nullptr, &pools[current_size]);
+    pools[current_size] = api_device->get().createDescriptorPool(pool_info);
     allocations.push_back(create_info.pool_size);
 }
 
@@ -881,256 +835,17 @@ size_t Pool::allocate(VkDeviceSize allocation_size) {
     return pool_to_allocate;
 }
 
-uint32_t mem::findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
-    VkPhysicalDeviceMemoryProperties memoryProperties;
-    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+uint32_t mem::findMemoryType(v::PhysicalDevice& physical_device, 
+uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
+    auto mem_prop = physical_device.get().getMemoryProperties();
 
     //uint32_t suitableMemoryForBuffer = 0;
-    for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++) {
-        if (typeFilter & (1 << i) && ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)) {
+    for (uint32_t i = 0; i < mem_prop.memoryTypeCount; i++) {
+        if (typeFilter & (1 << i) && ((mem_prop.memoryTypes[i].propertyFlags & properties) == properties)) {
             return i;
         }
     }
 
     throw std::runtime_error("could not find appropriate memory type");
 
-}
-//PURPOSE - create a buffer and allocate it with the memory required by the user
-//PARAMETERS - [VkPhysicalDevice] physicalDevice - the GPU the renderer is rendering on
-//           - [VkDevice] device - the logical device containing info on which parts of the GPU i'll be using
-//           - [BufferCreateInfo*] pCreateInfo - information struct needed to create a buffer
-//           - [Memory*] memory - the memory struct this function will write its data to
-//RETURNS - NONE
-void mem::createBuffer(VkPhysicalDevice physicalDevice, VkDevice device, BufferCreateInfo* pCreateInfo, Memory* pMemory) {
-    VkBufferCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    createInfo.pNext = pCreateInfo->pNext;
-    createInfo.flags = pCreateInfo->flags;
-    createInfo.usage = pCreateInfo->usage;
-    createInfo.size = pCreateInfo->size;
-    createInfo.sharingMode = pCreateInfo->sharingMode;
-    createInfo.queueFamilyIndexCount = pCreateInfo->queueFamilyIndexCount;
-    createInfo.pQueueFamilyIndices = pCreateInfo->pQueueFamilyIndices;
-
-    if (vkCreateBuffer(device, &createInfo, nullptr, &pMemory->buffer) != VK_SUCCESS) {
-        throw std::runtime_error("could not create buffer");
-    };
-
-    //allocate desired memory to buffer
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(device, pMemory->buffer, &memRequirements);
-
-    //allocate memory for buffer
-    VkMemoryAllocateInfo memoryInfo{};
-    memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryInfo.allocationSize = memRequirements.size;
-    //too lazy to even check if this exists will do later TODO
-    memoryInfo.memoryTypeIndex = findMemoryType(physicalDevice, memRequirements.memoryTypeBits, pCreateInfo->memoryProperties);
-
-    VkResult allocResult = vkAllocateMemory(device, &memoryInfo, nullptr, &pMemory->memoryHandle);
-
-    if (allocResult != VK_SUCCESS) {
-        throw std::runtime_error("could not allocate memory for memory pool");
-    }
-
-    if (vkBindBufferMemory(device, pMemory->buffer, pMemory->memoryHandle, 0) != VK_SUCCESS) {
-        throw std::runtime_error("could not bind allocated memory to buffer");
-    }
-
-    //initialize the memory chunk for the maAllocateMemory to use
-    Space freeSpace{};
-    freeSpace.offset = 0;
-    freeSpace.size = pCreateInfo->size;
-
-    pMemory->locations.push_back(freeSpace);
-}
-//PURPOSE - create a image and allocate it with the memory required by the user
-void mem::createImage(VkPhysicalDevice physicalDevice, VkDevice device, ImageCreateInfo* imageInfo, Memory* pMemory)  {
-    //create image 
-    VkImageCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    createInfo.pNext = nullptr;
-    createInfo.flags = imageInfo->flags;
-    createInfo.imageType = imageInfo->imageType;
-    createInfo.format = imageInfo->format;
-    createInfo.extent = imageInfo->extent;
-    createInfo.mipLevels = imageInfo->mipLevels;
-    createInfo.arrayLayers = imageInfo->arrayLayers;
-    createInfo.samples = imageInfo->samples;
-    createInfo.tiling = imageInfo->tiling;
-    createInfo.usage = imageInfo->usage;
-    createInfo.sharingMode = imageInfo->sharingMode;
-    createInfo.queueFamilyIndexCount = imageInfo->queueFamilyIndexCount;
-    createInfo.pQueueFamilyIndices = imageInfo->pQueueFamilyIndices;
-    createInfo.initialLayout = imageInfo->initialLayout;
-    
-    if (vkCreateImage(device, &createInfo, nullptr, &pMemory->image) != VK_SUCCESS) {
-        throw std::runtime_error("could not create image");
-    }
-
-    //allocate memory
-    VkMemoryRequirements memoryReq{};
-    vkGetImageMemoryRequirements(device, pMemory->image, &memoryReq);
-
-    //create some memory for the image
-    VkMemoryAllocateInfo memoryAlloc{};
-    memoryAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryAlloc.allocationSize = memoryReq.size;
-
-    VkPhysicalDeviceMemoryProperties memoryProperties;
-    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
-
-    VkMemoryPropertyFlags properties = imageInfo->memoryProperties;
-
-    uint32_t memoryIndex = 0;
-    //uint32_t suitableMemoryForBuffer = 0;
-    for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++) {
-        if (memoryReq.memoryTypeBits & (1 << i) && ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)) {
-            memoryIndex = i;
-            break;
-        }
-    }
-
-    memoryAlloc.memoryTypeIndex = findMemoryType(physicalDevice, memoryReq.memoryTypeBits, imageInfo->memoryProperties);
-
-    //save image dimensions we may need depth in the future but it won't be hard to add
-    pMemory->imageDimensions.width = imageInfo->extent.width;
-    pMemory->imageDimensions.height = imageInfo->extent.height;
-
-    VkResult allocResult = vkAllocateMemory(device, &memoryAlloc, nullptr, &pMemory->memoryHandle);
-
-    if (allocResult != VK_SUCCESS) {
-        throw std::runtime_error("could not allocate memory for memory pool");
-    }
-
-    if (vkBindImageMemory(device, pMemory->image, pMemory->memoryHandle, 0) != VK_SUCCESS) {
-        throw std::runtime_error("could not bind memory to image");
-    }
-
-}
-
-void mem::createImageView(VkDevice device, ImageViewCreateInfo viewInfo, Memory* pMemory) {
-    VkImageViewCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    createInfo.pNext = viewInfo.pNext;
-    createInfo.flags = viewInfo.flags;
-    createInfo.image = pMemory->image;
-    createInfo.viewType = viewInfo.view_type;
-    createInfo.format = viewInfo.format.value();
-    createInfo.components.r = viewInfo.r;
-    createInfo.components.b = viewInfo.b;
-    createInfo.components.g = viewInfo.g;
-    createInfo.components.a = viewInfo.a;
-    createInfo.subresourceRange.aspectMask = viewInfo.aspect_mask;
-    createInfo.subresourceRange.baseArrayLayer = viewInfo.base_array_layer;
-    createInfo.subresourceRange.baseMipLevel = viewInfo.base_mip_level;
-    createInfo.subresourceRange.layerCount = viewInfo.layer_count;
-    createInfo.subresourceRange.levelCount = viewInfo.level_count;
-
-    if (vkCreateImageView(device, &createInfo, nullptr, &pMemory->imageView) != VK_SUCCESS) {
-        throw std::runtime_error("could not create image view");
-    }
-}
-
-//PURPOSE - given a memory block preserve a chunk of memory to be 'allocated' so that it can be filled with data without causing
-//          conflicts
-//PARAMETRS - [VkDeviceSize] allocationSize (how much memory needs to be preserved in bytes)
-//            [Memory*] pMemory (memory struct which we will pass on the data for where the memory has been preserved)
-//RETURNS - NONE
-void mem::allocateMemory(VkDeviceSize allocationSize, Memory* pMemory, VkDeviceSize* force_offset) {
-    if (force_offset != nullptr) {
-        //if the user is forcing this specific place in memory then all bets are off, and the user may end up
-        //overwriting data they needed.
-
-        pMemory->allocate = true;
-        pMemory->offset = *force_offset;
-    }
-    else {
-        for (auto it = pMemory->locations.rbegin(); it != pMemory->locations.rend(); it++) {
-            if (it->size >= allocationSize) {
-                //printf("allocation spot size: %zu, allocation size: %zu \n", it->size, allocationSize);
-                VkDeviceSize offsetLocation;
-                memcpy(&offsetLocation, &(it->offset), sizeof(it->offset));
-                pMemory->offset = offsetLocation;
-                pMemory->allocate = true;
-
-                it->offset = it->offset + allocationSize;
-                it->size = it->size - allocationSize;
-
-                //printf("allocation size afterwards: %zu", it->size);
-                break;
-            }
-        }
-    }
-
-    if (!pMemory->allocate) {
-        throw std::runtime_error("welp now u have to fix this");
-    }
-}
-
-//PURPOSE - free memory described by the struct the user gives so that future memory allocations can use the space to allocate memory
-//PARAMETERS - [MaFreeMemoryInfo] freeInfo (struct describing the data the user wants to  free)
-//           - [Memory*] pMemory (pointer to the memory where the data is located)
-//RETURNS - NONE
-void mem::freeMemory(FreeMemoryInfo freeInfo, Memory* pMemory) {
-    //need to do a check on where this data is
-    //iterate through the memory locations to figure out if any offsets match
-    for (auto it = pMemory->locations.begin(); it != pMemory->locations.end(); it++) {
-        VkDeviceSize freeOffset = freeInfo.deleteOffset + freeInfo.deleteSize;
-        if (freeOffset < it->offset) {
-            //we know we need to insert a new value into the vector, so we can break after we finish
-            const Space& freeSpace = {
-                freeInfo.deleteOffset,
-                freeInfo.deleteSize + (it->offset - freeOffset),
-            };
-
-            //insert into list
-            pMemory->locations.insert(it, freeSpace);
-            break;
-        }
-        if (freeOffset == it->offset) {
-            //we know we need to move the value in the vector, so we can break after we finish
-            it->offset -= freeInfo.deleteSize;
-            it->size += freeInfo.deleteSize;
-            break;
-        }
-    }
-}
-
-//PURPOSE - map the given data to the given memory
-//PARAMETERS - [VkDevice] device - the logical device
-//           - [VkDeviceSize] dataSize - the size of the data being mapped
-//           - [Memory*] pMemory - pointer to memory struct
-//           - [void*] data - the data actually being mapped
-void mem::mapMemory(VkDevice device, VkDeviceSize dataSize, Memory* pMemory, const void* src) {
-    if (!pMemory->allocate) {
-        throw std::runtime_error("tried to map memory to unallocated data");
-    }
-    pMemory->allocate = false;
-
-    void* pData;
-    if (vkMapMemory(device, pMemory->memoryHandle, pMemory->offset, dataSize, 0, &pData) != VK_SUCCESS) {
-        throw std::runtime_error("could not map data to memory");
-    }
-    memcpy(pData, src, dataSize);
-    vkUnmapMemory(device, pMemory->memoryHandle);
-}
-
-void mem::destroyBuffer(VkDevice device, Memory maMemory) {
-    vkDeviceWaitIdle(device);
-    //free the large chunk of memory
-    vkFreeMemory(device, maMemory.memoryHandle, nullptr);
-
-    //destroy the associated buffer
-    vkDestroyBuffer(device, maMemory.buffer, nullptr);
-}
-
-void mem::destroyImage(VkDevice device, Memory maMemory) {
-    vkDeviceWaitIdle(device);
-    //free the large chunk of memory
-    vkFreeMemory(device, maMemory.memoryHandle, nullptr);
-
-    //destroy the associated image
-    vkDestroyImageView(device, maMemory.imageView, nullptr); //should have check here to see if image view exists...
-    vkDestroyImage(device, maMemory.image, nullptr);
 }

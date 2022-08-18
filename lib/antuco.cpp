@@ -26,8 +26,11 @@ Window* Antuco::init_window(int w, int h, const char* title) {
 	return window;
 }
 
-void Antuco::init_graphics() {
-	p_graphics = new Graphics(pWindow);
+void Antuco::init_graphics(RenderEngine api) {
+	//when/if other render api's implemented, add graphics interface, to which
+	//each render api object would obey.
+	Antuco::api = api;
+	p_graphics = new Graphics(pWindow); 
 }
 
 /* World Object Initalization */
