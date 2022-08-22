@@ -74,6 +74,8 @@ GameObject* Antuco::create_object() {
 	return objects[objects.size() - 1].get();
 }
 
+
+
 void Antuco::render() {	
 	//check and update the camera information
 	p_graphics->update_camera(cameras[0]->modelToCamera, cameras[0]->cameraToScreen, glm::vec4(cameras[0]->pos, 0));

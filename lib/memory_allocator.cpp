@@ -229,8 +229,8 @@ vk::Queue queue, std::optional<vk::CommandBuffer> command_buffer) {
     auto image_layers = vk::ImageSubresourceLayers(
             data.image_view_info.aspect_mask,
             data.image_view_info.base_mip_level,
-            data.image_info.arrayLayers,
-            data.image_view_info.base_array_layer
+            data.image_view_info.base_array_layer,
+            data.image_info.arrayLayers
         );
 
     auto copy = vk::BufferImageCopy(

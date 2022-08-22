@@ -60,8 +60,7 @@ void Model::add_gltf_model(const std::string& filepath) {
     for (size_t i = 0; i < scene.nodes.size(); i++) {
         process_gltf_nodes(model.nodes[scene.nodes[i]], model);
     }
-    //reverse order of primitives as test
-    std::reverse(primitives.begin(), primitives.end());
+
 }
 
 void Model::process_gltf_nodes(

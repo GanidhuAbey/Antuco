@@ -689,6 +689,7 @@ void GraphicsImpl::create_ubo_set(uint32_t set_count) {
         &allocateInfo, 
         ubo_sets[current_size].data()
     );
+
     if (result != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     } 
@@ -1106,7 +1107,9 @@ size_t command_index, LightObject light) {
             for (size_t k = 0; k < game_objects[j]->object_model.primitives.size(); k++) {
                 Primitive prim = game_objects[j]->object_model.primitives[k];
 
-                VkDescriptorSet descriptors[1] = { light_ubo[j].get_api_set(prim.transform_index) };
+                VkDescriptorSet descriptors[1] = { 
+                    light_ubo[j].get_api_set(prim.transform_index) 
+                };
 
                 vkCmdBindDescriptorSets(command_buffers[command_index],
                     VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -1163,11 +1166,6 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
         light.light_count = glm::vec4(MAX_SHADOW_CASTERS, 1, 1, 1);
 
         create_shadow_map(game_objects, i, light);
-         
-		VkRenderPassBeginInfo renderInfo{};
-		renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderInfo.renderPass = render_pass.get_api_pass();
-		renderInfo.framebuffer = output_buffers[i];
 
         auto render_area = vk::Rect2D(
                 vk::Offset2D( 0, 0 ),
@@ -1296,30 +1294,21 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
                     descriptor_2[1] = descriptor_1[1];
                     descriptor_2[2] = descriptor_1[3];
                     descriptor_2[3] = descriptor_1[4];
-                    
 
-
-                    if (prim.image_index == -1 && !texture_less) {
-                        vkCmdBindPipeline(
-                            command_buffers[i],
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            graphics_pipelines[1].get_api_pipeline());
-
-                        texture_less = true;
+                    if (prim.image_index == -1) {
+                        //texture_less = true;
                         index = 1;
-
                     }
-                    else if (prim.image_index != -1 && texture_less) {
-                        vkCmdBindPipeline(
-                            command_buffers[i],
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            graphics_pipelines[0].get_api_pipeline());
-
-                        texture_less = false;
+                    else {
+                        //texture_less = false;
                         index = 0;
-
-                        descriptor_1[2] = texture_sets[j].get_api_set(k);
+                        descriptor_1[2] = texture_sets[j].get_api_set(prim.image_index);
                     }
+                    vkCmdBindPipeline(
+                        command_buffers[i],
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        graphics_pipelines[index].get_api_pipeline());
+
                     auto layout = graphics_pipelines[index].get_api_layout();
 
                     descriptors.push_back(descriptor_1);

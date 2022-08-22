@@ -25,11 +25,6 @@ project(Antuco VERSION 1.0.0)
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 
-<<<<<<< HEAD
-=======
-include_directories(inc/)
-
->>>>>>> cedc8eaf0dabf92dae9736e7806a58989fd506a8
 file(GLOB SOURCES lib/*.cpp lib/vulkan_wrapper/*.cpp)
 
 file(GLOB HEADERS inc/*.hpp)
@@ -40,24 +35,17 @@ set(SHADERC_SKIP_TESTS ON)
 
 find_package(Vulkan)
 
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/SPIRV-Cross")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/shaderc")
 
 add_library(
     REQUIRED_LIBRARIES
-<<<<<<< HEAD
-    ${SOURCES})
-
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw")
+    ${SOURCES}
+     "render_examples/bmw.hpp" "render_examples/bmw.cpp")
 
 include_directories("inc/")
 include_directories("inc/components/skybox")
-=======
-    ${SOURCES}
-     "render_examples/bmw.hpp" "render_examples/bmw.cpp")
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw")
-
->>>>>>> cedc8eaf0dabf92dae9736e7806a58989fd506a8
 include_directories("${Vulkan_INCLUDE_DIR}")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/tinygltf")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw/include")

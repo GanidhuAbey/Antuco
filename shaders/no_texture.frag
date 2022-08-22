@@ -134,7 +134,7 @@ void main() {
     float G_2 = (x_c*x_l)/(1+v_c+v_l);
 
     //compute F
-    vec3 F = () + (1 - mat.diffuse)*pow(1 - max(0, dot(surface_normal, light_dir)), 5);
+    vec3 F = mat.diffuse + (1 - mat.diffuse)*pow(1 - max(0, dot(surface_normal, light_dir)), 5);
 
     //compute specular
     float bottom = 4*abs(dot(surface_normal, light_dir))*abs(dot(surface_normal, camera_dir));
@@ -153,7 +153,7 @@ void main() {
     //debugPrintfEXT("<%f, %f, %f> \n", surface_normal.x, surface_normal.y, surface_normal.z);
     float diffuse_component = mat.specular.r;
     vec3 result;
-    result = vec3(0.05) + 
+    result = vec3(0.1) + 
              max(vec3(0), vec3(1) * 
              dot(surface_normal, light_dir) * 
              ( diffuse_component * diffuse_final + 
