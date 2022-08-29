@@ -114,6 +114,7 @@ void Image::destroy() {
 
 void Image::destroy_image_view() {
     device->get().destroyImageView(image_view, nullptr);
+    device->get().destroyCommandPool(command_pool);
 }
 
 vk::Image Image::get_api_image() {
@@ -149,6 +150,13 @@ void Image::init(v::PhysicalDevice& physical_device, v::Device& device, ImageDat
 
     create_image(info.image_info);
     create_image_view(info.image_view_info);
+
+    auto pool_info = vk::CommandPoolCreateInfo(
+        {},
+        device.get_transfer_family()
+    );
+
+    command_pool = device.get().createCommandPool(pool_info);
 }
 
 void Image::create_image(ImageCreateInfo info) {
@@ -221,8 +229,8 @@ vk::Queue queue, std::optional<vk::CommandBuffer> command_buffer) {
     auto image_layers = vk::ImageSubresourceLayers(
             data.image_view_info.aspect_mask,
             data.image_view_info.base_mip_level,
-            data.image_info.arrayLayers,
-            data.image_view_info.base_array_layer
+            data.image_view_info.base_array_layer,
+            data.image_info.arrayLayers
         );
 
     auto copy = vk::BufferImageCopy(
@@ -514,6 +522,7 @@ void StackBuffer::destroy() {
     device->get().free(buffer_memory);
     device->get().destroyBuffer(buffer);
     device->get().destroyBuffer(inter_buffer);
+    device->get().destroyCommandPool(command_pool);
 }
 
 void StackBuffer::init(

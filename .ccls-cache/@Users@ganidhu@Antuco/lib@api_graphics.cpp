@@ -87,9 +87,6 @@ void GraphicsImpl::update_light(std::vector<DirectionalLight> lights, std::vecto
 	shadow_caster_indices = shadow_casters;
 }
 
-//TODO: with that most of the rendering segments are in place all thats actually left is to implement texturing, and we can begin
-//bugfixing to arrive at a working version.
-
 //NOTE: enable sync validation to check that ubo read-write hazard is not occuring
 void GraphicsImpl::update_draw(
 std::vector<std::unique_ptr<GameObject>>& game_objects) {
@@ -121,7 +118,8 @@ std::vector<std::unique_ptr<GameObject>>& game_objects) {
 			);
             
 			auto primitives = model.primitives;
-			//create texture data
+			//WARNING: texture sets only created for objects with textures. this means that
+			//the object index in the objects array does not always refer corresponding texture set.
 			if (model.model_images.size() > 0) {
 			    create_texture_set(model.model_images.size());
 			}
@@ -140,7 +138,7 @@ std::vector<std::unique_ptr<GameObject>>& game_objects) {
 
 				//create vulkan image
 				//why is textures even a vector???
-                if (0 < prim.image_index && 
+                if (-1 < prim.image_index && 
                 prim.image_index < model.model_images.size()) {
 					create_vulkan_image(
 						model.model_images[prim.image_index], 

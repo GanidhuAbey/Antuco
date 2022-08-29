@@ -689,6 +689,7 @@ void GraphicsImpl::create_ubo_set(uint32_t set_count) {
         &allocateInfo, 
         ubo_sets[current_size].data()
     );
+
     if (result != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     } 
@@ -1106,7 +1107,9 @@ size_t command_index, LightObject light) {
             for (size_t k = 0; k < game_objects[j]->object_model.primitives.size(); k++) {
                 Primitive prim = game_objects[j]->object_model.primitives[k];
 
-                VkDescriptorSet descriptors[1] = { light_ubo[j].get_api_set(prim.transform_index) };
+                VkDescriptorSet descriptors[1] = { 
+                    light_ubo[j].get_api_set(prim.transform_index) 
+                };
 
                 vkCmdBindDescriptorSets(command_buffers[command_index],
                     VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -1153,9 +1156,8 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
         beginInfo.flags = 0; // Optional
         beginInfo.pInheritanceInfo = nullptr; // Optional
 
-        if (vkBeginCommandBuffer(command_buffers[i], &beginInfo) != VK_SUCCESS) {
-            throw std::runtime_error("one of the command buffers failed to begin");
-        }
+        auto begin_info = vk::CommandBufferBeginInfo(beginInfo);
+        command_buffers[i].begin(begin_info);
 
         LightObject light{};
         light.position = light_data[0].position;
@@ -1164,11 +1166,6 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
         light.light_count = glm::vec4(MAX_SHADOW_CASTERS, 1, 1, 1);
 
         create_shadow_map(game_objects, i, light);
-         
-		VkRenderPassBeginInfo renderInfo{};
-		renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderInfo.renderPass = render_pass.get_api_pass();
-		renderInfo.framebuffer = output_buffers[i];
 
         auto render_area = vk::Rect2D(
                 vk::Offset2D( 0, 0 ),
@@ -1177,7 +1174,12 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
 
 	    std::vector<vk::ClearValue> clear_values;
         auto color_clear = vk::ClearValue(
-                vk::ClearColorValue(std::array<float, 4>({0.f, 0.f, 0.f, 0.f}))
+                vk::ClearColorValue(std::array<float, 4>({
+                    0.f, 
+                    0.f, 
+                    0.f, 
+                    0.f
+                }))
             );
         auto depth_clear = vk::ClearValue(
                 vk::ClearDepthStencilValue(1.0f, 0)
@@ -1194,15 +1196,9 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
                 clear_values.data()
             );
 
-        command_buffers[i].beginRenderPass(render_info, vk::SubpassContents::eInline);
-
-		//run first subpass here?
-		//the question is what does the first subpass do?
-
-		//now after the first pass is complete we move on to the next subpass
-		//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);
-
-		//add commands to command buffer
+        command_buffers[i].beginRenderPass(
+            render_info, 
+            vk::SubpassContents::eInline);
 
 		VkViewport newViewport{};
 		newViewport.x = 0;
@@ -1221,13 +1217,22 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
 		command_buffers[i].setScissor(0, 1, &scissor);
 
 		//time for the draw calls
-		const VkDeviceSize offset[] = {0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord)};
+		const VkDeviceSize offset[] = {
+		    0, 
+		    offsetof(Vertex, normal), 
+		    offsetof(Vertex, tex_coord)};
 
-        command_buffers[i].bindVertexBuffers(0, 1, &vertex_buffer.buffer, offset);
-		vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-		//universal to every object so i can push the light constants before the for loop
-		//convert to light_object;
+        command_buffers[i].bindVertexBuffers(
+            0, 
+            1, 
+            &vertex_buffer.buffer, 
+            offset);
+		
+		vkCmdBindIndexBuffer(
+		    command_buffers[i], 
+		    index_buffer.buffer, 
+		    0, 
+		    VK_INDEX_TYPE_UINT32);
 
         auto texture_less = false;
         auto index = 0;
@@ -1263,18 +1268,24 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
             //auto total_vertices = uint32_t(0);
             //i actually think this update this is ill-thought out...
             if (!game_objects[j]->update) {
-                for (size_t k = 0; k < game_objects[j]->object_model.primitives.size(); k++) {
+                auto model_primitive_count = game_objects[j]
+                    ->object_model.primitives.size();
+                for (size_t k = 0; k < model_primitive_count; k++) {
 
-                    Primitive prim = game_objects[j]->object_model.primitives[k];
+                    Primitive prim = game_objects[j]
+                        ->object_model.primitives[k];
                     
                     auto descriptor_1 = std::vector<VkDescriptorSet>();
                     auto descriptor_2 = std::vector<VkDescriptorSet>();
-                    auto descriptors = std::vector<std::vector<VkDescriptorSet>>();
+                    auto descriptors = 
+                        std::vector<std::vector<VkDescriptorSet>>();
 
                     descriptor_1.resize(5);
                     descriptor_2.resize(4);
 
-                    descriptor_1[0] = light_ubo[j].get_api_set(prim.transform_index);
+                    descriptor_1[0] = light_ubo[j].get_api_set(
+                        prim.transform_index
+                    );
                     descriptor_1[1] = ubo_sets[j][prim.transform_index];
                     descriptor_1[3] = shadowmap_set;
                     descriptor_1[4] = mat_sets[j][prim.mat_index];
@@ -1283,30 +1294,21 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
                     descriptor_2[1] = descriptor_1[1];
                     descriptor_2[2] = descriptor_1[3];
                     descriptor_2[3] = descriptor_1[4];
-                    
 
-
-                    if (prim.image_index == -1 && !texture_less) {
-                        vkCmdBindPipeline(
-                            command_buffers[i],
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            graphics_pipelines[1].get_api_pipeline());
-
-                        texture_less = true;
+                    if (prim.image_index == -1) {
+                        //texture_less = true;
                         index = 1;
-
                     }
-                    else if (prim.image_index != -1 && texture_less) {
-                        vkCmdBindPipeline(
-                            command_buffers[i],
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            graphics_pipelines[0].get_api_pipeline());
-
-                        texture_less = false;
+                    else {
+                        //texture_less = false;
                         index = 0;
-
-                        descriptor_1[2] = texture_sets[j].get_api_set(k);
+                        descriptor_1[2] = texture_sets[j].get_api_set(prim.image_index);
                     }
+                    vkCmdBindPipeline(
+                        command_buffers[i],
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        graphics_pipelines[index].get_api_pipeline());
+
                     auto layout = graphics_pipelines[index].get_api_layout();
 
                     descriptors.push_back(descriptor_1);
@@ -1332,12 +1334,12 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
                 }
             }
 
-            index_offset += static_cast<uint32_t>(game_objects[j]->object_model.model_indices.size());
-            vertex_offset += static_cast<uint32_t>(game_objects[j]->object_model.model_vertices.size());
+            index_offset += static_cast<uint32_t>(game_objects[j]
+                ->object_model.model_indices.size());
+            vertex_offset += static_cast<uint32_t>(game_objects[j]
+                ->object_model.model_vertices.size());
         }
         vkCmdEndRenderPass(command_buffers[i]);
-
-        //memory_dependency(i, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
 
         //copy_to_swapchain(i);
         render_to_screen(i);

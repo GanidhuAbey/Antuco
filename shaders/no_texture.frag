@@ -134,7 +134,9 @@ void main() {
     float G_2 = (x_c*x_l)/(1+v_c+v_l);
 
     //compute F
-    vec3 F = mat.diffuse + (1 - mat.diffuse)*pow(1 - max(0, dot(surface_normal, light_dir)), 5);
+    //need to linearly interpolate the mettalic value to computer f0
+    vec3 f0 = mix(vec3(0.04), mat.diffuse, mat.specular.g);
+    vec3 F = f0 + (1 - f0)*pow(1 - max(0, dot(surface_normal, light_dir)), 5);
 
     //compute specular
     float bottom = 4*abs(dot(surface_normal, light_dir))*abs(dot(surface_normal, camera_dir));

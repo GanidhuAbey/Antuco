@@ -21,5 +21,9 @@ enum class WindowInput {
 	Q
 };
 
+enum class RenderEngine {
+	Vulkan
+};
+
 }
 

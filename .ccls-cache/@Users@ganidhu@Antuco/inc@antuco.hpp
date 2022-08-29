@@ -18,10 +18,11 @@ class Antuco {
 	/* Window */
 public:
 	Window* init_window(int w, int h, const char* title);
-	void init_graphics();
+	void init_graphics(RenderEngine api);
 private:
 	Window* pWindow;
 	Graphics* p_graphics;
+	RenderEngine api;
 	
 	/* World Objects */
 public:
@@ -37,6 +38,7 @@ private:
 	bool update_draw = true;
 
 private:
+	//shared_ptr because main.cpp needs to access and modify game objects
 	std::vector<std::unique_ptr<GameObject>> objects;
 	//the camera at the zeroth index will always be the "main camera"
 	std::vector<Camera*> cameras;

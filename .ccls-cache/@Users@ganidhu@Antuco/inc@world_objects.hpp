@@ -9,6 +9,7 @@
 #include "model.hpp"
 //#include "graphics.hpp"
 
+#include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
 
 namespace tuco {
@@ -90,6 +91,12 @@ public:
 	void scale(glm::vec3 scale_vector);
 	void translate(glm::vec3 t);
 	void set_position(glm::vec3 t);
+};
+
+class SkyBox {
+	friend class Antuco;
+private:
+	std::string texture_path; //a skybox contains texture.
 };
 
 }
