@@ -31,7 +31,7 @@ public:
             std::vector<tuco::DirectionalLight> lights, 
             std::vector<int> shadow_indices);
 
-	void update_draw(std::vector<std::unique_ptr<GameObject>>& game_objects);
+	void update_draw(std::vector<std::unique_ptr<GameObject>>& game_objects, bool scene_change);
 
 };
 }

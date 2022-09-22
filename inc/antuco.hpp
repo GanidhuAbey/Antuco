@@ -37,6 +37,9 @@ public:
 private:
 	bool update_draw = true;
 
+	// Scene has changed when an GameObject within that scene has been modified
+	bool scene_change = true;
+
 private:
 	//shared_ptr because main.cpp needs to access and modify game objects
 	std::vector<std::unique_ptr<GameObject>> objects;

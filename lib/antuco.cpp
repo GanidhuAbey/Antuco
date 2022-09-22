@@ -84,5 +84,5 @@ void Antuco::render() {
 	p_graphics->update_light(directional_lights, shadow_casters);
 
 	//check and update the game object information, this would be where we update the command buffers as neccesary
-	p_graphics->update_draw(objects);
+	p_graphics->update_draw(objects, scene_change);
 }

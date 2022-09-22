@@ -36,6 +36,9 @@
 #include <optional>
 #include <math.h>
 
+// 1e9 bytes = 1 gb
+#define SCENE_BUFFER_BYTE_SIZE 3e9
+
 const uint32_t API_VERSION_1_0 = 0;
 
 //TODO: pass parameter values through config file, prevent
@@ -59,7 +62,7 @@ public:
 
 	void update_camera(glm::mat4 world_to_camera, glm::mat4 projection, glm::vec4 eye);
 	void update_light(std::vector<DirectionalLight> lights, std::vector<int> shadow_casters);
-	void update_draw(std::vector<std::unique_ptr<GameObject>>& game_objects);
+	void update_draw(std::vector<std::unique_ptr<GameObject>>& game_objects, bool scene_change);
 
 private:
 	glm::mat4 camera_view;
@@ -333,6 +336,8 @@ private:
 
 //buffer setup
 private:
+	mem::StackBuffer scene_buffer;
+
     mem::StackBuffer vertex_buffer;
 	mem::StackBuffer index_buffer;
 	mem::SearchBuffer uniform_buffer;
@@ -340,6 +345,11 @@ private:
 	void create_uniform_buffer();
 	void create_vertex_buffer();
 	void create_index_buffer();
+
+	// Stores the entire contents of the current scene in a GPU only buffer.
+	// Sparsley updated by CPU only when scene changes (object created/destroyed)
+	void create_scene_buffer();
+	void update_scene_buffer(std::vector<std::unique_ptr<GameObject>>& game_objects);
 
     bool check_data(size_t data_size);
 

@@ -1489,6 +1489,21 @@ void GraphicsImpl::render_to_screen(size_t i) {
     vkCmdEndRenderPass(command_buffers[i]);
 }
 
+void GraphicsImpl::update_scene_buffer(std::vector<std::unique_ptr<GameObject>>& game_objects) {
+    // TODO
+}
+
+void GraphicsImpl::create_scene_buffer() {
+    mem::BufferCreateInfo buffer_info{};
+    buffer_info.size = SCENE_BUFFER_BYTE_SIZE;
+    buffer_info.usage = vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eTransferDst;
+    buffer_info.sharing_mode = vk::SharingMode::eExclusive;
+    buffer_info.queue_family_index_count = 1;
+    buffer_info.p_queue_family_indices = &device.get_graphics_family();
+    buffer_info.memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
+
+    scene_buffer.init(physical_device, device, buffer_info);
+}
 
 void GraphicsImpl::create_uniform_buffer() {
     mem::BufferCreateInfo buffer_info{};

@@ -56,6 +56,8 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
 	create_semaphores();
 	create_fences();
 
+	create_scene_buffer();
+
 	//create some buffers now
 	create_vertex_buffer();
 	create_index_buffer();
@@ -89,10 +91,16 @@ void GraphicsImpl::update_light(std::vector<DirectionalLight> lights, std::vecto
 
 //NOTE: enable sync validation to check that ubo read-write hazard is not occuring
 void GraphicsImpl::update_draw(
-std::vector<std::unique_ptr<GameObject>>& game_objects) {
+std::vector<std::unique_ptr<GameObject>>& game_objects, bool scene_change) {
 	//now the question is what do we do here?
 	//we need to create some command buffers
 	//update vertex and index buffers
+
+	if (scene_change) {
+		// TODO: re-uploading the entire scene is slow, may be worth checking if its possible to change only required portion of scene.
+		update_scene_buffer(game_objects);
+		scene_change = false;
+	}
 
 	auto offset = 0;
 	for (size_t i = 0; i < game_objects.size(); i++) {
