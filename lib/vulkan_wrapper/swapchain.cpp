@@ -1,7 +1,7 @@
 #include "vulkan_wrapper/swapchain.hpp"
 
 #include "logger/interface.hpp"
-#include "queue.hpp"
+#include "queue_data.hpp"
 
 using namespace v;
 

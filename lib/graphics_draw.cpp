@@ -5,7 +5,7 @@
 #include "memory_allocator.hpp"
 #include "data_structures.hpp"
 
-#include "queue.hpp"
+#include "queue_data.hpp"
 
 #include "logger/interface.hpp"
 #include "vulkan/vulkan_core.h"
@@ -256,6 +256,33 @@ void GraphicsImpl::create_shadowpass_resources() {
     data.image_view_info = createInfo;
 
     shadow_pass_texture.init(physical_device, device, data); 
+}
+
+void GraphicsImpl::create_test_pipeline() {
+    graphics_pipelines.resize(2);
+
+    std::vector<VkDynamicState> dynamic_states = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR,
+        VK_DYNAMIC_STATE_DEPTH_BIAS,
+    };
+
+    //TEX
+    std::vector<VkDescriptorSetLayout> descriptor_layouts = {
+        ubo_layout,
+    };
+
+    PipelineConfig config{};
+    config.vert_shader_path = SHADER_PATH + "test.vert";
+    config.frag_shader_path = SHADER_PATH + "test.frag";
+    config.dynamic_states = dynamic_states;
+    config.descriptor_layouts = descriptor_layouts;
+    config.pass = render_pass.get_api_pass();
+    config.subpass_index = 0;
+    config.screen_extent = swapchain.get_extent();
+    config.blend_colours = true;
+
+    test_pipeline.init(device, config);
 }
 
 void GraphicsImpl::create_graphics_pipeline() {
@@ -1133,6 +1160,45 @@ size_t command_index, LightObject light) {
     vkCmdEndRenderPass(command_buffers[command_index]);
 }
 
+void GraphicsImpl::build_render_commands() {
+    // Starting off with a simplified rendering.
+    auto buffer_allocate = vk::CommandBufferAllocateInfo(
+        command_pool, 
+        vk::CommandBufferLevel::ePrimary, 
+        static_cast<uint32_t>(swapchain.get_image_size())
+    );
+
+    command_buffers = device.get().allocateCommandBuffers(buffer_allocate);
+
+    begin_command_buffers();
+
+
+}
+
+void GraphicsImpl::begin_command_buffers() {
+    auto buffer_allocate = vk::CommandBufferAllocateInfo(
+        command_pool,
+        vk::CommandBufferLevel::ePrimary,
+        static_cast<uint32_t>(swapchain.get_image_size())
+    );
+
+    command_buffers = device.get().allocateCommandBuffers(buffer_allocate);
+
+    for (auto& command_buffer : command_buffers) {
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = 0; // Optional
+        beginInfo.pInheritanceInfo = nullptr; // Optional
+
+        auto begin_info = vk::CommandBufferBeginInfo(beginInfo);
+        command_buffer.begin(begin_info);
+    }
+}
+
+void end_command_buffers() {
+
+}
+
 void GraphicsImpl::create_command_buffers(
 const std::vector<std::unique_ptr<GameObject>>& game_objects) {
     //allocate memory for command buffer, you have to create a draw command for each image
@@ -1489,6 +1555,89 @@ void GraphicsImpl::render_to_screen(size_t i) {
     vkCmdEndRenderPass(command_buffers[i]);
 }
 
+void GraphicsImpl::update_scene(std::vector<std::unique_ptr<GameObject>>& game_objects) {
+    // Push the vertex data from the object into the buffer, and render it
+    for (const auto& object : game_objects) {
+        const auto& model = object->object_model;
+        auto vertices = model.model_vertices;
+
+        //update ubo
+        create_ubo_set(
+            static_cast<uint32_t>(model.transforms.size())
+        );
+        write_to_ubo();
+
+        uint32_t index_mem = update_index_buffer(
+            model.model_indices
+        );
+        uint32_t vertex_mem = update_vertex_buffer(
+            model.model_vertices
+        );
+
+
+    }
+}
+
+void GraphicsImpl::write_draw_commands_to_buffer(std::vector<std::unique_ptr<GameObject>>& game_objects) {
+    
+    auto vertex_offset = uint32_t(0);
+    auto index_offset = uint32_t(0);
+
+    mem::CPUBuffer buffer;
+    mem::BufferCreateInfo buffer_info{};
+    buffer_info.size = game_objects.size() * sizeof(vk::DrawIndexedIndirectCommand);
+    buffer_info.usage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc;
+    buffer_info.queue_family_index_count = 1;
+    buffer_info.p_queue_family_indices = &device.get_graphics_family();
+    buffer.init(physical_device, device, buffer_info);
+    
+    std::vector<vk::DrawIndexedIndirectCommand> commands(game_objects.size());
+
+    for (size_t j = 0; j < game_objects.size(); j++) {
+        auto total_indexes = uint32_t(0);
+        //auto total_vertices = uint32_t(0);k
+
+        auto model_primitive_count = game_objects[j]
+            ->object_model.primitives.size();
+        for (size_t k = 0; k < model_primitive_count; k++) {
+
+            Primitive prim = game_objects[j]
+                ->object_model.primitives[k];
+
+            auto draw_index_count = prim.index_count;
+            auto draw_index_offset = index_offset;
+            auto draw_vertex_offset = vertex_offset;
+
+            auto draw_command = vk::DrawIndexedIndirectCommand(
+                draw_index_count, 
+                1, 
+                draw_index_offset, 
+                draw_vertex_offset, 
+                0
+            );
+
+            commands.push_back(draw_command);
+        }
+
+        index_offset += static_cast<uint32_t>(game_objects[j]
+            ->object_model.model_indices.size());
+
+        vertex_offset += static_cast<uint32_t>(game_objects[j]
+            ->object_model.model_vertices.size());
+    }
+}
+
+void GraphicsImpl::create_scene_buffer() {
+    mem::BufferCreateInfo buffer_info{};
+    buffer_info.size = SCENE_BUFFER_BYTE_SIZE;
+    buffer_info.usage = vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eTransferDst;
+    buffer_info.sharing_mode = vk::SharingMode::eExclusive;
+    buffer_info.queue_family_index_count = 1;
+    buffer_info.p_queue_family_indices = &device.get_graphics_family();
+    buffer_info.memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
+
+    scene_buffer.init(physical_device, device, buffer_info);
+}
 
 void GraphicsImpl::create_uniform_buffer() {
     mem::BufferCreateInfo buffer_info{};
@@ -1551,6 +1700,17 @@ bool GraphicsImpl::check_data(size_t data_size) {
     }
 
     return false;
+}
+
+
+//MODIFIES: this
+//PURPOSE: adds vertex data to scene buffer
+//RETURNS: memory location of where data was added or '-1' if no new data was mapped
+int32_t GraphicsImpl::update_scene_buffer(std::vector<Vertex>& vertex_data) {
+    if (check_data(vertex_data.size() * sizeof(Vertex))) return -1;
+
+    uint32_t mem_location = scene_buffer.map(vertex_data.size() * sizeof(Vertex), vertex_data.data());
+    return mem_location;
 }
 
 //MODIFIES: this

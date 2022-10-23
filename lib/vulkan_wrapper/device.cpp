@@ -1,6 +1,6 @@
 #include "vulkan_wrapper/device.hpp"
 
-#include "queue.hpp"
+#include "queue_data.hpp"
 
 #include <vector>
 #include <set>

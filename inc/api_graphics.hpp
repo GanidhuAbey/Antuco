@@ -29,12 +29,17 @@
 #include "vulkan_wrapper/device.hpp"
 #include "vulkan_wrapper/surface.hpp"
 
+#include "passes/compute_pass.hpp"
+
 #include "pipeline.hpp"
 #include "render_pass.hpp"
 
 #include <vector>
 #include <optional>
 #include <math.h>
+
+// 1e9 bytes = 1 gb
+#define SCENE_BUFFER_BYTE_SIZE 3e9
 
 const uint32_t API_VERSION_1_0 = 0;
 
@@ -59,7 +64,7 @@ public:
 
 	void update_camera(glm::mat4 world_to_camera, glm::mat4 projection, glm::vec4 eye);
 	void update_light(std::vector<DirectionalLight> lights, std::vector<int> shadow_casters);
-	void update_draw(std::vector<std::unique_ptr<GameObject>>& game_objects);
+	void update_draw(std::vector<std::unique_ptr<GameObject>>& game_objects, bool scene_change);
 
 private:
 	glm::mat4 camera_view;
@@ -118,6 +123,7 @@ private:
 
     //if oit is enabled, then we must disable depth testing in main pipeline?
     std::vector<TucoPipeline> graphics_pipelines;
+	TucoPipeline test_pipeline;
 
 private:
     void create_depth_pipeline();
@@ -130,6 +136,9 @@ private:
 	TucoPass screen_pass;
 	TucoPass shadowpass;
     TucoPass oit_pass;
+
+private:
+	pass::ComputePass object_command_pass;
 
 private:
     void create_oit_pass();
@@ -165,7 +174,7 @@ private:
 	std::unique_ptr<mem::Pool> texture_pool;
     std::unique_ptr<mem::Pool> mat_pool;
 
-	std::vector<std::vector<VkDescriptorSet>> ubo_sets;
+	std::vector<std::vector<VkDescriptorSet>> ubo_sets; //model -> mesh
     std::vector<std::vector<VkDescriptorSet>> mat_sets; //model -> mesh
 	
 	//game object -> mesh -> swapchain image
@@ -179,7 +188,8 @@ private:
 	std::vector<VkDeviceSize> ubo_offsets; //holds the offset data for a objects ubo information within the uniform buffer
 	std::vector<std::vector<VkDeviceSize>> mat_offsets;
 	std::vector<std::vector<mem::Image>> texture_images;
-
+	
+	Pass::ComputePass compute_pass;
 
 	size_t current_frame = 0;
 	size_t submitted_frame = 0;
@@ -242,6 +252,7 @@ private:
     void create_deffered_textures();
 
 private:
+	void create_test_pipeline();
 	void create_graphics_pipeline();
 	void create_ubo_layout();
 	void create_ubo_pool();
@@ -253,7 +264,11 @@ private:
 	void create_texture_pool();
 	void create_texture_set(size_t mesh_count);
 	void create_command_buffers(const std::vector<std::unique_ptr<GameObject>>& game_objects);
-	
+	void build_render_commands();
+
+	void begin_command_buffers();
+	void end_command_buffers();
+
     void create_shadow_map(
 			const std::vector<std::unique_ptr<GameObject>>& game_objects,
             size_t command_index, 
@@ -333,6 +348,8 @@ private:
 
 //buffer setup
 private:
+	mem::StackBuffer scene_buffer;
+
     mem::StackBuffer vertex_buffer;
 	mem::StackBuffer index_buffer;
 	mem::SearchBuffer uniform_buffer;
@@ -341,12 +358,19 @@ private:
 	void create_vertex_buffer();
 	void create_index_buffer();
 
+	// Stores the entire contents of the current scene in a GPU only buffer.
+	// Sparsley updated by CPU only when scene changes (object created/destroyed)
+	void create_scene_buffer();
+	void update_scene(std::vector<std::unique_ptr<GameObject>>& game_objects);
+	void write_draw_commands_to_buffer(std::vector<std::unique_ptr<GameObject>>& game_objects);
+
     bool check_data(size_t data_size);
 
 	void copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer, VkDeviceSize dst_offset, VkDeviceSize data_size);
 public:
 	int32_t update_vertex_buffer(std::vector<Vertex> vertex_data);
 	int32_t update_index_buffer(std::vector<uint32_t> indices_data);
+	int32_t update_scene_buffer(std::vector<Vertex>& vertex_data);
 
 //draw commands
 

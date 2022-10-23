@@ -97,8 +97,10 @@ int main() {
 	floor->add_mesh(root_project + "/objects/antuco-files/mac/surface.glb");
 	floor->scale(glm::vec3(10, 0.1, 10));	
 #elif defined(_WIN32) || defined(_WIN64)
-	auto car = antuco.create_object();
-	car->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.glb");
+	auto cube = antuco.create_object();
+	cube->add_mesh(root_project + "\\objects\\antuco-files\\windows\\cube.glb");
+	//auto car = antuco.create_object();
+	//car->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.glb");
 #endif
 
 	//light_mesh->scale(glm::vec3(0.2));

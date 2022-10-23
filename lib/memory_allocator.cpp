@@ -1,6 +1,6 @@
 #include "memory_allocator.hpp"
 #include "vulkan/vulkan_core.h"
-#include "queue.hpp"
+#include "queue_data.hpp"
 #include "logger/interface.hpp"
 #include "api_config.hpp"
 
