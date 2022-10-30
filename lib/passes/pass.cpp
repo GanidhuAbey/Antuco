@@ -1,7 +1,7 @@
 #include "passes/pass.hpp"
 
-using namespace tuco;
+using namespace pass;
 
-void Pass::init(const std::vector<vk::CommandBuffer>& command_buffers) {
-	Pass::command_buffers = command_buffers;
+Pass::Pass(v::PhysicalDevice& phys_device, v::Surface& surface)
+	: m_queue(phys_device, surface) {
 }

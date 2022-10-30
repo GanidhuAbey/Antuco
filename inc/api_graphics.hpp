@@ -189,7 +189,7 @@ private:
 	std::vector<std::vector<VkDeviceSize>> mat_offsets;
 	std::vector<std::vector<mem::Image>> texture_images;
 	
-	Pass::ComputePass compute_pass;
+	pass::ComputePass compute_pass;
 
 	size_t current_frame = 0;
 	size_t submitted_frame = 0;

@@ -5,24 +5,30 @@
 #include <vector>
 #include <memory>
 
-namespace tuco {
+namespace v {
+    namespace pass {
+        struct DepthConfig {
+            vk::ImageLayout initial_layout =
+                    vk::ImageLayout::eUndefined;
+            vk::ImageLayout final_layout =
+                    vk::ImageLayout::eDepthStencilAttachmentOptimal;
+        };
 
-struct DepthConfig {
-    VkImageLayout initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkImageLayout final_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-};
+        struct ColourConfig {
+            vk::Format format;
+            vk::ImageLayout initial_layout =
+                    vk::ImageLayout::eUndefined;
+            vk::ImageLayout final_layout =
+                    vk::ImageLayout::ePresentSrcKHR;
+        };
+    }
 
-struct ColourConfig {
-    vk::Format format;
-    VkImageLayout initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-    vk::ImageLayout final_layout = vk::ImageLayout::ePresentSrcKHR;
-};
-
-class TucoPass {
+using namespace pass;
+class RenderPassInternal {
     private:
         v::Device* api_device;
 
-        VkRenderPass render_pass;
+        vk::RenderPass render_pass;
         bool built = false;
 
         bool depth_attach = false;

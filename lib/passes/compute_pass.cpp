@@ -2,10 +2,12 @@
 
 using namespace pass;
 
-void ComputePass::frame_begin() {
-
+ComputePass::ComputePass(
+v::PhysicalDevice& phys_device, v::Surface& surface) {
+	: Pass(phys_device, surface)	
 }
 
-void ComputePass::build_command_list(const std::vector<std::unique_ptr<vk::CommandBuffer>>& command_buffers) {
-	
+void ComputePass::build_command_list(
+const std::vector<std::unique_ptr<vk::CommandBuffer>>& command_buffers) {
+	 
 }

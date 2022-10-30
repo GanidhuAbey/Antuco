@@ -31,11 +31,9 @@ private:
     std::optional<uint32_t> transfer_family;
     std::optional<uint32_t> compute_family;
 
-
     bool need_render = false;
     bool need_transfer = false;
     bool need_compute = false;
     bool need_present = false;
-
 };
 }

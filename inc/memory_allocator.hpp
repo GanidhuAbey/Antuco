@@ -107,6 +107,10 @@ public:
     vk::Image get_api_image();
     vk::ImageView get_api_image_view();
 
+    vk::ImageLayout get_layout() {
+        return data.image_info.initial_layout; 
+    }
+
     void transfer(
         vk::ImageLayout output_layout, 
         vk::Queue queue, 

@@ -1,4 +1,4 @@
-#include "render_pass.hpp"
+#include <vulkan_wrapper/render_pass_internal.hpp>
 
 #include "logger/interface.hpp"
 
@@ -6,24 +6,24 @@
 #include <memory>
 #include <stdexcept>
 
-using namespace tuco;
+using namespace v;
 
 
-void TucoPass::destroy() {
+void RenderPassInternal::destroy() {
     api_device->get().destroyRenderPass(render_pass);
 }
 
-void TucoPass::build(v::Device& device, VkPipelineBindPoint bind_point) {
+void RenderPassInternal::build(v::Device& device, VkPipelineBindPoint bind_point) {
     api_device = &device;
     
     create_render_pass(bind_point);
 }
 
-VkRenderPass TucoPass::get_api_pass() {
+VkRenderPass RenderPassInternal::get_api_pass() {
     return render_pass;
 }
 
-void TucoPass::add_depth(uint32_t attachment, DepthConfig config) {
+void RenderPassInternal::add_depth(uint32_t attachment, DepthConfig config) {
     depth_attach = true;
 
     depth_location = attachment;
@@ -44,7 +44,7 @@ void TucoPass::add_depth(uint32_t attachment, DepthConfig config) {
     attachments.push_back(depth_attachment); 
 }
 
-void TucoPass::add_colour(uint32_t attachment, ColourConfig config) {
+void RenderPassInternal::add_colour(uint32_t attachment, ColourConfig config) {
     colour_attach = true;
 
     colour_location = attachment;
@@ -67,12 +67,12 @@ void TucoPass::add_colour(uint32_t attachment, ColourConfig config) {
     attachments.push_back(colour_attachment);
 }
 
-void TucoPass::add_dependency(std::vector<vk::SubpassDependency> d) {
+void RenderPassInternal::add_dependency(std::vector<vk::SubpassDependency> d) {
     dependencies = d;
     dependency = true; 
 }
 
-void TucoPass::create_subpass(VkPipelineBindPoint bind_point, bool colour, bool depth) {
+void RenderPassInternal::create_subpass(VkPipelineBindPoint bind_point, bool colour, bool depth) {
     if (colour != colour_attach || depth != depth_attach) {
         LOG("[ERROR] - attempted to enable colour or depth with no attachments created");
         return;
@@ -91,7 +91,7 @@ void TucoPass::create_subpass(VkPipelineBindPoint bind_point, bool colour, bool 
     subpasses.push_back(subpass);
 }
 
-void TucoPass::create_render_pass(VkPipelineBindPoint bind_point) {
+void RenderPassInternal::create_render_pass(VkPipelineBindPoint bind_point) {
     if (subpasses.size() == 0) {
         LOG("at least one subpass is required to create render pass");
     }
@@ -108,5 +108,5 @@ void TucoPass::create_render_pass(VkPipelineBindPoint bind_point) {
             dependencies.data()
         );
     
-    render_pass = api_device->get().createRenderPass(info); 
+    render_pass = api_device->get().createRenderPass(info);
 }
