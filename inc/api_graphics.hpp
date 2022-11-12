@@ -32,7 +32,6 @@
 #include "passes/compute_pass.hpp"
 
 #include "pipeline.hpp"
-#include "render_pass.hpp"
 
 #include <vector>
 #include <optional>

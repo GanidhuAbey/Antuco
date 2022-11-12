@@ -1,0 +1,38 @@
+#pragma once
+
+#include <cstdint>
+
+namespace builder {
+    enum ImageType {
+        NO_IMAGE,
+        DEPTH_IMAGE,
+        COLOR_IMAGE
+    };
+
+    enum Usage {
+        Read,
+        Write
+    };
+
+    struct Dimensions {
+        uint32_t width;
+        uint32_t height;
+        uint32_t depth;
+
+        Dimensions(uint32_t w, uint32_t h, uint32_t d) {
+            width = w;
+            height = h;
+            depth = d;
+        }
+    };
+
+    class ImageResource {
+    public:
+        ImageResource();
+        
+        ImageType type;
+        uint32_t id;
+        Dimensions dim;
+        Usage use;
+    };
+}

@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.hpp>
 #include <vector>
+#include <string>
 
 #include <vulkan_wrapper/physical_device.hpp>
 #include <vulkan_wrapper/queue.hpp>
@@ -14,11 +15,11 @@
 namespace pass {
 
 class Pass {
-private:
+protected:
+	
 	tuco::TucoPipeline pipeline;
-	// descriptor sets can be rebinded every draw call,
-	// per draw data.
-	tuco::ResourceCollection resources;
+
+    tuco::ResourceCollection resources;
 
 public:
 	Pass() = default;

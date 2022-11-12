@@ -1,3 +1,5 @@
+#pragma once
+
 //an api wrapper for vulkan pipeline
 //
 #include "data_structures.hpp"

@@ -21,6 +21,18 @@
 const uint32_t MAX_SHADOW_CASTERS = 4;
 const char PROJECT_ROOT[7] = "Antuco";
 
+//given string, returns unique hash
+extern uint32_t hash_string(std::string str);
+
+constexpr static uint32_t hash_string_c(const char* ch) {
+    uint32_t hash = 5381;
+    int c;
+
+    while ((c = *ch++))
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+    return hash;
+}
 
 //go to the previous directory given a file path
 //ex "Users/user1/project" -> "Users/user1"

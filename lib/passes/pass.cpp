@@ -1,7 +1,7 @@
 #include "passes/pass.hpp"
 
+#include <config.hpp>
+
 using namespace pass;
 
-Pass::Pass(v::PhysicalDevice& phys_device, v::Surface& surface)
-	: m_queue(phys_device, surface) {
-}
+void Pass::initialize() {}

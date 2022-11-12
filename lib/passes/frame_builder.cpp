@@ -22,6 +22,14 @@ FrameBuilder *FrameBuilder::get() {
 void FrameBuilder::build_frame() {
 }
 
+void FrameBuilder::create_image_resource(ImageResource image, Pass pass) {
+    InternalImageResource resource{};
+    resource.data = image;
+    resource.use = image.use;
+    resource.pass_origin = pass;
+
+    image_resource.push_back(resource);
+}
 
 // If current pass just initializes which state the resource needs to
 // be in for that pass, then we can determine what state the previous
@@ -38,13 +46,11 @@ void FrameBuilder::build_frame() {
 void FrameBuilder::add_pass(RenderPass render_pass) {
     auto rpi = v::RenderPassInternal();
     
-    if (render_pass.colour_image.has_value()) {
-        auto config = v::pass::ColourConfig{};
-        config.initial_layout = render_pass.colour_image.value()
-            .get_layout();
+    if (render_pass.color_texture.type != NO_IMAGE) {
+        create_image_resource(render_pass.color_texture);
     }
-    if (render_pass.depth_image.has_value()) {
-
+    if (render_pass.depth_texture != NO_IMAGE) {
+        create_image_resource(render_pass.depth_texture);
     }
 }
 

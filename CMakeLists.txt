@@ -1,13 +1,13 @@
 ﻿cmake_minimum_required(VERSION 3.1)
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
-set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_BUILD_TYPE Debug)
 
-find_package(PythonInterp 3.9.10 REQUIRED)
+find_package(PythonInterp 3.8 REQUIRED)
 
 set(_change_MSVC_flags FALSE)
 if(WIN32)
@@ -42,7 +42,7 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/shaderc")
 add_library(
     REQUIRED_LIBRARIES
     ${SOURCES}
-     "render_examples/bmw.hpp" "render_examples/bmw.cpp")
+     "render_examples/bmw.hpp" "render_examples/bmw.cpp" lib/passes/render_pass.cpp)
 
 include_directories("inc/")
 include_directories("inc/components/skybox")

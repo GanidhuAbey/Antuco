@@ -8,6 +8,18 @@
 
 #include <vector>
 
+uint32_t hash_string(std::string str) {
+    uint32_t hash = 5381;
+    int c;
+
+    const char* ch = str.c_str();
+
+    while ((c = *ch++))
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+    return hash;
+}
+
 std::string goto_previous_directory(std::string file_path) {
 #ifdef _WIN32
     size_t index = file_path.rfind("\\");
