@@ -19,16 +19,40 @@ FrameBuilder *FrameBuilder::get() {
 // compute passes will contain no per object data since objects are not submitted
 // but it is a much simpler case to handle empty data
 
-void FrameBuilder::build_frame() {
+void FrameBuilder::initialize() {
+    for (auto& render_pass : render_passes) {
+        render_pass.initialize();
+    }
+
+    for (const auto& image_data : image_resources) {
+        
+    }
 }
 
-void FrameBuilder::create_image_resource(ImageResource image, Pass pass) {
-    InternalImageResource resource{};
-    resource.data = image;
-    resource.use = image.use;
-    resource.pass_origin = pass;
+void FrameBuilder::setup_frame() {
+}
 
-    image_resource.push_back(resource);
+void FrameBuilder::execute_frame() {}
+
+Image* FrameBuilder::find_or_create(ImageResource resource) {
+    if (resource.type == NO_IMAGE) {
+        return nullptr;
+    }
+
+    // search for resource
+    auto value = image_resources.find(resource.id);
+    if (value != image_resources.end()) {
+        return &value->second;
+    }
+
+    // create and add resource, if resource not found.
+    Image image(resource);
+
+    image_resources[resource.id] = std::move(image);
+
+    auto value = image_resources.find(resource.id);
+    
+    return &value->second;
 }
 
 // If current pass just initializes which state the resource needs to
@@ -46,12 +70,7 @@ void FrameBuilder::create_image_resource(ImageResource image, Pass pass) {
 void FrameBuilder::add_pass(RenderPass render_pass) {
     auto rpi = v::RenderPassInternal();
     
-    if (render_pass.color_texture.type != NO_IMAGE) {
-        create_image_resource(render_pass.color_texture);
-    }
-    if (render_pass.depth_texture != NO_IMAGE) {
-        create_image_resource(render_pass.depth_texture);
-    }
+    render_passes.push_back(render_pass);
 }
 
 void FrameBuilder::add_pass(ComputePass compute_pass) {

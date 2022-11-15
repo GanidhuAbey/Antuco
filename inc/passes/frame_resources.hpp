@@ -1,5 +1,7 @@
 #pragma once
 
+#include <data_structures.hpp>
+
 #include <cstdint>
 
 namespace builder {
@@ -30,9 +32,24 @@ namespace builder {
     public:
         ImageResource();
         
-        ImageType type;
+        ImageType type = NO_IMAGE;
         uint32_t id;
         Dimensions dim;
         Usage use;
+    };
+
+
+    class Image {
+        friend class pass::FrameBuilder;
+    private:
+        ImageResource resource_data;
+        Image(ImageResource image_resource) {
+            resource_data = image_resource;
+        }
+    };
+
+    class DrawItem {
+        std::vector<tuco::Vertex> vertices;
+        std::vector<uint32_t> indices;
     };
 }

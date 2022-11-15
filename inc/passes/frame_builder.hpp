@@ -9,6 +9,8 @@
 #include <passes/frame_resources.hpp>
 
 #include <vulkan_wrapper/render_pass_internal.hpp>
+#include <vulkan_wrapper/swapchain.hpp>
+#include <vulkan_wrapper/image.hpp>
 
 using namespace builder;
 
@@ -19,7 +21,7 @@ namespace pass {
 // recorded to the command buffer and submitted.
 class FrameBuilder {
 private:
-    std::vector<v::RenderPassInternal> render_passes;
+    std::vector<RenderPass> render_passes;
 
     struct InternalImageResource {
         ImageResource data;
@@ -27,16 +29,22 @@ private:
         Usage use;
     };
 
-    std::vector<InternalImageResource> image_resource;
+    std::unordered_map<uint32_t, Image> image_resources;
+
+    v::Swapchain swapchain;
 
 public:
-    FrameBuilder() = default;
+    FrameBuilder(v::Swapchain& swapchain) {
+        FrameBuilder::swapchain = swapchain;
+    }
     ~FrameBuilder() = default;
 
     static std::unique_ptr<FrameBuilder> p_frame_builder;
     static FrameBuilder* get();
 
-    void build_frame();
+    void initialize();
+    void setup_frame();
+    void execute_frame();
 
     // Safer option is likely to define pass order from within the passes.
     // Stating what comes before and what comes after should be enough
@@ -44,7 +52,15 @@ public:
     void add_pass(ComputePass pass); 
 
     // create the required resource
-    void create_image_resource(ImageResource resource, Pass pass);
+    Image* find_or_create(ImageResource resource);
+
+    Dimensions get_window_dimensions() {
+        auto extent = swapchain.get_extent();
+
+        Dimensions dim(extent.width, extent.height, 1);
+
+        return dim;
+    }
 };
 
 }

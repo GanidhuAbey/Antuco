@@ -1,1 +1,4 @@
-name: "screen_pass"
+name: "screen_pass
+resources : {
+	"shadowmap" : { "shadow_pass" : "depth_texture" }
+}
