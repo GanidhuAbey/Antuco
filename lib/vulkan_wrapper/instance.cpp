@@ -3,6 +3,9 @@
 #include <cstdio>
 #include <iostream>
 
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
+
 using namespace v;
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
@@ -122,9 +125,9 @@ void Instance::create_instance(const char* app_name, uint32_t api_version) {
 
     instance = vk::createInstance(info); 
 
-    auto dldi = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
+    m_dldi = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
 
-    messenger = instance.createDebugUtilsMessengerEXT(debug_info, nullptr, dldi);
+    messenger = instance.createDebugUtilsMessengerEXT(debug_info, nullptr, m_dldi);
 }
 
 bool Instance::check_extensions_supported(const char** extensions, uint32_t extensions_count) {

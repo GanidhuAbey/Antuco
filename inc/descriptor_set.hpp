@@ -9,6 +9,13 @@
 #include <string>
 
 namespace tuco {	
+
+enum ResourceFrequency {
+	Frame = 0, // Bound once for the entire frame.
+	Pass = 1, // Bound once for each pass.
+	Draw = 2, // Bound once for each draw item.
+};
+
 class ResourceCollection {
 private:
 	v::Device* device;
@@ -16,7 +23,7 @@ private:
 	bool buffer_add = false;
 	bool image_add = false;
 
-	std::vector<VkDescriptorSet> sets;
+	VkDescriptorSet set;
 
     std::vector<VkDescriptorImageInfo> image_info{};
 	VkDescriptorBufferInfo buffer_info{};

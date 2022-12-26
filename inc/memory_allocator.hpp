@@ -26,6 +26,8 @@ const VkDeviceSize MINIMUM_SORT_DISTANCE = 1e5;
 //TODO: need to create a information struct in the style of vulkan to let user manipulate this data
 //VkDeviceSize allocationSize = 5e8;
 
+//TODO: seperate memory allocator into multiple classes
+
 namespace mem {
 
 struct BufferCreateInfo {
@@ -240,7 +242,7 @@ private:
 public:
     Pool(v::Device& device, PoolCreateInfo create_info);
 public:   
-    std::vector<VkDescriptorPool> pools;
+    std::vector<vk::DescriptorPool> pools;
     
     size_t allocate(VkDeviceSize allocationSize);
     void destroyPool();

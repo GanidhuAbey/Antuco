@@ -32,6 +32,11 @@ public:
     Model(const Model&) = delete;
     Model& operator=(const Model&) = delete;
 
+public:
+    std::vector<Primitive>& get_primitives() {
+        return primitives;
+    }
+
 private:
 	//if name is left null, then model will not be saved/loaded from file
 	void add_mesh(const std::string& fileName, std::optional<std::string> name = std::nullopt);

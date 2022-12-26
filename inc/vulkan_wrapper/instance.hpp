@@ -12,6 +12,8 @@ private:
     vk::DebugUtilsMessengerEXT messenger;
     bool enable_validation = true;
 
+    vk::DispatchLoaderDynamic m_dldi;
+
 public:
     Instance(std::string app_name, uint32_t api_version);
     ~Instance();
@@ -20,6 +22,8 @@ public:
 
     operator vk::Instance() { return instance; }
     operator VkInstance() { return instance; }
+
+    vk::DispatchLoaderDynamic& get_dldi() { return m_dldi; }
 
 private:
     void create_instance(const char* app_name, uint32_t api_version);
