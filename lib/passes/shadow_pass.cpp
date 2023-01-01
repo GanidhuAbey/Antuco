@@ -2,15 +2,14 @@
 
 using namespace pass;
 
-/*
 void ShadowPass::initialize() {
     // create PSO
 
     // create depth resources
-
+    return;
 }
 
-void ShadowPass::create_commands(vk::CommandBuffer cmd_buff) {
+void ShadowPass::create_commands(vk::CommandBuffer& cmd_buff) {
     VkRect2D renderArea{};
     renderArea.offset = VkOffset2D{ 0, 0 };
     renderArea.extent = VkExtent2D{ m_shadowmap_size, m_shadowmap_size };
@@ -100,37 +99,29 @@ void ShadowPass::create_commands(vk::CommandBuffer cmd_buff) {
         &m_light
     );
 
-    for (size_t i = 0; i < m_game_objects.size(); i++) {
-        if (m_game_objects[i]->is_update()) {
-            continue;
-        }
+    bind_pass_resources();
 
-        auto primitives = m_game_objects[j]->get_model().get_primitives();
-        for (size_t j = 0; j < primitives.size(); j++) {
-            tuco::Primitive prim = primitives[j];
+    for (auto& draw_call : m_draw_calls) {
+        cmd_buff.bindDescriptorSets(
+            vk::PipelineBindPoint::eGraphics,
+            m_pipeline.get_api_layout(),
+            0,
+            draw_call->get_draw_resources().get_set(),
+            {}
+        );
 
-            VkDescriptorSet descriptors[1] = { 
-                light_ubo[j].get_api_set(prim.transform_index) 
-            };
-
-            vkCmdBindDescriptorSets(command_buffers[command_index],
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                shadowmap_pipeline.get_api_layout(),
-                0,
-                1,
-                descriptors,
-                0,
-                nullptr);
-
-            vkCmdDrawIndexed(command_buffers[command_index], 
-                prim.index_count, 
-                1, 
-                prim.index_start, 
-                0, 
-                static_cast<uint32_t>(0));
-        }
+        cmd_buff.drawIndexed(
+            draw_call->get_index_count(),
+            1,
+            draw_call->get_index_offset(),
+            draw_call->get_vertex_offset(),
+            0
+        );
     }
     
-    vkCmdEndRenderPass(command_buffers[command_index]);
+    cmd_buff.endRenderPass();
 }
-*/
+
+void ShadowPass::bind_pass_resources() {
+    //...
+}

@@ -29,6 +29,8 @@
 #include "vulkan_wrapper/device.hpp"
 #include "vulkan_wrapper/surface.hpp"
 
+#include <passes/shadow_pass.hpp>
+
 #include "pipeline.hpp"
 #include "tuco_pass.hpp"
 
@@ -219,7 +221,12 @@ private:
  
 	std::unique_ptr<mem::Pool> shadowmap_pool;
 
+	pass::ShadowPass shadow_pass;
+	
+	std::vector<br::DrawCall> shadow_calls;
+
 private:
+	void create_shadow_draw_calls(std::vector<std::unique_ptr<tuco::GameObject>> objects);
 	void create_shadowpass_buffer();
 	void create_shadowpass();
 	void create_shadowpass_resources();

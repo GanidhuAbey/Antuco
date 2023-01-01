@@ -4,6 +4,11 @@
 
 #include "vulkan_wrapper/device.hpp"
 
+#define ENGINE_BIND_SLOT 0
+#define PASS_BIND_SLOT 1
+#define DRAW_BIND_SLOT 2
+#define MATERIAL_BIND_SLOT 3
+
 namespace tuco {
 inline vk::CommandBuffer begin_command_buffer(
 v::Device& device, 

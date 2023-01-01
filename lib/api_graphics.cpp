@@ -14,7 +14,8 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
       physical_device(instance),
       surface(instance, pWindow->pWindow->apiWindow),
       device(physical_device, surface, false),
-      swapchain(physical_device, device, surface) {
+      swapchain(physical_device, device, surface),
+	  shadow_pass(device) {
 
 	not_created = true;
 	raytracing = false; //set this as an option in the pre-configuration settings.
@@ -55,6 +56,8 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
 	write_to_shadowmap_set();
 	create_semaphores();
 	create_fences();
+
+	//shadow_pass.initialize();
 
 	//create some buffers now
 	create_vertex_buffer();
@@ -179,6 +182,7 @@ std::vector<std::unique_ptr<GameObject>>& game_objects) {
 	if (update_command_buffers) {
 		//free command buffers first?
 		free_command_buffers();
+		//create_shadow_draw_calls(game_objects);
 		create_command_buffers(game_objects);
 		update_command_buffers = false;
 	}

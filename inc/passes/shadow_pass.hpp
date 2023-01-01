@@ -5,6 +5,8 @@
 #include <pipeline.hpp>
 #include <data_structures.hpp>
 
+#include <bedrock/draw_call.hpp>
+
 namespace pass {
 class ShadowPass : public RenderPass {
 private:
@@ -15,19 +17,27 @@ private:
 
     tuco::LightObject m_light;
 
-    std::vector<std::unique_ptr<tuco::GameObject>> m_game_objects;
+    std::vector<br::DrawCall*> m_draw_calls;
+
+    v::Device& m_device;
 
 public:
-    ShadowPass() = default;
+    ShadowPass(v::Device& device) : 
+        RenderPass(device),
+        m_device(device) {
+        
+    };
+
     ~ShadowPass() = default;
 
     void initialize() override;
-    void create_commands(vk::CommandBuffer cmd_buff) override;
+    void create_commands(vk::CommandBuffer& cmd_buff) override;
 
-    // TODO: next step is to abstract away these methods so they don't have to be defined
-    //       for every pass.
-    void set_light_push_data(tuco::LightObject light);
-    void set_game_objects(std::vector<std::unique_ptr<tuco::GameObject>> m_game_objects);
+    void add_draw_call(br::DrawCall* draw_call) {
+        m_draw_calls.push_back(draw_call);
+    }
 
+private:
+    void bind_pass_resources();
 };
 }

@@ -491,6 +491,27 @@ void GraphicsImpl::create_light_layout() {
     }
 }
 
+void GraphicsImpl::create_shadow_draw_calls(std::vector<std::unique_ptr<GameObject>> objects) {
+    /*`
+    uint32_t total_vertex_count = 0;
+    uint32_t total_index_offset = 0;
+    for (const auto& object : objects) {
+        for (const auto& prim : object->get_model().get_primitives()) {
+            br::DrawCall draw_call;
+            draw_call.set_index_count(prim.index_count);
+            draw_call.set_index_offset(prim.index_start + total_index_offset);
+            draw_call.set_vertex_offset(total_vertex_count);
+
+        }
+
+        total_index_offset += static_cast<uint32_t>(object
+            ->object_model.model_indices.size());
+        total_vertex_count += static_cast<uint32_t>(object
+            ->object_model.model_vertices.size());
+    }
+    */
+}
+
 
 void GraphicsImpl::create_materials_layout() {
     /* UNIFORM BUFFER DESCRIPTOR SET */

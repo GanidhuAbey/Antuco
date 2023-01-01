@@ -28,11 +28,11 @@ void TucoPipeline::destroy() {
     api_device->get().destroyPipelineLayout(layout_);
 }
 
-VkPipeline TucoPipeline::get_api_pipeline() {
+vk::Pipeline TucoPipeline::get_api_pipeline() {
     return pipeline_;
 }
 
-VkPipelineLayout TucoPipeline::get_api_layout() {
+vk::PipelineLayout TucoPipeline::get_api_layout() {
     return layout_;
 }
 

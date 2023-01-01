@@ -10,18 +10,10 @@
 
 namespace br {	
 
-struct ShaderBinding {
-    uint32_t bind_slot;
-    ResourceType resource_type;
-    ShaderType shader_type;
-    vk::DescriptorImageInfo* image_info;
-    vk::DescriptorBufferInfo* buffer_info;
-};
-
 enum ResourceType {
-	Image = vk::DescriptorType::eCombinedImageSampler,
-	ReadBuffer = vk::DescriptorType::eUniformBuffer,
-	ReadWriteBuffer = vk::DescriptorType::eStorageBuffer
+	Image = (uint32_t)vk::DescriptorType::eCombinedImageSampler,
+	ReadBuffer = (uint32_t)vk::DescriptorType::eUniformBuffer,
+	ReadWriteBuffer = (uint32_t)vk::DescriptorType::eStorageBuffer
 };
 
 enum ResourceFrequency {
@@ -32,12 +24,26 @@ enum ResourceFrequency {
 };
 
 enum ShaderType {
-    Vertex = vk::ShaderStageFlagBits::eVertex,
-    Fragment = vk::ShaderStageFlagBits::eFragment,
-    Compute = vk::ShaderStageFlagBits::eCompute
+    Vertex = (uint32_t)vk::ShaderStageFlagBits::eVertex,
+    Fragment = (uint32_t)vk::ShaderStageFlagBits::eFragment,
+    Compute = (uint32_t)vk::ShaderStageFlagBits::eCompute
+};
+
+struct ShaderBinding {
+    uint32_t bind_slot;
+    ResourceType resource_type;
+    ShaderType shader_type;
+    vk::DescriptorImageInfo* image_info;
+    vk::DescriptorBufferInfo* buffer_info;
 };
 
 class ResourceGroup {
+private:
+	void create_set(mem::Pool& pool);
+    void create_descriptor_set_layout();
+
+	void destroy();
+
 private:
 	v::Device* m_device;
     vk::UniqueDescriptorSetLayout m_layout;
@@ -62,9 +68,9 @@ public:
         const v::Device& device,
         mem::Pool& pool);
 
-	~ResourceGroup() {
-		destroy();
-	}
+
+	ResourceGroup() = default;
+	~ResourceGroup() = default;
 
 	void add_resource(ShaderBinding resource);
 
@@ -91,10 +97,11 @@ public:
 
 	//VkDescriptorSet get_api_set(size_t i);
 
-private:
-	void create_set(mem::Pool& pool);
-    void create_descriptor_set_layout();
-
-	void destroy();
+	vk::DescriptorSet& get_set() {
+		return m_set;
+	}
+	vk::DescriptorSetLayout get_layout() {
+		return m_layout.get();
+	}
 };
 }

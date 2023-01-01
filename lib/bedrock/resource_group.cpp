@@ -20,7 +20,7 @@ void ResourceGroup::build(const v::Device& device, mem::Pool& pool) {
 }
 
 void ResourceGroup::destroy() {
-    m_device->get().destroyDescriptorSetLayout(m_layout.get());
+    
 }
 
 void ResourceGroup::create_descriptor_set_layout() {

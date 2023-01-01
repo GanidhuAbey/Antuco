@@ -1,3 +1,5 @@
+#pragma once
+
 //an api wrapper for vulkan pipeline
 //
 #include "data_structures.hpp"
@@ -93,8 +95,8 @@ class TucoPipeline {
     public:
         void init(v::Device& device, const PipelineConfig& config);
 
-        VkPipeline get_api_pipeline();
-        VkPipelineLayout get_api_layout();
+        vk::Pipeline get_api_pipeline();
+        vk::PipelineLayout get_api_layout();
 
         void destroy();
 
