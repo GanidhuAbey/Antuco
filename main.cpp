@@ -94,7 +94,9 @@ int main() {
 	
 #if defined(__APPLE__)
 	auto floor = antuco.create_object();
+	auto car = antuco.create_object();
 	floor->add_mesh(root_project + "/objects/antuco-files/mac/surface.glb");
+	car->add_mesh(root_project + "/objects/antuco-files/mac/car.glb");
 	floor->scale(glm::vec3(10, 0.1, 10));	
 #elif defined(_WIN32) || defined(_WIN64)
 	auto car = antuco.create_object();
