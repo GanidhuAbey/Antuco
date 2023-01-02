@@ -4,10 +4,10 @@
 */
 #pragma once
 
-#include <vulkan/vulkan.hpp>
-#include <GLFW/glfw3.h>
-
 #include "vulkan_wrapper/device.hpp"
+
+#include <vkwr.hpp>
+#include <GLFW/glfw3.h>
 
 #include <stdexcept>
 #include <iostream>

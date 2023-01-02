@@ -4,7 +4,7 @@
 #include "memory_allocator.hpp"
 #include "vulkan_wrapper/device.hpp"
 
-#include <vulkan/vulkan.hpp>
+#include <vkwr.hpp>
 #include <vector>
 #include <string>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vulkan/vulkan.hpp>
+#include <vkwr.hpp>
 
 #include <map>
 #include <vector>

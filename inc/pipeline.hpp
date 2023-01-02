@@ -5,7 +5,7 @@
 #include "data_structures.hpp"
 
 #include <memory>
-#include <vulkan/vulkan.hpp>
+#include <vkwr.hpp>
 
 #include "vulkan_wrapper/device.hpp"
 

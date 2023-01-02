@@ -9,7 +9,7 @@
 #include "model.hpp"
 //#include "graphics.hpp"
 
-#include <vulkan/vulkan.hpp>
+#include <vkwr.hpp>
 #include <glm/glm.hpp>
 
 namespace tuco {

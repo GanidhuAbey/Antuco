@@ -1,10 +1,8 @@
 #pragma once
 
-#include 
-
+#include <antuco_enums.hpp>
 #include <string>
-#include <vulkan/vulkan.hpp>
-
+#include <vkwr.hpp>
 
 namespace com {
 
@@ -15,7 +13,7 @@ private:
 	std::string image_path;
 	VkImage image;
 public:
-	SkyBox(RenderEngine api, std::string image_path);
+	SkyBox(tuco::RenderEngine api, std::string image_path);
 };
 
 }

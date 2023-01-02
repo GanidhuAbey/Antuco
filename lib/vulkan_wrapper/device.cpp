@@ -100,4 +100,6 @@ const bool enableValidationLayers = true;
     graphics_queue = device.getQueue(graphics_family, 0);
     present_queue = device.getQueue(present_family, 0);
     transfer_queue = device.getQueue(transfer_family, 0);
+
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(device);
 }

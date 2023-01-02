@@ -17,7 +17,6 @@
 #include <optional>
 #include <array>
 #include <vector>
-#include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
 #include "api_config.hpp"
