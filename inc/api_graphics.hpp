@@ -8,8 +8,6 @@
 
 #pragma once
 
-#include <vulkan/vulkan.hpp>
-
 #include "window.hpp"
 
 #include <memory>

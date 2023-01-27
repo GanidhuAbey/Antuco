@@ -1,4 +1,4 @@
-#include "shader_text.hpp"
+#include <bedrock/shader_text.hpp>
 
 #include "logger/interface.hpp"
 #include "config.hpp"
@@ -36,7 +36,7 @@ ShaderText::~ShaderText() {
 
 }
 
-std::vector<uint32_t> ShaderText::get_code() {
+std::vector<uint32_t>& ShaderText::get_code() {
     return m_compiled_code;
 }
 
@@ -82,10 +82,16 @@ void ShaderText::create_layouts() {
 
     // Demonstrates how to generate all necessary data structures to create a
     // VkDescriptorSetLayout for each descriptor set in this shader.
-    std::vector<DescriptorSetLayoutData> set_layouts(sets.size(), DescriptorSetLayoutData{});
+    m_layout_data.resize(sets.size());
+    m_layout_data.insert(
+        m_layout_data.begin(), 
+        sets.size(), 
+        v::DescriptorSetLayoutData{}
+    );
+
     for (size_t i_set = 0; i_set < sets.size(); ++i_set) {
         const SpvReflectDescriptorSet& refl_set = *(sets[i_set]);
-        DescriptorSetLayoutData& layout = set_layouts[i_set];
+        v::DescriptorSetLayoutData& layout = m_layout_data[i_set];
         layout.bindings.resize(refl_set.binding_count);
         for (uint32_t i_binding = 0; i_binding < refl_set.binding_count; ++i_binding) {
         const SpvReflectDescriptorBinding& refl_binding = *(refl_set.bindings[i_binding]);

@@ -1,5 +1,5 @@
 #include "pipeline.hpp"
-#include "shader_text.hpp"
+#include <bedrock/shader_text.hpp>
 
 #include "logger/interface.hpp"
 
