@@ -8,6 +8,8 @@
 #include <vkwr.hpp>
 
 #include "vulkan_wrapper/device.hpp"
+#include <bedrock/shader_text.hpp>
+#include <bedrock/resource_group.hpp>
 
 #include <vector>
 #include <optional>
@@ -41,9 +43,8 @@ namespace tuco {
 
 struct PipelineConfig {
     vk::Extent2D screen_extent;
-    std::optional<std::string> vert_shader_path = std::nullopt;
-    std::optional<std::string> frag_shader_path = std::nullopt;
-    std::optional<std::string> compute_shader_path = std::nullopt;
+    std::string shader_path;
+    uint8_t shader_flags;
     std::vector<VkDynamicState> dynamic_states;
     VkCompareOp depth_compare_op = VK_COMPARE_OP_LESS;
     VkBool32 depth_bias_enable = VK_FALSE;
@@ -51,7 +52,6 @@ struct PipelineConfig {
     uint32_t subpass_index;
     bool blend_colours = VK_FALSE;
 
-    std::vector<VkDescriptorSetLayout> descriptor_layouts;
     std::vector<VkPushConstantRange> push_ranges = std::vector<VkPushConstantRange>(0);
 
     std::vector<vk::VertexInputBindingDescription> 
@@ -88,10 +88,20 @@ struct PipelineConfig {
 
 class TucoPipeline {
     private:
-        vk::Pipeline pipeline_;
-        vk::PipelineLayout layout_;
+        //br::ResourceGroup m_resource_group;
 
+        vk::Pipeline pipeline_;
+        vk::PipelineLayout m_layout;
+
+        // A raw pointer is dangerous, the data doesn't need to
+        // be reseated (and isn't expected to) so it should be
+        // reference.
         v::Device* api_device;
+
+        std::unique_ptr<br::ShaderText> m_frag_shader;
+        std::unique_ptr<br::ShaderText> m_vert_shader;
+        std::unique_ptr<br::ShaderText> m_compute_shader;
+        
     public:
         void init(v::Device& device, const PipelineConfig& config);
 
@@ -102,7 +112,7 @@ class TucoPipeline {
 
     private:
         void create_render_pipeline(const PipelineConfig& config);
-        void create_compute_pipeline(const PipelineConfig& config);
+        //void create_compute_pipeline(const PipelineConfig& config);
 
 
     //helper functions
@@ -114,8 +124,8 @@ class TucoPipeline {
                 vk::ShaderStageFlagBits stage, 
                 vk::ShaderModule shaderModule
             );
-        void create_pipeline_layout(const std::vector<VkDescriptorSetLayout>& set_layouts,
-                                    const std::vector<VkPushConstantRange>& push_ranges);
+    
+        void create_pipeline_layout(br::ShaderText* shader, const std::vector<VkPushConstantRange>& push_ranges);
 };
 
 }

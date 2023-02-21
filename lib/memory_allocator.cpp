@@ -11,6 +11,33 @@
 
 using namespace mem;
 
+//------------- Memory Allocator -------------------
+// handles all request for object creation dealing
+// with memory. ex: buffers, images, descriptor sets
+// -------------------------------------------------
+MemoryAllocator* MemoryAllocator::m_instance {nullptr};
+std::mutex MemoryAllocator::m_mutex;
+
+MemoryAllocator::MemoryAllocator(v::Device* device, v::PhysicalDevice* phys_device) {
+    m_device = device;
+    m_phys_device = phys_device;
+}
+
+MemoryAllocator* MemoryAllocator::get_instance(v::Device* device, v::PhysicalDevice* phys_device) 
+{
+    if (!m_instance) {
+        if (!device || !phys_device) {
+            LOG("first call to MemoryAllocator::get_instance() must pass device and physical_device");
+            return nullptr;
+        }
+
+        m_instance = new MemoryAllocator(device, phys_device);
+    }
+
+    return m_instance;
+} 
+// -------------------------------------------------
+
 void SearchBuffer::init(v::PhysicalDevice& physical_device, 
 v::Device& device, BufferCreateInfo& buffer_info) { 
     api_device = &device;

@@ -23,6 +23,10 @@ void ResourceGroup::destroy() {
     
 }
 
+void ResourceGroup::set_shader(ShaderText& shader) {
+    m_layout_data = shader.get_layout_data();
+}
+
 void ResourceGroup::create_descriptor_set_layout() {
     std::vector<vk::DescriptorSetLayoutBinding> resources(m_shader_bindings.size());
     for (auto i = 0; i < m_shader_bindings.size(); i++) {

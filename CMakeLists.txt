@@ -25,7 +25,7 @@ project(Antuco VERSION 1.0.0)
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 
-file(GLOB SOURCES lib/*.cpp lib/vulkan_wrapper/*.cpp lib/passes/*.cpp)
+file(GLOB SOURCES lib/*.cpp lib/*/*.cpp)
 
 file(GLOB HEADERS inc/*.hpp)
 
@@ -64,6 +64,7 @@ add_executable(main main.cpp)
 target_link_libraries(main PRIVATE REQUIRED_LIBRARIES 
                                    "${Vulkan_LIBRARIES}" 
                                    glfw 
-                                   shaderc 
+                                   shaderc
+                                   spirv-reflect-static 
                                    spirv-cross-core)
 

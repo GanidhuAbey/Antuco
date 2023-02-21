@@ -3,6 +3,7 @@
 #include "logger/interface.hpp"
 #include "memory_allocator.hpp"
 #include "vulkan_wrapper/device.hpp"
+#include <bedrock/shader_text.hpp>
 
 #include <vkwr.hpp>
 #include <vector>
@@ -19,7 +20,8 @@ enum ResourceType {
 enum ResourceFrequency {
 	Frame = 0, // Bound once for the entire frame.
 	Pass = 1, // Bound once for each pass.
-	Draw = 2, // Bound once for each draw item.
+	Material = 2, // Bound once per every material (does not exist yet)
+	Draw = 3, // Bound once for each draw item.
 	Invalid = 9
 };
 
@@ -54,6 +56,7 @@ private:
 	vk::DescriptorSet m_set;
 
     std::vector<ShaderBinding> m_shader_bindings;
+	std::vector<v::DescriptorSetLayoutData> m_layout_data;
 
 	VkDescriptorType m_descriptor_type;
 
@@ -73,6 +76,8 @@ public:
 	~ResourceGroup() = default;
 
 	void add_resource(ShaderBinding resource);
+
+	void set_shader(ShaderText& shader);
 
 	void update_set();
 	void release_bindings();

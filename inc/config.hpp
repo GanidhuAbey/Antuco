@@ -31,7 +31,8 @@ extern std::string goto_previous_directory(std::string file_path);
 //ex "Users/user1/project/file.cpp" -> "file.cpp"
 //ex "Users\user1\Antuco" -> "Antuco"
 extern std::string get_current_dir_name(std::string);
-
+#define get_current_file_name get_current_dir_name
+// The arcane arts...
 
 //REQUIRES: string must be file path, be within file/dir within PROOJECT_ROOT
 //EFFECTS: returns the absolute path to root project folder

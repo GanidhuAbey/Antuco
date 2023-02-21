@@ -37,9 +37,8 @@ using namespace tuco;
 
 void GraphicsImpl::create_depth_pipeline() {
     PipelineConfig config{};
-    config.vert_shader_path = SHADER_PATH + "shader.vert";
+    config.shader_path = SHADER_PATH + "base.hlsl";
     config.blend_colours = false;
-    config.descriptor_layouts = {light_layout, ubo_layout};
     
     std::vector<VkDynamicState> dynamic_states = {
         VK_DYNAMIC_STATE_VIEWPORT,
@@ -286,10 +285,9 @@ void GraphicsImpl::create_graphics_pipeline() {
     push_ranges.push_back(pushRange);
 
     PipelineConfig config{};
-    config.vert_shader_path = SHADER_PATH + "shader.vert";
-    config.frag_shader_path = SHADER_PATH + "shader.frag";
+    //TODO : does not support textures...
+    config.shader_path = SHADER_PATH + "base.hlsl";
     config.dynamic_states = dynamic_states;
-    config.descriptor_layouts = descriptor_layouts;
     config.push_ranges = push_ranges;
     config.pass = render_pass.get_api_pass();
     config.subpass_index = 0;
@@ -302,9 +300,7 @@ void GraphicsImpl::create_graphics_pipeline() {
 
     graphics_pipelines[0].init(device, config);
 
-    auto it = config.descriptor_layouts.begin() + 2;
-    config.descriptor_layouts.erase(it);
-    config.frag_shader_path = SHADER_PATH + "no_texture.frag";
+    config.shader_path = SHADER_PATH + "base.hlsl";
 
     graphics_pipelines[1].init(device, config);
 }
@@ -557,7 +553,6 @@ void GraphicsImpl::create_materials_set(uint32_t mat_count) {
     allocateInfo.descriptorPool = mat_pool->pools[pool_index];
     allocateInfo.descriptorSetCount = mat_count;
     allocateInfo.pSetLayouts = mat_layouts.data();
-
    
     mat_sets.resize(mat_sets.size() + 1);
     mat_sets[mat_sets.size() - 1].resize(mat_count);
@@ -582,10 +577,8 @@ void GraphicsImpl::create_screen_pipeline() {
     descriptor_layouts.push_back(texture_layout);
 
     PipelineConfig config{};
-    config.vert_shader_path = SHADER_PATH + "quad.vert";
-    config.frag_shader_path = SHADER_PATH + "quad.frag";
+    config.shader_path = SHADER_PATH + "quad.hlsl";
     config.dynamic_states = dynamic_states;
-    config.descriptor_layouts = descriptor_layouts;
     config.pass = screen_pass.get_api_pass();
     config.subpass_index = 0;
     config.screen_extent = swapchain.get_extent();
@@ -873,9 +866,8 @@ void GraphicsImpl::create_shadowpass_pipeline() {
     push_ranges.push_back(pushRange);
 
     PipelineConfig config{};
-    config.vert_shader_path = SHADER_PATH + "shadow.vert";
+    config.shader_path = SHADER_PATH + "shadow.hlsl";
     config.dynamic_states = dynamic_states;
-    config.descriptor_layouts = layouts;
     config.screen_extent = shadowmap_extent;
     config.pass = shadowpass.get_api_pass();
     config.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;

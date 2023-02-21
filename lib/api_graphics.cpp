@@ -30,6 +30,9 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
             device,
             device.get_graphics_family()); 
 
+    // initialize MemoryAllocator
+    mem::MemoryAllocator::get_instance(&device, &physical_device);
+
 	//graphics draw
 	//create_shadowmap_atlas();
 	//create_shadowmap_transfer_buffer();

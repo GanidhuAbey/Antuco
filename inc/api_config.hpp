@@ -10,6 +10,14 @@
 #define MATERIAL_BIND_SLOT 3
 
 namespace tuco {
+
+enum class ShaderType 
+{
+    Vertex = 1 << 0,
+    Fragment = 1 << 1,
+    Compute = 1 << 2,
+};
+
 inline vk::CommandBuffer begin_command_buffer(
 v::Device& device, 
 vk::CommandPool& command_pool) {

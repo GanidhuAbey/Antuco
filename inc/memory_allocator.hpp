@@ -86,6 +86,25 @@ struct ImageData {
     ImageViewCreateInfo image_view_info;
 };
 
+
+class MemoryAllocator {
+    private:
+        static MemoryAllocator* m_instance;
+        static std::mutex m_mutex;
+
+        v::Device* m_device;
+        v::PhysicalDevice* m_phys_device;
+        
+        MemoryAllocator(v::Device* device, v::PhysicalDevice* phys_device);
+        ~MemoryAllocator() = default;
+    
+    public:
+        static MemoryAllocator* get_instance(
+            v::Device* device = nullptr,
+            v::PhysicalDevice* phys_device = nullptr
+        );
+};
+
 class Image {
 private:
     v::Device* device;

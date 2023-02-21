@@ -2,6 +2,7 @@
 #include <bedrock/shader_text.hpp>
 
 #include "logger/interface.hpp"
+#include <api_config.hpp>
 
 #include <stdexcept>
 
@@ -14,18 +15,21 @@ using namespace tuco;
 void TucoPipeline::init(v::Device& device, const PipelineConfig& config) {
     api_device = &device;
 
+    create_render_pipeline(config);
     //distinguish render/compute pipeline
+    /*
     if (config.compute_shader_path.has_value()) {
         //build compute shader
         create_compute_pipeline(config);
     } else {
         create_render_pipeline(config);
     }
+    */
 }
 
 void TucoPipeline::destroy() {
     api_device->get().destroyPipeline(pipeline_);
-    api_device->get().destroyPipelineLayout(layout_);
+    api_device->get().destroyPipelineLayout(m_layout);
 }
 
 vk::Pipeline TucoPipeline::get_api_pipeline() {
@@ -33,7 +37,7 @@ vk::Pipeline TucoPipeline::get_api_pipeline() {
 }
 
 vk::PipelineLayout TucoPipeline::get_api_layout() {
-    return layout_;
+    return m_layout;
 }
 
 
@@ -66,15 +70,16 @@ vk::PipelineShaderStageCreateInfo TucoPipeline::fill_shader_stage_struct(vk::Sha
     return create;
 }
 
+/*
 void TucoPipeline::create_compute_pipeline(const PipelineConfig& config) {
     vk::ShaderModule compute_shader;
     vk::PipelineShaderStageCreateInfo shader_info;
 
-    ShaderText compute_code(config.compute_shader_path.value(), ShaderKind::COMPUTE_SHADER); 
+    br::ShaderText compute_code(config.compute_shader_path.value(), br::ShaderKind::COMPUTE_SHADER); 
     compute_shader = create_shader_module(compute_code.get_code());
     shader_info = fill_shader_stage_struct(vk::ShaderStageFlagBits::eCompute, compute_shader);
 
-    create_pipeline_layout(config.descriptor_layouts, config.push_ranges);
+    create_pipeline_layout(config.push_ranges);
 
     auto pipeline_info = vk::ComputePipelineCreateInfo(
             {},
@@ -85,6 +90,7 @@ void TucoPipeline::create_compute_pipeline(const PipelineConfig& config) {
 
     pipeline_ = api_device->get().createComputePipeline(VK_NULL_HANDLE, pipeline_info).value;
 }
+*/
 
 VkPipelineColorBlendAttachmentState TucoPipeline::enable_alpha_blending() {
     VkPipelineColorBlendAttachmentState color_blend_attachment{};
@@ -102,23 +108,25 @@ VkPipelineColorBlendAttachmentState TucoPipeline::enable_alpha_blending() {
 
 void TucoPipeline::create_render_pipeline(const PipelineConfig& config) {
     //might have two might have one
-    vk::ShaderModule vert_shader;
-    vk::ShaderModule frag_shader;
+    vk::ShaderModule vert_module;
+    vk::ShaderModule frag_module;
     vk::PipelineShaderStageCreateInfo vert_shader_info;
     vk::PipelineShaderStageCreateInfo frag_shader_info;
 
     std::vector<vk::PipelineShaderStageCreateInfo> shader_stages;
 
-    if (config.vert_shader_path.has_value()) {
-        ShaderText vert_code(config.vert_shader_path.value(), ShaderKind::VERTEX_SHADER);
-        vert_shader = create_shader_module(vert_code.get_code());
-        vert_shader_info = fill_shader_stage_struct(vk::ShaderStageFlagBits::eVertex, vert_shader);
+    bool has_vertex = config.shader_flags & (uint8_t)ShaderType::Vertex;
+    bool has_fragment = config.shader_flags & (uint8_t)ShaderType::Fragment;
+    if (has_vertex) {
+        m_vert_shader = std::make_unique<br::ShaderText>(config.shader_path, br::ShaderKind::VERTEX_SHADER);
+        vert_module = create_shader_module(m_vert_shader->get_code());
+        vert_shader_info = fill_shader_stage_struct(vk::ShaderStageFlagBits::eVertex, vert_module);
         shader_stages.push_back(vert_shader_info);
     }
-    if (config.frag_shader_path.has_value()) {
-        ShaderText frag_code(config.frag_shader_path.value(), ShaderKind::FRAGMENT_SHADER);
-        frag_shader = create_shader_module(frag_code.get_code());
-        frag_shader_info = fill_shader_stage_struct(vk::ShaderStageFlagBits::eFragment, frag_shader);
+    if (has_fragment) {
+        m_frag_shader = std::make_unique<br::ShaderText>(config.shader_path, br::ShaderKind::FRAGMENT_SHADER);
+        frag_module = create_shader_module(m_frag_shader->get_code());
+        frag_shader_info = fill_shader_stage_struct(vk::ShaderStageFlagBits::eFragment, frag_module);
         shader_stages.push_back(frag_shader_info);
     }
 
@@ -226,7 +234,8 @@ void TucoPipeline::create_render_pipeline(const PipelineConfig& config) {
     auto depth_stencil_info = vk::PipelineDepthStencilStateCreateInfo(depth_stencil_info_old);
     auto dynamic_info = vk::PipelineDynamicStateCreateInfo(dynamic_info_old);
 
-    create_pipeline_layout(config.descriptor_layouts, config.push_ranges);
+    br::ShaderText* shader = has_vertex ? m_vert_shader.get() : m_frag_shader.get();
+    create_pipeline_layout(shader, config.push_ranges);
 
     auto create_info = vk::GraphicsPipelineCreateInfo(
             {}, 
@@ -241,7 +250,7 @@ void TucoPipeline::create_render_pipeline(const PipelineConfig& config) {
             &depth_stencil_info, 
             &color_blend_info, 
             &dynamic_info, 
-            layout_, 
+            m_layout, 
             config.pass, 
             config.subpass_index
         );
@@ -249,25 +258,28 @@ void TucoPipeline::create_render_pipeline(const PipelineConfig& config) {
     pipeline_ = api_device->get().createGraphicsPipeline(VK_NULL_HANDLE, create_info).value;
 
     //destroy the used shader object
-    if (config.vert_shader_path.has_value()) api_device->get().destroyShaderModule(vert_shader);
-    if (config.frag_shader_path.has_value()) api_device->get().destroyShaderModule(frag_shader);
+    if (has_vertex) api_device->get().destroyShaderModule(vert_module);
+    if (has_fragment) api_device->get().destroyShaderModule(frag_module);
 }
 
-void TucoPipeline::create_pipeline_layout(const std::vector<VkDescriptorSetLayout>& set_layouts,
-const std::vector<VkPushConstantRange>& push_ranges) {
+void TucoPipeline::create_pipeline_layout(br::ShaderText* shader, 
+    const std::vector<VkPushConstantRange>& push_ranges) {
+
+    shader->build_layouts(*api_device);
+
     auto info = VkPipelineLayoutCreateInfo{};
     info.flags = 0;
     info.pNext = nullptr;
-    info.setLayoutCount = static_cast<uint32_t>(set_layouts.size());
+    info.setLayoutCount = shader->get_layout_count();
     info.pushConstantRangeCount = static_cast<uint32_t>(push_ranges.size());
     info.pPushConstantRanges = push_ranges.data();
-    info.pSetLayouts = set_layouts.data();
+    info.pSetLayouts = shader->get_layouts().data();
     info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
     VkPipelineLayout old_layout;
     auto result = vkCreatePipelineLayout(api_device->get(), &info, nullptr, &old_layout);
 
-    layout_ = vk::PipelineLayout(old_layout);
+    m_layout = vk::PipelineLayout(old_layout);
 
     if (result != VK_SUCCESS) {
         msg::print_line("could not create layout, error code: " + std::to_string(result));
