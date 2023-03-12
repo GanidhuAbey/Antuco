@@ -268,6 +268,7 @@ void GraphicsImpl::create_graphics_pipeline() {
         VK_DYNAMIC_STATE_DEPTH_BIAS,
     };
     
+    /*
     //TEX
     std::vector<VkDescriptorSetLayout> descriptor_layouts = { 
         light_layout, 
@@ -285,13 +286,14 @@ void GraphicsImpl::create_graphics_pipeline() {
     pushRange.size = sizeof(LightObject) + sizeof(glm::vec4);
 
     push_ranges.push_back(pushRange);
+    */
 
     PipelineConfig config{};
     config.vert_shader_path = SHADER_PATH + "shader.vert";
     config.frag_shader_path = SHADER_PATH + "shader.frag";
     config.dynamic_states = dynamic_states;
-    config.descriptor_layouts = descriptor_layouts;
-    config.push_ranges = push_ranges;
+    //config.descriptor_layouts = descriptor_layouts;
+    //config.push_ranges = push_ranges;
     config.pass = render_pass.get_api_pass();
     config.subpass_index = 0;
     config.screen_extent = swapchain.get_extent();
@@ -302,12 +304,6 @@ void GraphicsImpl::create_graphics_pipeline() {
     );
 
     graphics_pipelines[0].init(device, config);
-
-    auto it = config.descriptor_layouts.begin() + 2;
-    config.descriptor_layouts.erase(it);
-    config.frag_shader_path = SHADER_PATH + "no_texture.frag";
-
-    graphics_pipelines[1].init(device, config);
 }
 
 void GraphicsImpl::create_oit_pass() {
@@ -1165,7 +1161,7 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
         light.color = light_data[0].color;
         light.light_count = glm::vec4(MAX_SHADOW_CASTERS, 1, 1, 1);
 
-        create_shadow_map(game_objects, i, light);
+        // create_shadow_map(game_objects, i, light);
 
         auto render_area = vk::Rect2D(
                 vk::Offset2D( 0, 0 ),
@@ -1222,6 +1218,7 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
 		    offsetof(Vertex, normal), 
 		    offsetof(Vertex, tex_coord)};
 
+        /*
         command_buffers[i].bindVertexBuffers(
             0, 
             1, 
@@ -1233,14 +1230,16 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
 		    index_buffer.buffer, 
 		    0, 
 		    VK_INDEX_TYPE_UINT32);
-
+        */
         auto texture_less = false;
         auto index = 0;
+
         vkCmdBindPipeline(
             command_buffers[i],
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             graphics_pipelines[0].get_api_pipeline());
         
+        /*
 		vkCmdPushConstants(
                 command_buffers[i], 
                 graphics_pipelines[0].get_api_layout(),
@@ -1256,89 +1255,29 @@ const std::vector<std::unique_ptr<GameObject>>& game_objects) {
                 sizeof(light), 
                 sizeof(glm::vec4), 
                 &camera_pos); 
+        */
 
-		//draw first object (cube)
-        auto index_offset = uint32_t(0);
-        auto vertex_offset = uint32_t(0);
+        vkCmdBindPipeline(
+            command_buffers[i],
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            graphics_pipelines[0].get_api_pipeline());
 
-        std::vector<TransparentMesh> transparent_meshes;
+        auto layout = graphics_pipelines[0].get_api_layout();
 
-        for (size_t j = 0; j < game_objects.size(); j++) {
-            auto total_indexes = uint32_t(0);
-            //auto total_vertices = uint32_t(0);
-            //i actually think this update this is ill-thought out...
-            if (!game_objects[j]->update) {
-                auto model_primitive_count = game_objects[j]
-                    ->object_model.primitives.size();
-                for (size_t k = 0; k < model_primitive_count; k++) {
+        /*
+        vkCmdBindDescriptorSets(
+            command_buffers[i],
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            layout,
+            0,
+            descriptors[index].size(),
+            descriptors[index].data(),
+            0,
+            nullptr);
+        */
 
-                    Primitive prim = game_objects[j]
-                        ->object_model.primitives[k];
-                    
-                    auto descriptor_1 = std::vector<VkDescriptorSet>();
-                    auto descriptor_2 = std::vector<VkDescriptorSet>();
-                    auto descriptors = 
-                        std::vector<std::vector<VkDescriptorSet>>();
-
-                    descriptor_1.resize(5);
-                    descriptor_2.resize(4);
-
-                    descriptor_1[0] = light_ubo[j].get_api_set(
-                        prim.transform_index
-                    );
-                    descriptor_1[1] = ubo_sets[j][prim.transform_index];
-                    descriptor_1[3] = shadowmap_set;
-                    descriptor_1[4] = mat_sets[j][prim.mat_index];
-
-                    descriptor_2[0] = descriptor_1[0];
-                    descriptor_2[1] = descriptor_1[1];
-                    descriptor_2[2] = descriptor_1[3];
-                    descriptor_2[3] = descriptor_1[4];
-
-                    if (prim.image_index == -1) {
-                        //texture_less = true;
-                        index = 1;
-                    }
-                    else {
-                        //texture_less = false;
-                        index = 0;
-                        descriptor_1[2] = texture_sets[j].get_api_set(prim.image_index);
-                    }
-                    vkCmdBindPipeline(
-                        command_buffers[i],
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        graphics_pipelines[index].get_api_pipeline());
-
-                    auto layout = graphics_pipelines[index].get_api_layout();
-
-                    descriptors.push_back(descriptor_1);
-                    descriptors.push_back(descriptor_2);
-
-                    vkCmdBindDescriptorSets(
-                        command_buffers[i],
-                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        layout,
-                        0,
-                        descriptors[index].size(),
-                        descriptors[index].data(),
-                        0,
-                        nullptr);
-
-                    vkCmdDrawIndexed(
-                        command_buffers[i],
-                        prim.index_count,
-                        1,
-                        prim.index_start + index_offset,
-                        vertex_offset, //indices refer to all vertices in model, then no vertex offsets are required.
-                        static_cast<uint32_t>(0));
-                }
-            }
-
-            index_offset += static_cast<uint32_t>(game_objects[j]
-                ->object_model.model_indices.size());
-            vertex_offset += static_cast<uint32_t>(game_objects[j]
-                ->object_model.model_vertices.size());
-        }
+        vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
+      
         vkCmdEndRenderPass(command_buffers[i]);
 
         //copy_to_swapchain(i);

@@ -186,13 +186,7 @@ void TucoPipeline::create_render_pipeline(const PipelineConfig& config) {
     dynamic_info_old.dynamicStateCount = static_cast<uint32_t>(config.dynamic_states.size());
     dynamic_info_old.pDynamicStates = config.dynamic_states.data();
 
-    auto vertex_input_info = vk::PipelineVertexInputStateCreateInfo(
-            {},
-            static_cast<uint32_t>(config.binding_descriptions.size()),
-            config.binding_descriptions.data(),
-            static_cast<uint32_t>(config.attribute_descriptions.size()),
-            config.attribute_descriptions.data()
-        );
+    auto vertex_input_info = vk::PipelineVertexInputStateCreateInfo();
 
     auto input_assembly_info = vk::PipelineInputAssemblyStateCreateInfo(
             {},

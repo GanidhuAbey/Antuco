@@ -187,7 +187,7 @@ private:
 	bool not_created;
 
 	//not sure why these numbers are the best
-	bool update_command_buffers = false;
+	bool update_command_buffers = true;
 
 private:
     bool enable_portability = false;

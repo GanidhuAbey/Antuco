@@ -33,35 +33,35 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
 	//create_shadowmap_atlas();
 	//create_shadowmap_transfer_buffer();
 	create_depth_resources();
-	create_shadowpass_resources();
+	//create_shadowpass_resources();
     create_output_images();
     create_render_pass();
     //create_geometry_pass();
-	create_shadowpass();
-	create_ubo_layout();
-	create_light_layout();
-    create_materials_layout();
-    create_materials_pool();
+	//create_shadowpass();
+	//create_ubo_layout();
+	//create_light_layout();
+    //create_materials_layout();
+    //create_materials_pool();
 	create_texture_layout();
-	create_shadowmap_layout();
-	create_shadowmap_pool();
+	//create_shadowmap_layout();
+	//create_shadowmap_pool();
 	create_graphics_pipeline();
-	create_shadowpass_pipeline();
+	//create_shadowpass_pipeline();
 	create_texture_sampler();
-	create_shadowmap_sampler();
+	//create_shadowmap_sampler();
 	create_output_buffers();
-	create_shadowpass_buffer();
-	create_shadowmap_set();
-	write_to_shadowmap_set();
+	//create_shadowpass_buffer();
+	//create_shadowmap_set();
+	//write_to_shadowmap_set();
 	create_semaphores();
 	create_fences();
 
 	//create some buffers now
-	create_vertex_buffer();
-	create_index_buffer();
-	create_uniform_buffer();
+	//create_vertex_buffer();
+	//create_index_buffer();
+	//create_uniform_buffer();
 
-	create_ubo_pool();
+	//create_ubo_pool();
 	create_texture_pool();
 
     create_screen_pass();
@@ -94,12 +94,13 @@ std::vector<std::unique_ptr<GameObject>>& game_objects) {
 	//we need to create some command buffers
 	//update vertex and index buffers
 
+	/*
 	auto offset = 0;
 	for (size_t i = 0; i < game_objects.size(); i++) {
         const auto& model = game_objects[i]->object_model;
 
 		if (game_objects[i]->update) {
-            //update the buffer data of game objects
+			//update the buffer data of game objects
 			uint32_t index_mem = update_index_buffer(
 			    model.model_indices
 			);
@@ -166,6 +167,7 @@ std::vector<std::unique_ptr<GameObject>>& game_objects) {
 		offset += model.transforms.size();
 	}
 
+
 	if (!update_command_buffers) {
 		for (size_t i = 0; i < MAX_SHADOW_CASTERS; i++) {
 			if (light_data[shadow_caster_indices[i]].generate_shadows) {
@@ -174,7 +176,7 @@ std::vector<std::unique_ptr<GameObject>>& game_objects) {
 			}
 		}
 	}
-
+	*/
 
 	if (update_command_buffers) {
 		//free command buffers first?
