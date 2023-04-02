@@ -29,39 +29,15 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
             device,
             device.get_graphics_family()); 
 
-	//graphics draw
-	//create_shadowmap_atlas();
-	//create_shadowmap_transfer_buffer();
 	create_depth_resources();
-	//create_shadowpass_resources();
     create_output_images();
     create_render_pass();
-    //create_geometry_pass();
-	//create_shadowpass();
-	//create_ubo_layout();
-	//create_light_layout();
-    //create_materials_layout();
-    //create_materials_pool();
 	create_texture_layout();
-	//create_shadowmap_layout();
-	//create_shadowmap_pool();
 	create_graphics_pipeline();
-	//create_shadowpass_pipeline();
 	create_texture_sampler();
-	//create_shadowmap_sampler();
 	create_output_buffers();
-	//create_shadowpass_buffer();
-	//create_shadowmap_set();
-	//write_to_shadowmap_set();
 	create_semaphores();
 	create_fences();
-
-	//create some buffers now
-	//create_vertex_buffer();
-	//create_index_buffer();
-	//create_uniform_buffer();
-
-	//create_ubo_pool();
 	create_texture_pool();
 
     create_screen_pass();

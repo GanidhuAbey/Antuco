@@ -86,3 +86,34 @@ void Antuco::render() {
 	//check and update the game object information, this would be where we update the command buffers as neccesary
 	p_graphics->update_draw(objects);
 }
+
+void Antuco::add_component(Component&& component, uint32_t entity_id) 
+{
+	auto search = components.find(entity_id);
+
+	if (search == components.end()) 
+	{
+		components[entity_id] = {};
+		search = components.find(entity_id);
+	}
+
+	search->second.push_back(std::move(component));
+
+}
+
+Component* Antuco::get_component(uint32_t entity_id, uint32_t component_id) 
+{
+	auto search = components.find(entity_id);
+	if (search == components.end()) 
+	{
+		return nullptr;
+	}
+
+	for (int i = 0; i < search->second.size(); i++) 
+	{
+		if (search->second[i].get_id() == component_id) 
+		{
+			return &search->second[i];
+		}
+	}
+}

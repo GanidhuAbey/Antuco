@@ -10,6 +10,8 @@
 #include "graphics.hpp"
 #include "config.hpp"
 
+#include <component.hpp>
+
 #include <vector>
 
 namespace tuco {
@@ -46,10 +48,16 @@ private:
 	std::vector<DirectionalLight> directional_lights;
     std::vector<PointLight> point_lights;
 	std::vector<int> shadow_casters;
+
+	std::unordered_map<uint32_t, std::vector<Component>> components;
+
 	/* Antuco Initalization */
 public:
 	//delete copy trait
 	Antuco(const Antuco&) = delete;
+
+	void add_component(Component&& component, uint32_t entity_id);
+	Component* get_component(uint32_t entity_id, uint32_t component_id);
 
 	static Antuco& get_engine() {
 		return Antuco_instance;

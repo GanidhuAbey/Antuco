@@ -1,6 +1,9 @@
 //CREDITS: tyrant_monkey - bmw model
 
 #include "antuco.hpp"
+#include <entity.hpp>
+#include <mesh_component.hpp>
+#include <transform_component.hpp>
 
 #include <iostream>
 #include <chrono>
@@ -91,14 +94,13 @@ int main() {
 
 	auto t1 = TIME_IT;
 
+	tuco::Entity cube(0);
+	cube.add_component(tuco::MeshComponent());
+	tuco::MeshComponent* mesh = reinterpret_cast<tuco::MeshComponent*>(cube.get_component(tuco::MeshComponent::get_id()));
+
 	
-#if defined(__APPLE__)
-	auto floor = antuco.create_object();
-	floor->add_mesh(root_project + "/objects/antuco-files/mac/surface.glb");
-	floor->scale(glm::vec3(10, 0.1, 10));	
+#if defined(__APPLE__)	
 #elif defined(_WIN32) || defined(_WIN64)
-	auto car = antuco.create_object();
-	car->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.glb");
 #endif
 
 	//light_mesh->scale(glm::vec3(0.2));
@@ -157,27 +159,32 @@ int main() {
 		camera_face = glm::normalize(camera_face);
 
 		//handle movement
-		if (window->get_key_state(tuco::WindowInput::W)) {
+		if (window->get_key_state(tuco::WindowInput::W)) 
+		{
 			camera_pos += PLAYER_SPEED * camera_face * (float)delta;
 		}	
-		else if (window->get_key_state(tuco::WindowInput::A)) {
+		else if (window->get_key_state(tuco::WindowInput::A)) 
+		{
 			camera_pos -= glm::normalize(
 				glm::cross(camera_face, camera_orientation)) * 
 				PLAYER_SPEED * 
 				static_cast<float>(delta);
 		}	
-		else if (window->get_key_state(tuco::WindowInput::D)) {	
+		else if (window->get_key_state(tuco::WindowInput::D)) 
+		{	
 			camera_pos += glm::normalize(
 				glm::cross(camera_face, camera_orientation)) * 
 				PLAYER_SPEED * 
 				static_cast<float>(delta);
 		}
-		else if (window->get_key_state(tuco::WindowInput::S)) {
+		else if (window->get_key_state(tuco::WindowInput::S)) 
+		{
 			camera_pos -= PLAYER_SPEED * 
 				camera_face * 
 				static_cast<float>(delta);
 		}
-		if (window->get_key_state(tuco::WindowInput::X)) {
+		if (window->get_key_state(tuco::WindowInput::X)) 
+		{
 			light.update(camera_pos);
 		}
 		

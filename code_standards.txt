@@ -1,0 +1,12 @@
+- Brackets on seperate lines:
+	- eg: 
+	function() 
+	{
+		// code...
+	}
+
+- CamelCase for classes, snake_case for everything else
+
+- namespaces should be in lower case, and only a single word
+
+- namespaces should not add indent.
