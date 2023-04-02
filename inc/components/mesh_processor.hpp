@@ -12,7 +12,7 @@ class MeshProcessor : public Processor
 friend class MeshComponent
 {
 private:
-	pass::ForwardDrawPass* m_draw_pass;
+	pass::ForwardDrawPass* m_forward_draw;
 
 public:
 	MeshProcessor() = default;

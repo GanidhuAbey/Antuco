@@ -28,6 +28,34 @@ const VkDeviceSize MINIMUM_SORT_DISTANCE = 1e5;
 
 namespace mem {
 
+class MemoryAllocator
+{
+private:
+    MemoryAllocator(v::PhysicalDevice& physical_device, v::Device& device);
+    ~MemoryAllocator();
+
+    std::unique_ptr<MemoryAllocator> instance;
+
+public:
+    MemoryAllocator* create_get(v::PhysicalDevice& physical_device, v::Device& device) 
+    {
+        if (!instance)
+        {
+            instance = std::make_unique<MemoryAllocator>(physical_device, device);
+        }
+
+        return instance.get();
+    }
+
+    MemoryAllocator* get() 
+    {
+        LOG("hello")
+        return instance.get();
+    }
+
+    StackBuffer* create_stack_buffer()
+};
+
 struct BufferCreateInfo {
     const void* pNext = nullptr;
     vk::BufferCreateFlags flags = {};
