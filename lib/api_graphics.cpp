@@ -1,9 +1,10 @@
-#include "api_graphics.hpp"
-#include "window.hpp"
-#include "api_window.hpp"
-#include "logger/interface.hpp"
-#include "config.hpp"
-#include "api_config.hpp"
+#include <api_graphics.hpp>
+#include <window.hpp>
+#include <api_window.hpp>
+#include <logger/interface.hpp>
+#include <config.hpp>
+#include <api_config.hpp>
+#include <memory_allocator.hpp>
 
 #include <glm/ext.hpp>
 
@@ -15,6 +16,8 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
       surface(instance, pWindow->pWindow->apiWindow),
       device(physical_device, surface, false),
       swapchain(physical_device, device, surface) {
+
+	mem::MemoryAllocator::create_get(physical_device, device);
 
 	not_created = true;
 	raytracing = false; //set this as an option in the pre-configuration settings.

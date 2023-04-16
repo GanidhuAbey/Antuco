@@ -31,29 +31,24 @@ namespace mem {
 class MemoryAllocator
 {
 private:
-    MemoryAllocator(v::PhysicalDevice& physical_device, v::Device& device);
-    ~MemoryAllocator();
+    v::Device& m_device;
+    v::PhysicalDevice& m_physical_device;
 
-    std::unique_ptr<MemoryAllocator> instance;
+private:
+    MemoryAllocator(v::PhysicalDevice& physical_device, v::Device& device);
+
+    static MemoryAllocator* instance;
 
 public:
-    MemoryAllocator* create_get(v::PhysicalDevice& physical_device, v::Device& device) 
-    {
-        if (!instance)
-        {
-            instance = std::make_unique<MemoryAllocator>(physical_device, device);
-        }
+    static MemoryAllocator* create_get(v::PhysicalDevice& physical_device, v::Device& device);
 
-        return instance.get();
-    }
+    static MemoryAllocator* get();
 
-    MemoryAllocator* get() 
-    {
-        LOG("hello")
-        return instance.get();
-    }
+    MemoryAllocator(MemoryAllocator&) = delete;
+    void operator=(const MemoryAllocator&) = delete;
+    ~MemoryAllocator();
 
-    StackBuffer* create_stack_buffer()
+    //StackBuffer* create_stack_buffer(BufferCreateInfo& buffer_info);
 };
 
 struct BufferCreateInfo {

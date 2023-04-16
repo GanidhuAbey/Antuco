@@ -85,23 +85,12 @@ int main() {
         glm::vec3(1.0, 1.0, 1.0), 
         glm::vec3(0.0, 1.0, 0.0), true); 
 
-	//create a simple game object
-	//tuco::GameObject* light_mesh = antuco.create_object();
-
-	//light_mesh->add_mesh("objects/test_object/white.obj");
-	//light_mesh->translate(glm::vec3(0.0f, 4.0f, 0.0f));
-	//light_mesh->scale(glm::vec3(0.1, 0.1, 0.1));
-
 	auto t1 = TIME_IT;
 
 	tuco::Entity cube(0);
 	cube.add_component(tuco::MeshComponent());
-	tuco::MeshComponent* mesh = reinterpret_cast<tuco::MeshComponent*>(cube.get_component(tuco::MeshComponent::get_id()));
+	tuco::MeshComponent* mesh = reinterpret_cast<tuco::MeshComponent*>(cube.get_component(tuco::MeshComponent::ID));
 
-	
-#if defined(__APPLE__)	
-#elif defined(_WIN32) || defined(_WIN64)
-#endif
 
 	//light_mesh->scale(glm::vec3(0.2));
 

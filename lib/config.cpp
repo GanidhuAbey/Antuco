@@ -7,6 +7,8 @@
 #include <filesystem>
 
 #include <vector>
+    
+
 
 std::string goto_previous_directory(std::string file_path) {
 #ifdef _WIN32
@@ -49,7 +51,6 @@ std::string get_project_root(std::string file_path) {
 
     return current_path;
 }
-
 
 std::vector<char> read_file(const std::string& filename) {
     std::ifstream file(filename, std::ios::ate | std::ios::binary);

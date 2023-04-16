@@ -18,6 +18,42 @@
 
 #include <string>
 
+inline uint64_t hash(const char* data, uint64_t len)
+{
+    uint64_t result = 14695981039346656037ul;
+    for (uint64_t index = 0; index < len; ++index)
+    {
+        result ^= (uint64_t)data[index];
+        result *= 1099511628211ul;
+    }
+    return result;
+}
+
+inline uint64_t hash(const std::string& str) { return hash(str.c_str(), str.length()); }
+
+typedef size_t TypeId;
+
+template<typename T>
+static const std::string& typeName()
+{
+    static const std::string tName(typeid(T).name());
+    return tName;
+}
+template<typename T>
+static const TypeId typeId() 
+{
+    static const TypeId tId = hash(typeName<T>());
+    return tId;
+}
+
+#ifndef CLASS_ID
+#define CLASS_ID static const TypeId ID
+#endif // !CLASS_ID
+#ifndef DEFINE_ID
+#define DEFINE_ID(className)  const TypeId className::ID = typeId<className>()
+#endif // !DEFINE_ID
+
+
 const uint32_t MAX_SHADOW_CASTERS = 4;
 const char PROJECT_ROOT[7] = "Antuco";
 

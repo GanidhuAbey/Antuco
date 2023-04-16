@@ -38,7 +38,7 @@ bool Device::check_device_extensions(PhysicalDevice& phys_device, std::vector<co
 }
 
 void Device::create_logical_device(PhysicalDevice& physical_device, Surface& surface, bool print_debug) {
-#ifdef NDEBUG 
+#ifdef NDEBUG
 const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;

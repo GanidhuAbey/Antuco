@@ -58,6 +58,7 @@ public:
 
 	void add_component(Component&& component, uint32_t entity_id);
 	Component* get_component(uint32_t entity_id, uint32_t component_id);
+	uint32_t create_id();
 
 	static Antuco& get_engine() {
 		return Antuco_instance;
@@ -66,6 +67,9 @@ public:
 	~Antuco();
 
 private:
+	std::mutex m_mutex;
+	uint32_t m_component_counter = 0;
+
 	Antuco();
 	static Antuco Antuco_instance;
 };

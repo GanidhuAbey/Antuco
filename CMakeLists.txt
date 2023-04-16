@@ -38,6 +38,7 @@ find_package(Vulkan)
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/SPIRV-Cross")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/shaderc")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/crossguid")
 
 add_library(
     REQUIRED_LIBRARIES
@@ -51,12 +52,15 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/tinygltf")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glm")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/stb")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/crossguid/include")
 
 #compile assimp
 add_executable(main main.cpp "render_examples/bmw.hpp" "render_examples/bmw.cpp")
 
 target_link_libraries(main PRIVATE REQUIRED_LIBRARIES 
                                    "${Vulkan_LIBRARIES}" 
-                                   glfw shaderc 
-                                   spirv-cross-core)
+                                   glfw 
+                                   shaderc 
+                                   spirv-cross-core
+                                   crossguid)
 

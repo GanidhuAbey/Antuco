@@ -11,29 +11,31 @@
 
 using namespace mem;
 
+MemoryAllocator* MemoryAllocator::instance = nullptr;
+
 MemoryAllocator::MemoryAllocator(v::PhysicalDevice& physical_device, v::Device& device)
     : m_device(device), m_physical_device(physical_device)
 {}
 
 MemoryAllocator::~MemoryAllocator() 
 {
-    instance.release();
+    
 }
 
 MemoryAllocator* MemoryAllocator::create_get(v::PhysicalDevice& physical_device, v::Device& device)
 {
     if (!instance)
     {
-        instance = std::make_unique<MemoryAllocator>(physical_device, device);
+        instance = new MemoryAllocator(physical_device, device);
     }
 
-    return instance.get();
+    return instance;
 }
 
 MemoryAllocator* MemoryAllocator::get() 
 {
     ASSERT(instance, "cannot call MemoryAllocator::get() without calling MemoryAllocator::create_get() somewhere else in the code.")
-    return instance.get();
+    return instance;
 }
 
 

@@ -23,3 +23,12 @@
 [submodule "external/include/tinygltf"]
 	path = external/include/tinygltf
 	url = https://github.com/syoyo/tinygltf
+[submodule "external/include/--recursive"]
+	path = external/include/--recursive
+	url = https://github.com/KhronosGroup/SPIRV-Reflect
+[submodule "external/include/SPIRV-Reflect"]
+	path = external/include/SPIRV-Reflect
+	url = https://github.com/KhronosGroup/SPIRV-Reflect
+[submodule "external/include/crossguid"]
+	path = external/include/crossguid
+	url = https://github.com/graeme-hill/crossguid
