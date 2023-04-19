@@ -49,15 +49,11 @@ private:
     std::vector<PointLight> point_lights;
 	std::vector<int> shadow_casters;
 
-	std::unordered_map<uint32_t, std::vector<Component>> components;
-
 	/* Antuco Initalization */
 public:
 	//delete copy trait
 	Antuco(const Antuco&) = delete;
 
-	void add_component(Component&& component, uint32_t entity_id);
-	Component* get_component(uint32_t entity_id, uint32_t component_id);
 	uint32_t create_id();
 
 	static Antuco& get_engine() {

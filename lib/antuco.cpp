@@ -87,40 +87,6 @@ void Antuco::render() {
 	p_graphics->update_draw(objects);
 }
 
-// This is not the most performance way to add components, as searching for components will now take linear time.
-// A potentially better way might be to, create separate maps per each component type, and then create a map of maps.
-// such that we have two constant time searches.
-void Antuco::add_component(Component&& component, uint32_t entity_id) 
-{
-	auto search = components.find(entity_id);
-
-	if (search == components.end()) 
-	{
-		components[entity_id] = {};
-		search = components.find(entity_id);
-	}
-
-	component.set_id(create_id());
-	search->second.push_back(std::move(component));
-}
-
-Component* Antuco::get_component(uint32_t entity_id, uint32_t component_id) 
-{
-	auto search = components.find(entity_id);
-	if (search == components.end()) 
-	{
-		return nullptr;
-	}
-
-	for (int i = 0; i < search->second.size(); i++) 
-	{
-		if (search->second[i].get_id() == component_id) 
-		{
-			return &search->second[i];
-		}
-	}
-}
-
 uint32_t Antuco::create_id() 
 {
 	std::unique_lock<std::mutex> lock(m_mutex);

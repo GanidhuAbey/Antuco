@@ -14,23 +14,16 @@ class Entity
 private:
 	uint32_t id;
 public:
+#pragma optimize("", off)
+	uint32_t get_id() { return id; }
+
 	Entity(uint32_t entity_id) : id(entity_id) 
 	{
-		add_component(tuco::TransformComponent());
+		//add_component(tuco::TransformComponent(), tuco::TransformComponent::ID);
 	}
 	~Entity() = default;
 
-	void add_component(Component&& component) 
-	{
-		Antuco::get_engine().add_component(std::move(component), id);
-	}
-
-	Component* get_component(uint32_t component_id) 
-	{
-		auto component = Antuco::get_engine().get_component(id, component_id);
-		assert(component);
-		return component;
-	}
+#pragma optimize("", on)
 };
 
 }

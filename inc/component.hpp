@@ -12,7 +12,7 @@ public:
 	CLASS_ID;
 
 private:
-	uint32_t runtime_id;
+	TypeId runtime_id;
 
 public:
 	// Every component will have a runtime id used to retrieve specific components from entities.
@@ -20,8 +20,8 @@ public:
 	// then having a per-component id will help retrieve the correct id.
 	// For now we're doing basic counter to track unique id's. but this always has the risk of 
 	// overflowing on complex scenes.
-	uint32_t get_id() { return runtime_id; };
-	void set_id(uint32_t id) { runtime_id = id; }
+	TypeId get_id() { return runtime_id; };
+	void set_id(TypeId id) { runtime_id = id; }
 
 	Component() = default;
 	~Component() = default;

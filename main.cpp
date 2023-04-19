@@ -4,6 +4,7 @@
 #include <entity.hpp>
 #include <mesh_component.hpp>
 #include <transform_component.hpp>
+#include <component_manager.hpp>
 
 #include <iostream>
 #include <chrono>
@@ -43,6 +44,7 @@ glm::vec2 rotation_point, float rotation_angle) {
 	return rotate_point + rotation_point;
 }
 
+#pragma optimize("", off)
 int main() {
 	//when beginning a new game, one must first create the window, but user should only ever interact with the library wrapper "Antuco_lib"
 	tuco::Antuco& antuco = tuco::Antuco::get_engine();
@@ -88,9 +90,19 @@ int main() {
 	auto t1 = TIME_IT;
 
 	tuco::Entity cube(0);
-	cube.add_component(tuco::MeshComponent());
-	tuco::MeshComponent* mesh = reinterpret_cast<tuco::MeshComponent*>(cube.get_component(tuco::MeshComponent::ID));
 
+	tuco::MeshComponent initMesh = tuco::MeshComponent();
+	initMesh.set_id(1);
+	tuco::ComponentManager::add_component<tuco::MeshComponent>(0);
+	//cube.add_component(tuco::TransformComponent(), tuco::TransformComponent::ID);
+
+	tuco::MeshComponent* mesh = tuco::ComponentManager::get_component<tuco::MeshComponent>(0);
+
+	mesh->set_id(32);
+	mesh->m_model_path = "l";
+
+	//std::string model_path = meshTwo->get_model_path();
+	//LOG(model_path.c_str());
 
 	//light_mesh->scale(glm::vec3(0.2));
 
@@ -203,3 +215,4 @@ int main() {
 		}
 	}
 }
+#pragma optimize("", on)

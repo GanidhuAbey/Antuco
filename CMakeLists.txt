@@ -25,7 +25,7 @@ project(Antuco VERSION 1.0.0)
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 
-file(GLOB SOURCES lib/*.cpp lib/vulkan_wrapper/*.cpp)
+file(GLOB SOURCES lib/*.cpp lib/vulkan_wrapper/*.cpp lib/components/*.cpp lib/bedrock/*.cpp)
 
 file(GLOB HEADERS inc/*.hpp)
 
