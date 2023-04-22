@@ -1,18 +1,21 @@
 #pragma once
 
-#include <mesh_component.hpp>
-#include <processor.hpp>
+#include <bedrock/processor.hpp>
+#include <config.hpp>
 
 #include <passes/forward_draw_pass.hpp>
 
 namespace tuco 
 {
 
-class MeshProcessor : public Processor
-friend class MeshComponent
+class MeshProcessor : public br::Processor
 {
+public:
+
+CLASS_ID;
+
 private:
-	pass::ForwardDrawPass* m_forward_draw;
+	pass::ForwardDrawPass* m_forward_draw = nullptr;
 
 public:
 	MeshProcessor() = default;

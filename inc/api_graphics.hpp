@@ -98,6 +98,8 @@ private:
 	bool validation_layer_supported(std::vector<const char*> names);
 	bool check_extensions_supported(const char** extensions, uint32_t extensions_count);
 	bool check_device_extensions(std::vector<const char*> extensions, uint32_t extensions_count);
+
+	void initialize_processors();
 	
 private:
 	void create_instance(const char* appName);

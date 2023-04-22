@@ -6,6 +6,9 @@
 #include <api_config.hpp>
 #include <memory_allocator.hpp>
 
+#include <bedrock/processor_manager.hpp>
+#include <components/mesh_processor.hpp>
+
 #include <glm/ext.hpp>
 
 using namespace tuco;
@@ -32,6 +35,8 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
             device,
             device.get_graphics_family()); 
 
+	initialize_processors();
+
 	create_depth_resources();
     create_output_images();
     create_render_pass();
@@ -52,6 +57,11 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
 GraphicsImpl::~GraphicsImpl() {
 	destroy_draw();
 	destroy_initialize();
+}
+
+void GraphicsImpl::initialize_processors()
+{
+	br::ProcessorManager::add_processor<MeshProcessor>();
 }
 
 void GraphicsImpl::update_camera(glm::mat4 world_to_camera, glm::mat4 projection, glm::vec4 eye) {

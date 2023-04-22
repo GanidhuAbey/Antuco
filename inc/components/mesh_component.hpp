@@ -2,27 +2,28 @@
 
 #include <component.hpp>
 
-namespace tuco
+namespace tuco 
 {
 
-// forward declare ComponentProcessor
+// Forward declare mesh processor
 class MeshProcessor;
 
-class MeshComponent : public Component
+class MeshComponent : public Component 
 {
-private:
-	const static uint32_t component_id = 2626589874;
-
-	MeshProcessor processor;
-
 public:
-	uint32_t get_id() { return component_id; }
+	CLASS_ID;
+public:
 
+	std::string m_model_path;
+public:
 	MeshComponent();
-	~MeshComponent();
+	~MeshComponent() = default;
 
-	void add_mesh(const std::string& file_name);
+	void set_model_path(std::string path) { m_model_path = path; }
+	std::string& get_model_path() { return m_model_path; }
 
+private:
+	MeshProcessor* m_mesh_processor = nullptr;
 };
 
 }

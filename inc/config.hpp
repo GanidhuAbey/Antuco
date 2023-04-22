@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <typeinfo>
 
 #if defined(__APPLE__)
 #include <TargetConditionals.h>

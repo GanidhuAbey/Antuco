@@ -2,7 +2,7 @@
 
 #include "antuco.hpp"
 #include <entity.hpp>
-#include <mesh_component.hpp>
+#include <components/mesh_component.hpp>
 #include <transform_component.hpp>
 #include <component_manager.hpp>
 
@@ -94,15 +94,12 @@ int main() {
 	tuco::MeshComponent initMesh = tuco::MeshComponent();
 	initMesh.set_id(1);
 	tuco::ComponentManager::add_component<tuco::MeshComponent>(0);
-	//cube.add_component(tuco::TransformComponent(), tuco::TransformComponent::ID);
 
 	tuco::MeshComponent* mesh = tuco::ComponentManager::get_component<tuco::MeshComponent>(0);
 
-	mesh->set_id(32);
-	mesh->m_model_path = "l";
-
-	//std::string model_path = meshTwo->get_model_path();
-	//LOG(model_path.c_str());
+#if defined(_WIN32) || defined(_WIN64)
+	mesh->set_model_path(root_project + "\\objects\\antuco-files\\windows\\car.glb");
+#endif
 
 	//light_mesh->scale(glm::vec3(0.2));
 
