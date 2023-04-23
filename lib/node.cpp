@@ -19,7 +19,7 @@ void Node::add_matrix(const glm::mat4& matrix) {
 	Node::matrix = matrix; 
 }
 
-void Node::add_node(std::unique_ptr<Node> node) {
+void Node::add_child(Node node) {
 	children.push_back(std::move(node));
 }
 

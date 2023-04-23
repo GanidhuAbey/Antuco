@@ -25,16 +25,14 @@ friend class GameObject;
 friend class Antuco;
 friend class GraphicsImpl;
 
-private:
-	Model();
 public:
-	~Model();
-    Model(const Model&) = delete;
-    Model& operator=(const Model&) = delete;
+	Model() = default;
+	~Model() = default;
 
-private:
 	//if name is left null, then model will not be saved/loaded from file
 	void add_mesh(const std::string& fileName, std::optional<std::string> name = std::nullopt);
+
+private:
     bool check_gltf(const std::string& filepath);
     void add_gltf_model(const std::string& filepath);
 
@@ -88,7 +86,7 @@ private:
     std::vector<Material> model_materials;
     std::vector<ImageBuffer> model_images;
     std::vector<Primitive> primitives;
-    std::vector<std::unique_ptr<model::Node>> nodes;
+    std::vector<model::Node> nodes;
     std::vector<glm::mat4> transforms;
 };
 

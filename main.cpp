@@ -98,7 +98,7 @@ int main() {
 	tuco::MeshComponent* mesh = tuco::ComponentManager::get_component<tuco::MeshComponent>(0);
 
 #if defined(_WIN32) || defined(_WIN64)
-	mesh->set_model_path(root_project + "\\objects\\antuco-files\\windows\\car.glb");
+	mesh->set_model_path(root_project + "\\objects\\antuco-files\\windows\\cube.glb");
 #endif
 
 	//light_mesh->scale(glm::vec3(0.2));

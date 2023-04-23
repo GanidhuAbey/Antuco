@@ -68,8 +68,8 @@ void Model::process_gltf_nodes(
      tinygltf::Model& model,
      model::Node* parent_node) {
 
-    auto unique_node = std::make_unique<model::Node>();
-    unique_node->add_parent(parent_node);
+    model::Node sub_node;
+    sub_node.add_parent(parent_node);
     
     //uint32_t index_point = model_indices.size();
     //uint32_t vertex_point = model_vertices.size();
@@ -95,11 +95,11 @@ void Model::process_gltf_nodes(
         matrix = glm::make_mat4x4(node.matrix.data());
     }
 
-    unique_node->add_matrix(matrix);
+    sub_node.add_matrix(matrix);
 
     //each node may have children
     for (auto& children : node.children) {
-        process_gltf_nodes(model.nodes[children], model, unique_node.get());
+        process_gltf_nodes(model.nodes[children], model, &sub_node);
     }
 
     if (node.mesh > -1) {
@@ -157,10 +157,10 @@ void Model::process_gltf_nodes(
     transforms.push_back(final_matrix);
 
     if (parent_node) {
-       parent_node->add_node(std::move(unique_node));
+       parent_node->add_child(sub_node);
     }
     else {
-      nodes.push_back(std::move(unique_node));
+      nodes.push_back(sub_node);
     }
 
 }    
@@ -355,9 +355,6 @@ void Model::add_mesh(const std::string& fileName, std::optional<std::string> nam
         return;
     }
 }
-
-Model::Model() {}
-Model::~Model() {}
 
 
 void Model::read_from_file() {
