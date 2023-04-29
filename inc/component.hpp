@@ -25,6 +25,8 @@ public:
 
 	Component() = default;
 	~Component() = default;
+
+	virtual void activate() = 0;
 };
 
 class TestComponent : public Component 

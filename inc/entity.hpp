@@ -19,7 +19,7 @@ public:
 
 	Entity(uint32_t entity_id) : id(entity_id) 
 	{
-		//add_component(tuco::TransformComponent(), tuco::TransformComponent::ID);
+		Antuco::get_engine().add_entity(entity_id);
 	}
 	~Entity() = default;
 

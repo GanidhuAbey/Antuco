@@ -14,6 +14,12 @@
 
 #include <vector>
 
+namespace effect
+{
+class UpdateEffect;
+}
+
+
 namespace tuco {
 
 class Antuco {
@@ -56,6 +62,14 @@ public:
 
 	uint32_t create_id();
 
+	void add_entity(uint32_t id) 
+	{
+		entities.push_back(id);
+	}
+
+	uint32_t set_updater(effect::UpdateEffect* updater);
+	void remove_updater(uint32_t update_id);
+
 	static Antuco& get_engine() {
 		return Antuco_instance;
 	}
@@ -63,8 +77,14 @@ public:
 	~Antuco();
 
 private:
+	void update();
+
+private:
 	std::mutex m_mutex;
 	uint32_t m_component_counter = 0;
+
+	std::vector<uint32_t> entities;
+	std::vector<effect::UpdateEffect*> updaters;
 
 	Antuco();
 	static Antuco Antuco_instance;

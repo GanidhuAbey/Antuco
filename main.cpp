@@ -91,8 +91,6 @@ int main() {
 
 	tuco::Entity cube(0);
 
-	tuco::MeshComponent initMesh = tuco::MeshComponent();
-	initMesh.set_id(1);
 	tuco::ComponentManager::add_component<tuco::MeshComponent>(0);
 
 	tuco::MeshComponent* mesh = tuco::ComponentManager::get_component<tuco::MeshComponent>(0);

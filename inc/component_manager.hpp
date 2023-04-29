@@ -40,10 +40,15 @@ private:
 		if (search == components.end())
 		{
 			components[entity_id].push_back(std::move(component));
+			auto search = components.find(entity_id);
+			search->second[0]->activate();
 			return;
 		}
 
 		search->second.push_back(std::move(component));
+
+		// Activate component
+		search->second[search->second.size() - 1]->activate();
 	}
 
 	static Component* get_component_from_entity(uint32_t entity_id, TypeId component_id)

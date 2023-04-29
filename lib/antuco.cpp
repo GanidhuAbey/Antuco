@@ -1,6 +1,7 @@
 #include "antuco.hpp"
 
 #include "logger/interface.hpp"
+#include <frame_update.hpp>
 
 #include <iostream>
 
@@ -85,6 +86,29 @@ void Antuco::render() {
 
 	//check and update the game object information, this would be where we update the command buffers as neccesary
 	p_graphics->update_draw(objects);
+
+	update();
+}
+
+void Antuco::update()
+{
+	for (const auto& updater : updaters)
+	{
+		updater->update();
+	}
+}
+
+uint32_t Antuco::set_updater(effect::UpdateEffect* updater)
+{
+	updater->update();
+	updaters.push_back(updater);
+	return updaters.size();
+}
+
+void Antuco::remove_updater(uint32_t update_id)
+{
+	// DOES NOT WORK, ONCE UPDATER REMOVES ITSELF, ALL OTHER UPDATERS ARE OUT-OF-DATE.
+	updaters.erase(updaters.begin() + update_id);
 }
 
 uint32_t Antuco::create_id() 
