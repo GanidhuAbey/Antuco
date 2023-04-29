@@ -11,14 +11,12 @@
 #include "config.hpp"
 
 #include <component.hpp>
+#include <frame_update.hpp>
+
 #include <unordered_map>
 
-#include <vector>
 
-namespace effect
-{
-class UpdateEffect;
-}
+#include <vector>
 
 
 namespace tuco {

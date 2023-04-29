@@ -19,6 +19,7 @@ public:
 	{
 		T component;
 		component.set_id(T::ID);
+		component.set_entity_id(entity_id);
 
 		add_to_entity(std::make_unique<T>(component), entity_id);
 	}

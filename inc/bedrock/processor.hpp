@@ -17,6 +17,8 @@ public:
 	TypeId get_id() { return runtime_id; }
 	void set_id(TypeId id) { runtime_id = id; }
 
+	virtual void activate() = 0;
+
 public:
 	Processor() = default;
 	~Processor() = default;

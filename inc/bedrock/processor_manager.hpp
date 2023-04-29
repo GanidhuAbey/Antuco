@@ -35,6 +35,7 @@ private:
 	static void add_to_processor(std::unique_ptr<Processor> processor, TypeId processor_id)
 	{
 		processors[processor_id] = std::move(processor);
+		processors[processor_id]->activate();
 	}
 
 	static Processor* get_processor(TypeId processor_id)
