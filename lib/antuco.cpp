@@ -94,21 +94,20 @@ void Antuco::update()
 {
 	for (const auto& updater : updaters)
 	{
-		updater->update();
+		updater.second->update();
 	}
 }
 
 uint32_t Antuco::set_updater(effect::UpdateEffect* updater)
 {
-	updater->update();
-	updaters.push_back(updater);
-	return updaters.size();
+	uint32_t updater_id = updaters.size();
+	updaters[updater_id] = updater;
+	return updater_id;
 }
 
 void Antuco::remove_updater(uint32_t update_id)
 {
-	// DOES NOT WORK, ONCE UPDATER REMOVES ITSELF, ALL OTHER UPDATERS ARE OUT-OF-DATE.
-	updaters.erase(updaters.begin() + update_id);
+	updaters.erase(update_id);
 }
 
 uint32_t Antuco::create_id() 

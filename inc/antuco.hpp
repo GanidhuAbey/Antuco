@@ -11,6 +11,7 @@
 #include "config.hpp"
 
 #include <component.hpp>
+#include <unordered_map>
 
 #include <vector>
 
@@ -84,7 +85,7 @@ private:
 	uint32_t m_component_counter = 0;
 
 	std::vector<uint32_t> entities;
-	std::vector<effect::UpdateEffect*> updaters;
+	std::unordered_map<uint32_t, effect::UpdateEffect*> updaters;
 
 	Antuco();
 	static Antuco Antuco_instance;
