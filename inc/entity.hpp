@@ -1,8 +1,8 @@
 #pragma once
 
 #include <component.hpp>
-#include <transform_component.hpp>
 #include <antuco.hpp>
+#include <components/transform_component.hpp>
 
 #include <logger/interface.hpp>
 

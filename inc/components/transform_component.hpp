@@ -9,12 +9,14 @@ namespace tuco
 
 class TransformComponent : public Component 
 {
+public:
+	CLASS_ID;
 private:
 	const static uint32_t component_id = 1917922934;
 
-	glm::vec3 position;
-	glm::vec3 rotation;
-	glm::vec3 scale;
+	glm::vec3 m_position_vector;
+	glm::vec3 m_rotation_vector;
+	glm::vec3 m_scale_vector;
 
 	glm::mat4 m_modelMatrix;
 
@@ -27,21 +29,21 @@ public:
 	TransformComponent() = default;
 	~TransformComponent() = default;
 
-	uint32_t translate(glm::vec3 translate_vector) 
+	void translate(glm::vec3 translate_vector) 
 	{
-		position += translate_vector;
+		m_position_vector += translate_vector;
 		m_modelMatrix = glm::translate(m_modelMatrix, translate_vector);
 	}
 
 	// Rotation not supported yet because i'm lazy.
-	uint32_t euclidean_rotate(glm::vec3 rotate_vector) 
+	void euclidean_rotate(glm::vec3 rotate_vector) 
 	{
-		rotation += rotate_vector;
+		m_rotation_vector += rotate_vector;
 	}
 
-	uint32_t scale(glm::vec3 scale_vector) 
+	void scale(glm::vec3 scale_vector) 
 	{
-		scale += scale_vector;
+		m_scale_vector += scale_vector;
 		m_modelMatrix = glm::scale(m_modelMatrix, scale_vector);
 	}
 
@@ -49,6 +51,9 @@ public:
 	{
 		return m_modelMatrix;
 	}
+
+	//tuco::Component overrides...
+	void activate() override;
 };
 
 }

@@ -62,7 +62,6 @@ private:
 
 		for (int i = 0; i < search->second.size(); i++)
 		{
-			printf("ID: %d \n", search->second[i]->get_id());
 			if (search->second[i]->get_id() == component_id)
 			{
 				return search->second[i].get();

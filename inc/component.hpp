@@ -28,7 +28,7 @@ public:
 	uint32_t get_entity_id() { return m_entity_id; }
 
 	Component() = default;
-	~Component() = default;
+	virtual ~Component() = default;
 
 	virtual void activate() = 0;
 };

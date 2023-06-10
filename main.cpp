@@ -3,7 +3,7 @@
 #include "antuco.hpp"
 #include <entity.hpp>
 #include <components/mesh_component.hpp>
-#include <transform_component.hpp>
+#include <components/transform_component.hpp>
 #include <component_manager.hpp>
 
 #include <iostream>
@@ -89,11 +89,13 @@ int main() {
 
 	auto t1 = TIME_IT;
 
-	tuco::Entity cube(0);
+	tuco::Entity cube(4);
 
-	tuco::ComponentManager::add_component<tuco::MeshComponent>(0);
+	// TODO: entities should auto add transform component
+	tuco::ComponentManager::add_component<tuco::TransformComponent>(4);
+	tuco::ComponentManager::add_component<tuco::MeshComponent>(4);
 
-	tuco::MeshComponent* mesh = tuco::ComponentManager::get_component<tuco::MeshComponent>(0);
+	tuco::MeshComponent* mesh = tuco::ComponentManager::get_component<tuco::MeshComponent>(4);
 
 #if defined(_WIN32) || defined(_WIN64)
 	mesh->set_model_path(root_project + "\\objects\\antuco-files\\windows\\cube.glb");

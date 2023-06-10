@@ -21,7 +21,7 @@ public:
 
 public:
 	Processor() = default;
-	~Processor() = default;
+	virtual ~Processor() {};
 };
 
 }

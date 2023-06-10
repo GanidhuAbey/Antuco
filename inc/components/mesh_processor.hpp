@@ -16,12 +16,13 @@ class MeshProcessor
 {
 public:
 
+using BaseClass = br::Processor;
 CLASS_ID;
 
 private:
 	pass::ForwardDrawPass* m_forward_draw = nullptr;
 
-	std::vector<tuco::Model&> m_models;
+	std::vector<tuco::Model*> m_models;
 
 public:
 	MeshProcessor() = default;
@@ -33,7 +34,7 @@ public:
 	// efffecT::UpdateEffect overrides
 	void update() override;
 
-	void add_model(tuco::Model& m_model) { m_models.push_back(m_model); }
+	void add_model(tuco::Model* m_model) { m_models.push_back(m_model); }
 };
 
 }

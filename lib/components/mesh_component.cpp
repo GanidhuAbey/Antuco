@@ -17,7 +17,7 @@ MeshComponent::MeshComponent() : m_model()
 
 void MeshComponent::activate()
 {
-	Antuco::get_engine().set_updater(this);
+	Antuco::get_engine().set_updater(dynamic_cast<effect::UpdateEffect*>(this));
 }
 
 void MeshComponent::set_model_path(std::string path) 
@@ -29,12 +29,13 @@ void MeshComponent::set_model_path(std::string path)
 void MeshComponent::load_model()
 {
 	m_model.add_mesh(m_model_path);
-	m_mesh_processor->add_model(m_model);
+	m_mesh_processor->add_model(&m_model);
 }
 
 void MeshComponent::update()
 {
 	// Get transform component.
 	TransformComponent* transform = ComponentManager::get_component<TransformComponent>(get_entity_id());
+	ASSERT(transform, "transform is invalid!");
 	glm::mat4 modelToWorld = transform->get_model();
 }
