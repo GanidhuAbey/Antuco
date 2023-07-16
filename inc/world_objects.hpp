@@ -9,7 +9,7 @@
 #include "model.hpp"
 //#include "graphics.hpp"
 
-#include <vulkan/vulkan.hpp>
+#include <vkwr.hpp>
 #include <glm/glm.hpp>
 
 namespace tuco {
@@ -91,6 +91,14 @@ public:
 	void scale(glm::vec3 scale_vector);
 	void translate(glm::vec3 t);
 	void set_position(glm::vec3 t);
+
+	Model& get_model() {
+		return object_model;
+	}
+
+	bool is_update() {
+		return update;
+	}
 };
 
 class SkyBox {

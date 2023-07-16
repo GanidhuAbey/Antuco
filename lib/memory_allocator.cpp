@@ -11,33 +11,32 @@
 
 using namespace mem;
 
-MemoryAllocator* MemoryAllocator::instance = nullptr;
+//------------- Memory Allocator -------------------
+// handles all request for object creation dealing
+// with memory. ex: buffers, images, descriptor sets
+// -------------------------------------------------
+MemoryAllocator* MemoryAllocator::m_instance {nullptr};
+std::mutex MemoryAllocator::m_mutex;
 
-MemoryAllocator::MemoryAllocator(v::PhysicalDevice& physical_device, v::Device& device)
-    : m_device(device), m_physical_device(physical_device)
-{}
-
-MemoryAllocator::~MemoryAllocator() 
-{
-    
+MemoryAllocator::MemoryAllocator(v::Device* device, v::PhysicalDevice* phys_device) {
+    m_device = device;
+    m_phys_device = phys_device;
 }
 
-MemoryAllocator* MemoryAllocator::create_get(v::PhysicalDevice& physical_device, v::Device& device)
+MemoryAllocator* MemoryAllocator::get_instance(v::Device* device, v::PhysicalDevice* phys_device) 
 {
-    if (!instance)
-    {
-        instance = new MemoryAllocator(physical_device, device);
+    if (!m_instance) {
+        if (!device || !phys_device) {
+            LOG("first call to MemoryAllocator::get_instance() must pass device and physical_device");
+            return nullptr;
+        }
+
+        m_instance = new MemoryAllocator(device, phys_device);
     }
 
-    return instance;
-}
-
-MemoryAllocator* MemoryAllocator::get() 
-{
-    ASSERT(instance, "cannot call MemoryAllocator::get() without calling MemoryAllocator::create_get() somewhere else in the code.")
-    return instance;
-}
-
+    return m_instance;
+} 
+// -------------------------------------------------
 
 void SearchBuffer::init(v::PhysicalDevice& physical_device, 
 v::Device& device, BufferCreateInfo& buffer_info) { 

@@ -4,10 +4,10 @@
 */
 #pragma once
 
-#include <vulkan/vulkan.hpp>
-#include <GLFW/glfw3.h>
-
 #include "vulkan_wrapper/device.hpp"
+
+#include <vkwr.hpp>
+#include <GLFW/glfw3.h>
 
 #include <stdexcept>
 #include <iostream>
@@ -26,29 +26,26 @@ const VkDeviceSize MINIMUM_SORT_DISTANCE = 1e5;
 //TODO: need to create a information struct in the style of vulkan to let user manipulate this data
 //VkDeviceSize allocationSize = 5e8;
 
+//TODO: seperate memory allocator into multiple classes
+
 namespace mem {
 
-class MemoryAllocator
-{
-private:
-    v::Device& m_device;
-    v::PhysicalDevice& m_physical_device;
+class MemoryAllocator {
+    private:
+        static MemoryAllocator* m_instance;
+        static std::mutex m_mutex;
 
-private:
-    MemoryAllocator(v::PhysicalDevice& physical_device, v::Device& device);
-
-    static MemoryAllocator* instance;
-
-public:
-    static MemoryAllocator* create_get(v::PhysicalDevice& physical_device, v::Device& device);
-
-    static MemoryAllocator* get();
-
-    MemoryAllocator(MemoryAllocator&) = delete;
-    void operator=(const MemoryAllocator&) = delete;
-    ~MemoryAllocator();
-
-    //StackBuffer* create_stack_buffer(BufferCreateInfo& buffer_info);
+        v::Device* m_device;
+        v::PhysicalDevice* m_phys_device;
+        
+        MemoryAllocator(v::Device* device, v::PhysicalDevice* phys_device);
+        ~MemoryAllocator() = default;
+    
+    public:
+        static MemoryAllocator* get_instance(
+            v::Device* device = nullptr,
+            v::PhysicalDevice* phys_device = nullptr
+        );
 };
 
 struct BufferCreateInfo {
@@ -263,7 +260,7 @@ private:
 public:
     Pool(v::Device& device, PoolCreateInfo create_info);
 public:   
-    std::vector<VkDescriptorPool> pools;
+    std::vector<vk::DescriptorPool> pools;
     
     size_t allocate(VkDeviceSize allocationSize);
     void destroyPool();

@@ -44,7 +44,6 @@ glm::vec2 rotation_point, float rotation_angle) {
 	return rotate_point + rotation_point;
 }
 
-#pragma optimize("", off)
 int main() {
 	//when beginning a new game, one must first create the window, but user should only ever interact with the library wrapper "Antuco_lib"
 	tuco::Antuco& antuco = tuco::Antuco::get_engine();
@@ -99,6 +98,8 @@ int main() {
 
 #if defined(_WIN32) || defined(_WIN64)
 	mesh->set_model_path(root_project + "\\objects\\antuco-files\\windows\\cube.glb");
+#else
+	mesh->set_model_path(root_project + "/objects/antuco-files/mac/cube.glb");
 #endif
 
 	//light_mesh->scale(glm::vec3(0.2));

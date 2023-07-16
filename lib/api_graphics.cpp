@@ -18,9 +18,8 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
       physical_device(instance),
       surface(instance, pWindow->pWindow->apiWindow),
       device(physical_device, surface, false),
-      swapchain(physical_device, device, surface) {
-
-	mem::MemoryAllocator::create_get(physical_device, device);
+      swapchain(physical_device, device, surface),
+	  shadow_pass(device) {
 
 	not_created = true;
 	raytracing = false; //set this as an option in the pre-configuration settings.
@@ -35,6 +34,12 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
             device,
             device.get_graphics_family()); 
 
+    // initialize MemoryAllocator
+    mem::MemoryAllocator::get_instance(&device, &physical_device);
+
+	//graphics draw
+	//create_shadowmap_atlas();
+	//create_shadowmap_transfer_buffer();
 	initialize_processors();
 
 	create_depth_resources();
@@ -46,6 +51,15 @@ GraphicsImpl::GraphicsImpl(Window* pWindow)
 	create_output_buffers();
 	create_semaphores();
 	create_fences();
+
+	//shadow_pass.initialize();
+
+	//create some buffers now
+	create_vertex_buffer();
+	create_index_buffer();
+	create_uniform_buffer();
+
+	create_ubo_pool();
 	create_texture_pool();
 
     create_screen_pass();
@@ -170,6 +184,7 @@ std::vector<std::unique_ptr<GameObject>>& game_objects) {
 	if (update_command_buffers) {
 		//free command buffers first?
 		free_command_buffers();
+		//create_shadow_draw_calls(game_objects);
 		create_command_buffers(game_objects);
 		update_command_buffers = false;
 	}

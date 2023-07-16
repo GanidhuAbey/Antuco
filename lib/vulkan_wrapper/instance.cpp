@@ -3,6 +3,8 @@
 #include <cstdio>
 #include <iostream>
 
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
+
 using namespace v;
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
@@ -65,7 +67,11 @@ bool Instance::validation_layer_supported(std::vector<const char*> names) {
 
 
 void Instance::create_instance(const char* app_name, uint32_t api_version) {  
-    vk::ApplicationInfo app_info(app_name, 1, "Antuco", 1, api_version);
+    vk::DynamicLoader dl;
+    auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
+	
+	vk::ApplicationInfo app_info(app_name, 1, "Antuco", 1, api_version);
 
     std::vector<const char*> layers;
     void* next = nullptr;
@@ -96,12 +102,6 @@ void Instance::create_instance(const char* app_name, uint32_t api_version) {
 
 #ifdef APPLE_M1
 	extensions.push_back("VK_KHR_get_physical_device_properties2");
-#else
-    /*
-	if (raytracing) {
-		extensions.push_back("VK_KHR_get_physical_device_properties2");
-	}
-    */
 #endif
 
     std::vector<const char*> enabled_extensions;
@@ -121,10 +121,9 @@ void Instance::create_instance(const char* app_name, uint32_t api_version) {
             enabled_extensions.size(), enabled_extensions.data());
 
     instance = vk::createInstance(info); 
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
 
-    auto dldi = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
-
-    messenger = instance.createDebugUtilsMessengerEXT(debug_info, nullptr, dldi);
+    messenger = instance.createDebugUtilsMessengerEXT(debug_info, nullptr);
 }
 
 bool Instance::check_extensions_supported(const char** extensions, uint32_t extensions_count) {

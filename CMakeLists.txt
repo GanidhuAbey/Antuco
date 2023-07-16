@@ -25,7 +25,7 @@ project(Antuco VERSION 1.0.0)
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 
-file(GLOB SOURCES lib/*.cpp lib/vulkan_wrapper/*.cpp lib/components/*.cpp lib/bedrock/*.cpp)
+file(GLOB SOURCES lib/*.cpp lib/*/*.cpp)
 
 file(GLOB HEADERS inc/*.hpp)
 
@@ -39,12 +39,17 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/SPIRV-Cross")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/shaderc")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/crossguid")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/SPIRV-Reflect")
+
+# simple external libraries.
+#set(SPIRV_REFLECT "${CMAKE_CURRENT_SOURCE_DIR}/external/include/SPIRV-Reflect/spirv_reflect.c")
 
 add_library(
     REQUIRED_LIBRARIES
     ${SOURCES}
      "render_examples/bmw.hpp" "render_examples/bmw.cpp")
 
+include_directories("inc/vulkan_wrapper")
 include_directories("inc/")
 include_directories("inc/components/skybox")
 include_directories("${Vulkan_INCLUDE_DIR}")
@@ -53,14 +58,16 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glm")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/stb")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/crossguid/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/SPIRV-Reflect")
 
 #compile assimp
-add_executable(main main.cpp "render_examples/bmw.hpp" "render_examples/bmw.cpp")
+add_executable(main main.cpp)
 
 target_link_libraries(main PRIVATE REQUIRED_LIBRARIES 
                                    "${Vulkan_LIBRARIES}" 
                                    glfw 
-                                   shaderc 
+                                   shaderc
+                                   spirv-reflect-static 
                                    spirv-cross-core
                                    crossguid)
 

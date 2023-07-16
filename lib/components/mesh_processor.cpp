@@ -10,9 +10,12 @@ DEFINE_ID(MeshProcessor);
 void MeshProcessor::activate()
 {
 	Antuco::get_engine().set_updater(this);
+
+	// declare pass.
+	// Antuco::get_engine().create_pass(...) 
 }
 
 void MeshProcessor::update()
 {
-	LOG("render mesh...");
+	// where draw item would be submitted...
 }

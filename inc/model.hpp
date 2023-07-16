@@ -29,6 +29,10 @@ public:
 	Model() = default;
 	~Model() = default;
 
+public:
+    std::vector<Primitive>& get_primitives() {
+        return primitives;
+    }
 	//if name is left null, then model will not be saved/loaded from file
 	void add_mesh(const std::string& fileName, std::optional<std::string> name = std::nullopt);
 

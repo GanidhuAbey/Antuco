@@ -15,7 +15,7 @@ VkDescriptorSetLayout layout, uint32_t resource_size, mem::Pool& pool) {
 
 bool ResourceCollection::check_size(size_t i) {
     if (i >= sets.size()) {
-        LOG("[ERROR] - invalid allocation");
+        LOG("[ERROR] - invsalid allocation");
         throw std::runtime_error("exection forcefully stopped");
         return false;
     }

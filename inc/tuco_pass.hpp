@@ -1,4 +1,6 @@
-#include <vulkan/vulkan.hpp>
+#pragma once
+
+#include <vkwr.hpp>
 
 #include "vulkan_wrapper/device.hpp"
 
