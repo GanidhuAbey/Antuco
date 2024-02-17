@@ -3,13 +3,18 @@ A game engine/renderer made from vulkan
 
 ## Build Instructions 
 
-#### Windows
+Clone repo recursively to get all requried dependences.
 
-Clone the repo recursively, then open up the project as a cmake project in visual studio and compile.
+#### Shaderc
 
-#### Mac / Linux
+Shaderc has several required third-party dependencies that do not get downloaded automatically. Inorder to get dependencies installed first, run the following in the root directory:
 
-Use cmake.
+```
+# use the correct pathname for python in your case.
+py ./external/include/shaderc/utils/git-sync-deps
+```
+
+Afterwards, the program can be installed as a standard CMake project.
 
 ## Screenshots
 
