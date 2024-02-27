@@ -18,7 +18,8 @@ enum class WindowInput {
 	S,
 	D,
 	X,
-	Q
+	Q,
+	F
 };
 
 enum class RenderEngine {

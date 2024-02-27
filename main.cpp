@@ -97,8 +97,8 @@ int main() {
 	floor->add_mesh(root_project + "/objects/antuco-files/mac/surface.glb");
 	floor->scale(glm::vec3(10, 0.1, 10));	
 #elif defined(_WIN32) || defined(_WIN64)
-	auto car = antuco.create_object();
-	car->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.glb");
+	auto scene = antuco.create_object();
+	scene->add_mesh(root_project + "\\objects\\antuco-files\\windows\\testScene.glb");
 #endif
 
 	//light_mesh->scale(glm::vec3(0.2));
@@ -201,7 +201,7 @@ int main() {
 		);
 
 		//close input
-		if (window->get_key_state(tuco::WindowInput::Q)) {
+		if (window->get_key_state(tuco::WindowInput::F)) {
 			window->close();
 			game_loop = false; 
 		}

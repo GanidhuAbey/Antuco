@@ -507,11 +507,13 @@ void GraphicsImpl::create_materials_layout() {
     layout_info.bindingCount = 1;
     layout_info.pBindings = &mat_layout_binding;
 
-    if (vkCreateDescriptorSetLayout(
-            device.get(), 
-            &layout_info, 
-            nullptr, 
-            &mat_layout) != VK_SUCCESS) {
+    VkResult result = vkCreateDescriptorSetLayout(
+        device.get(),
+        &layout_info,
+        nullptr,
+        &mat_layout);
+
+    if (result != VK_SUCCESS) {
         LOG("[ERROR] - could not create materials layout");
     }
 }

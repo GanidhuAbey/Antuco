@@ -42,7 +42,7 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/include/shaderc")
 add_library(
     REQUIRED_LIBRARIES
     ${SOURCES}
-     "render_examples/bmw.hpp" "render_examples/bmw.cpp")
+)
 
 include_directories("inc/")
 include_directories("inc/components/skybox")
@@ -57,6 +57,7 @@ add_executable(main main.cpp "render_examples/bmw.hpp" "render_examples/bmw.cpp"
 
 target_link_libraries(main PRIVATE REQUIRED_LIBRARIES 
                                    "${Vulkan_LIBRARIES}" 
-                                   glfw shaderc 
+                                   glfw 
+                                   shaderc 
                                    spirv-cross-core)
 

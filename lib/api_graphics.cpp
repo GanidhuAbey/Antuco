@@ -129,8 +129,7 @@ std::vector<std::unique_ptr<GameObject>>& game_objects) {
 			}
 			for (auto& prim : primitives) {
 				if (prim.mat_index >= 0) {
-					auto material = model
-					    .model_materials[prim.mat_index];
+					auto material = model.model_materials[prim.mat_index];
 					update_materials(
 						mat_offsets[i][prim.mat_index],
 						material);

@@ -106,5 +106,7 @@ int WindowImpl::translate_input(WindowInput input) {
 			return GLFW_KEY_X;
 		case WindowInput::Q:
 			return GLFW_KEY_Q;
+		case WindowInput::F:
+			return GLFW_KEY_F;
 	}
 }
