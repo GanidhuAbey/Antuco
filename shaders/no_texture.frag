@@ -169,7 +169,10 @@ void main() {
     // ---------- Diffuse ---------------
     float diffuseFactor = (1.f - absorptionCoeff) / 3.14159f; // PI = 3.14159
     vec3 diffuseResult = diffuseFactor * lightColor;
-
+    
+    // Lambert's law.
+    vec3 lightDirection = normalize(light_position - vec3(vPos));
+    diffuseResult = dot(surfaceNormal, lightDirection) * diffuseResult; 
 
     //result = surfaceNormal;
     vec3 testColor = vec3(1, 0, 0);
