@@ -40,9 +40,9 @@ float SCATTER_STRENGTH = 200.0f;
 float check_shadow(vec4 light_view) {
 	float pixel_depth = light_view.z;
 
-  	//float closest_depth = texelFetch(shadowmap, ivec2(light_view.st), 0).r; 
-    float closest_depth = texture(shadowmap, vec2(light_view.st), 0).r; 
-  	
+  	//float closest_depth = texelFetch(shadowmap, ivec2(light_view.st), 0).r;
+    float closest_depth = texture(shadowmap, vec2(light_view.st), 0).r;
+
 	float in_shadow = ceil(closest_depth - pixel_depth) + 0.1;
 
   	return in_shadow;
@@ -66,7 +66,7 @@ float pcf_shadow(vec4 light_view) {
 
 vec3 get_scattering(vec4 light_view) {
     float light_enter = texture(shadowmap, light_view.st).r;
-    
+
     float light_exit = light_view.z;
 
     float surface_depth = light_exit - light_enter;
@@ -85,28 +85,28 @@ void main() {
     //when the dot product should be at its highest, it seems to be at its lowest, and vice versa.
     float diffuse_light = max(0.00f, dot(normalize(lightToObject), normalize(surfaceNormal))) / 3.14;
     vec3 diffuse_final = diffuse_light * normalize(mat.diffuse);
-    
+
     vec3 reflected_light = reflect(lightToObject, surfaceNormal);
     //need to pass data on the location of the camera
     vec3 object_to_camera = normalize(camera_pos - vec3(vPos));
     float specular_value = pow(max(0.f, dot(reflected_light, object_to_camera)), 32);
     vec3 specular_light = specular_value * mat.specular * SPECULAR_STRENGTH;
 
-    //analyze depth at the given coordinate of the object 
+    //analyze depth at the given coordinate of the object
     float light_dist = length(light_position - vec3(vPos));
-    
+
     vec4 sample_value = light_perspective;
 
     float shadow_factor = pcf_shadow(sample_value);
 
     vec3 scattering = get_scattering(sample_value);
-    
+
     //TODO: get rid of this if statement once everything works
     vec3 result;
     if (mat.has_texture.r == 0) {
         texture_component = vec3(1);
     }
-    
+
     result = (diffuse_final) * texture_component;
 
     outColor = vec4(result, mat.has_texture.g);

@@ -40,9 +40,9 @@ float SCATTER_STRENGTH = 200.0f;
 float check_shadow(vec4 light_view) {
 	float pixel_depth = light_view.z;
 
-  	//float closest_depth = texelFetch(shadowmap, ivec2(light_view.st), 0).r; 
-    float closest_depth = texture(shadowmap, vec2(light_view.st), 0).r; 
-  	
+  	//float closest_depth = texelFetch(shadowmap, ivec2(light_view.st), 0).r;
+    float closest_depth = texture(shadowmap, vec2(light_view.st), 0).r;
+
 	float in_shadow = ceil(closest_depth - pixel_depth) + 0.1;
 
   	return in_shadow;
@@ -66,7 +66,7 @@ float pcf_shadow(vec4 light_view) {
 
 vec3 get_scattering(vec4 light_view) {
     float light_enter = texture(shadowmap, light_view.st).r;
-    
+
     float light_exit = light_view.z;
 
     float surface_depth = light_exit - light_enter;
@@ -81,7 +81,7 @@ float map_to_zero_one(float value) {
 
 float rand() {
     vec3 x = vec3(vPos.x, vPos.y, vPos.z);
-    return normalize(fract(sin(dot(x, vec3(12.9898, 78.233, 43.2003)))*43758.5453123)); 
+    return normalize(fract(sin(dot(x, vec3(12.9898, 78.233, 43.2003)))*43758.5453123));
 }
 
 float pi() {
@@ -96,7 +96,7 @@ void main() {
 //    //when the dot product should be at its highest, it seems to be at its lowest, and vice versa.
 //    float diffuse = 1 / pi();
 //    vec3 diffuse_final = diffuse * normalize(mat.diffuse);
-//  
+//
 //    vec3 camera_dir = normalize(camera_pos - vec3(vPos));
 //    vec3 light_dir = normalize(light_position - vec3(vPos));
 //    vec3 m = (light_dir + camera_dir) / length(light_dir + camera_dir);
@@ -111,7 +111,7 @@ void main() {
 //
 //    float a = (pow(alignment, 2) - 1)/(pow(rough, 2)*pow(alignment, 2));
 //    float v = exp(a);
-//   
+//
 //    float r_squared = pow(rough, 2);
 //    float D_m = x*r_squared / (pi()*pow(1 + pow(alignment, 2)*(r_squared - 1), 2));
 //
@@ -126,11 +126,11 @@ void main() {
 //    float macro_lig = pow(dot(surface_normal, light_dir), 2);
 //
 //    float a_c =  macro_cam / (rough*(1-macro_cam));
-//    float a_l =  macro_lig / (rough*(1-macro_lig)); 
+//    float a_l =  macro_lig / (rough*(1-macro_lig));
 //
 //    float v_c = (-1 + sqrt(1 + 1/a_c))/2;
 //    float v_l = (-1 + sqrt(1 + 1/a_l))/2;
-//    
+//
 //    float G_2 = (x_c*x_l)/(1+v_c+v_l);
 //
 //    //compute F
@@ -140,41 +140,44 @@ void main() {
 //
 //    //compute specular
 //    float bottom = 4*abs(dot(surface_normal, light_dir))*abs(dot(surface_normal, camera_dir));
-//    
+//
 //    vec3 spec = (F*G_2*D_m)/bottom;
 //
-//    //analyze depth at the given coordinate of the object 
+//    //analyze depth at the given coordinate of the object
 //    float light_dist = length(light_position - vec3(vPos));
-//    
+//
 //    vec4 sample_value = light_perspective;
 //
 //    float shadow_factor = pcf_shadow(sample_value);
 //
 //    vec3 scattering = get_scattering(sample_value);
-//    
+//
 //    //debugPrintfEXT("<%f, %f, %f> \n", surface_normal.x, surface_normal.y, surface_normal.z);
 //    float diffuse_component = 1.0;//mat.specular.r;
 //    vec3 result;
-//    result = vec3(0.1) + 
-//             max(vec3(0), vec3(1) * 
-//             dot(surface_normal, light_dir) * 
+//    result = vec3(0.1) +
+//             max(vec3(0), vec3(1) *
+//             dot(surface_normal, light_dir) *
 //             (diffuse_component * diffuse_final)  );
 
 
     // TODO : introduce hard coded parameters as attributes that are controllable within the engine.
     // ---------- Hard coded paramaters
     vec3 lightColor = vec3(1.f, 1.f, 1.f); // colour of the incoming light [LIGHT]
-    float absorptionCoeff = 0.01f; // factor which determines how much light the material will absorb. [MATERIAL]
+    float absorptionCoeff = 0.5f; // factor which determines how much light the material will absorb. [MATERIAL]
 
     // ---------- Diffuse ---------------
-    float diffuseFactor = (1.f - absorptionCoeff) / 3.14159f; // PI = 3.14159
-    vec3 diffuseResult = diffuseFactor * lightColor;
-    
-    // Lambert's law.
-    vec3 lightDirection = normalize(light_position - vec3(vPos));
-    diffuseResult = dot(surfaceNormal, lightDirection) * diffuseResult; 
+    vec3 diffuseResult = lightColor / 3.14159f; // PI = 3.14159
+    float refractAmt = 1.f;
 
+    vec3 specularResult = vec3(0.0f);
+    float reflectAmt = 0.f;
+
+    // reflectance equation : L_o = integral(f_r*L_o*cos(theta) dw_i)
+    vec3 lightDirection = normalize(light_position - vec3(vPos));
+
+    vec3 result = (refractAmt*diffuseResult + reflectAmt*specularResult)*dot(surfaceNormal, lightDirection);
     //result = surfaceNormal;
     vec3 testColor = vec3(1, 0, 0);
-    outColor = vec4(diffuseResult, 1.0f);
+    outColor = vec4(result, 1.0f);
 }

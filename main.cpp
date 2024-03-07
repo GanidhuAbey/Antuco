@@ -92,12 +92,17 @@ int main() {
 
 #if defined(__APPLE__)
   auto floor = antuco.create_object();
-  floor->add_mesh(root_project + "/objects/antuco-files/mac/testScene.glb");
-  floor->scale(glm::vec3(10, 0.1, 10));
+  floor->add_mesh(root_project + "/objects/antuco-files/mac/surface.glb");
+  floor->scale(glm::vec3(1, 0.01, 1));
+
+  auto object = antuco.create_object();
+  object->add_mesh(root_project + "/objects/antuco-files/mac/cube.glb");
+  object->scale(glm::vec3(0.1, 0.1, 0.1));
+  object->translate(glm::vec3(0, 1, 0));
 #elif defined(_WIN32) || defined(_WIN64)
-  auto scene = antuco.create_object();
-  scene->add_mesh(root_project +
-                  "\\objects\\antuco-files\\windows\\testScene.glb");
+  auto car = antuco.create_object();
+  car->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.glb");
+>>>>>>> Stashed changes
 #endif
 
   // light_mesh->scale(glm::vec3(0.2));
