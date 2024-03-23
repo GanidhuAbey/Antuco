@@ -219,7 +219,7 @@ void GraphicsImpl::create_graphics_pipeline() {
 
   // TEX
   std::vector<VkDescriptorSetLayout> descriptor_layouts = {
-      light_layout, ubo_layout, texture_layout, shadowmap_layout, mat_layout};
+      light_layout, ubo_layout, texture_layout, shadowmap_layout, matLayout};
 
   std::vector<VkPushConstantRange> push_ranges;
 
@@ -410,22 +410,25 @@ void GraphicsImpl::create_light_layout() {
 }
 
 void GraphicsImpl::create_materials_layout() {
-  /* UNIFORM BUFFER DESCRIPTOR SET */
-  VkDescriptorSetLayoutBinding mat_layout_binding{};
-  mat_layout_binding.binding = 0;
-  mat_layout_binding.descriptorCount = 1;
-  mat_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  mat_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-  mat_layout_binding.pImmutableSamplers = nullptr;
+  // Uniform material data binding
+  VkDescriptorSetLayoutBinding matLayoutBinding{};
+  matLayoutBinding.binding = 0;
+  matLayoutBinding.descriptorCount = 1;
+  matLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  matLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  matLayoutBinding.pImmutableSamplers = nullptr;
 
-  VkDescriptorSetLayoutCreateInfo layout_info{};
-  layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  // Material diffuse texture binding
+  VkDescriptorSetLayoutBinding matDiffuseBinding{};
 
-  layout_info.bindingCount = 1;
-  layout_info.pBindings = &mat_layout_binding;
+  VkDescriptorSetLayoutCreateInfo layoutInfo{};
+  layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 
-  VkResult result = vkCreateDescriptorSetLayout(device.get(), &layout_info,
-                                                nullptr, &mat_layout);
+  layoutInfo.bindingCount = 1;
+  layoutInfo.pBindings = &matLayoutBinding;
+
+  VkResult result = vkCreateDescriptorSetLayout(device.get(), &layoutInfo,
+                                                nullptr, &matLayout);
 
   if (result != VK_SUCCESS) {
     LOG("[ERROR] - could not create materials layout");
@@ -442,7 +445,7 @@ void GraphicsImpl::create_materials_pool() {
 }
 
 void GraphicsImpl::create_materials_set(uint32_t mat_count) {
-  std::vector<VkDescriptorSetLayout> mat_layouts(mat_count, mat_layout);
+  std::vector<VkDescriptorSetLayout> mat_layouts(mat_count, matLayout);
 
   VkDescriptorSetAllocateInfo allocateInfo{};
 
@@ -789,13 +792,11 @@ void GraphicsImpl::update_descriptor_set(VkDescriptorBufferInfo buffer_info,
   vkUpdateDescriptorSets(device.get(), 1, &writeInfo, 0, nullptr);
 }
 
-void GraphicsImpl::write_to_materials(size_t mat_count) {
-  mat_offsets.resize(mat_offsets.size() + 1);
-  mat_offsets[mat_sets.size() - 1].resize(mat_count);
+void GraphicsImpl::write_to_materials() {
   for (size_t i = 0; i < mat_sets[mat_sets.size() - 1].size(); i++) {
     VkDescriptorBufferInfo buffer_info =
         setup_descriptor_set_buffer(sizeof(MaterialBufferObject));
-    mat_offsets[mat_offsets.size() - 1][i] = buffer_info.offset;
+    mat_offsets.push_back(buffer_info.offset);
     update_descriptor_set(buffer_info, 0, mat_sets[mat_sets.size() - 1][i]);
   }
 }
@@ -830,7 +831,7 @@ void GraphicsImpl::destroy_draw() {
   vkDestroyDescriptorSetLayout(device.get(), light_layout, nullptr);
   vkDestroyDescriptorSetLayout(device.get(), shadowmap_layout, nullptr);
   vkDestroyDescriptorSetLayout(device.get(), texture_layout, nullptr);
-  vkDestroyDescriptorSetLayout(device.get(), mat_layout, nullptr);
+  vkDestroyDescriptorSetLayout(device.get(), matLayout, nullptr);
 
   vkDestroySampler(device.get(), texture_sampler, nullptr);
   vkDestroySampler(device.get(), shadowmap_sampler, nullptr);

@@ -140,7 +140,7 @@ private:
 private:
 	VkDescriptorSetLayout ubo_layout;
 	VkDescriptorSetLayout texture_layout;
-    VkDescriptorSetLayout mat_layout;
+    VkDescriptorSetLayout matLayout;
 	VkDescriptorSetLayout light_layout;
 
 	vk::Sampler texture_sampler;
@@ -177,7 +177,7 @@ private:
 	std::vector<vk::CommandBuffer> command_buffers;
 
 	std::vector<VkDeviceSize> ubo_offsets; //holds the offset data for a objects ubo information within the uniform buffer
-	std::vector<std::vector<VkDeviceSize>> mat_offsets;
+	std::vector<VkDeviceSize> mat_offsets;
 	std::vector<std::vector<mem::Image>> texture_images;
 
 
@@ -284,7 +284,7 @@ private:
             VkShaderModule shaderModule);
 	
     void write_to_ubo();	
-    void write_to_materials(size_t mat_count);
+    void write_to_materials();
 	void update_uniform_buffer(VkDeviceSize memory_offset, UniformBufferObject ubo);
     void update_materials(VkDeviceSize memory_offset, Material mat);
     void copy_image_to_image(

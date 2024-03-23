@@ -119,13 +119,14 @@ void GraphicsImpl::update_draw(
       }
 
       create_materials_set(1);
-      write_to_materials(1);
+      write_to_materials();
 
       for (auto &prim : primitives) {
         auto material =
             game_objects[i]->material; // model.model_materials[prim.mat_index];
-        update_materials(mat_offsets.size() - 1, material);
         game_objects[i]->material.mem_access = mat_offsets.size() - 1;
+        update_materials(mat_offsets[mat_offsets.size() - 1], material);
+        
 
         /*
         // create vulkan image

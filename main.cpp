@@ -110,8 +110,22 @@ int main() {
   object->get_material().roughness = 0.9;
 
 #elif defined(_WIN32) || defined(_WIN64)
-  auto car = antuco.create_object();
-  car->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.glb");
+  auto floor = antuco.create_object();
+  floor->add_mesh(root_project + "\\objects\\antuco-files\\windows\\cube.glb");
+  floor->scale(glm::vec3(1, 0.01, 1));
+
+  floor->get_material().albedo = glm::vec3(1.0);
+  floor->get_material().metallic = 0.1;
+  floor->get_material().roughness = 0.8;
+
+  auto cube = antuco.create_object();
+  cube->add_mesh(root_project + "\\objects\\antuco-files\\windows\\cube.glb");
+  cube->scale(glm::vec3(0.1));
+  cube->translate(glm::vec3(0, 1, 0));
+
+  cube->get_material().albedo = glm::vec3(1.0, 0.0, 0.0);
+  cube->get_material().metallic = 0.7;
+  cube->get_material().roughness = 0.3;
 #endif
 
   // light_mesh->scale(glm::vec3(0.2));

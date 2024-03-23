@@ -10,6 +10,8 @@ struct MaterialBufferObject {
   glm::vec4 pbrParameters = glm::vec4(0.0);
   glm::vec4 albedo = glm::vec4(0.0);
 
+  glm::vec4 padding[2] = { glm::vec4(0), glm::vec4(0) };
+
   std::vector<float> linearize();
 };
 

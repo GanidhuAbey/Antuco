@@ -15,10 +15,14 @@ layout(location=9) in vec3 camera_pos;
 
 layout(set=2, binding=1) uniform sampler2D shadowmap;
 
-layout(set=3, binding=0) uniform Materials {
+layout(set=3, binding=0) uniform Material {
     vec3 pbrParameters; // baseReflectivity, roughness, metallic
     vec3 albedo;
+
+    vec4 padding[2];
 } mat;
+
+layout(set=3, binding=1) uniform sampler2D matDiffuse;
 
 float bias = 5e-3;
 
@@ -158,5 +162,5 @@ void main(){
     vec3 result = lightColor * (refractAmt*diffuseResult + reflectAmt*specularResult)*dot(surfaceNormal, lightDirection);
     //result = surfaceNormal;
     vec3 testColor = vec3(1, 0, 0);
-    outColor = vec4(albedo, 1.0f);
+    outColor = vec4(result, 1.0f);
 }
