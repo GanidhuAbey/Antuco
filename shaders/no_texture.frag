@@ -1,6 +1,8 @@
 #version 450
 #extension GL_EXT_debug_printf : enable
 
+#define PI 3.1415926535897932384626433832795
+
 layout(location=0) out vec4 outColor;
 layout(location=3) in vec3 surfaceNormal;
 layout(location=4) in vec4 vPos;
@@ -14,10 +16,8 @@ layout(location=9) in vec3 camera_pos;
 layout(set=2, binding=1) uniform sampler2D shadowmap;
 
 layout(set=3, binding=0) uniform Materials {
-    vec3 has_texture;
-    vec3 ambient; //Ka
-    vec3 diffuse; //Kd
-    vec3 specular; //Ks
+    vec3 pbrParameters; // baseReflectivity, roughness, metallic
+    vec3 albedo;
 } mat;
 
 float bias = 5e-3;
@@ -84,100 +84,79 @@ float rand() {
     return normalize(fract(sin(dot(x, vec3(12.9898, 78.233, 43.2003)))*43758.5453123));
 }
 
-float pi() {
-    return 3.14159;
+float getAlphaSquared(float roughness) {
+    return pow(roughness, 4);
 }
 
-void main() {
-//    float dist = length(light_position - vec3(vPos));
-//
-//    //this code treats a directional light as a point light...
-//    vec3 lightToObject = (light_position - vec3(vPos));
-//    //when the dot product should be at its highest, it seems to be at its lowest, and vice versa.
-//    float diffuse = 1 / pi();
-//    vec3 diffuse_final = diffuse * normalize(mat.diffuse);
-//
-//    vec3 camera_dir = normalize(camera_pos - vec3(vPos));
-//    vec3 light_dir = normalize(light_position - vec3(vPos));
-//    vec3 m = (light_dir + camera_dir) / length(light_dir + camera_dir);
-//
-//    //implement microfacet specular highlights
-//    vec3 surface_normal = normalize(surfaceNormal);
-//    float rough = pow(mat.specular.r, 2);
-//
-//    float alignment = dot(surface_normal, m);
-//    float x = map_to_zero_one(alignment);
-//    float b = pow(alignment, 4);
-//
-//    float a = (pow(alignment, 2) - 1)/(pow(rough, 2)*pow(alignment, 2));
-//    float v = exp(a);
-//
-//    float r_squared = pow(rough, 2);
-//    float D_m = x*r_squared / (pi()*pow(1 + pow(alignment, 2)*(r_squared - 1), 2));
-//
-//    //compute G_2
-//    float camera_alignment = dot(m, camera_dir);
-//    float light_alignment = dot(m, light_dir);
-//    float x_c = map_to_zero_one(camera_alignment);
-//    float x_l = map_to_zero_one(light_alignment);
-//
-//
-//    float macro_cam = pow(dot(surface_normal, camera_dir), 2);
-//    float macro_lig = pow(dot(surface_normal, light_dir), 2);
-//
-//    float a_c =  macro_cam / (rough*(1-macro_cam));
-//    float a_l =  macro_lig / (rough*(1-macro_lig));
-//
-//    float v_c = (-1 + sqrt(1 + 1/a_c))/2;
-//    float v_l = (-1 + sqrt(1 + 1/a_l))/2;
-//
-//    float G_2 = (x_c*x_l)/(1+v_c+v_l);
-//
-//    //compute F
-//    //need to linearly interpolate the mettalic value to computer f0
-//    vec3 f0 = mix(vec3(0.04), mat.diffuse, mat.specular.g);
-//    vec3 F = f0 + (1 - f0)*pow(1 - max(0, dot(surface_normal, light_dir)), 5);
-//
-//    //compute specular
-//    float bottom = 4*abs(dot(surface_normal, light_dir))*abs(dot(surface_normal, camera_dir));
-//
-//    vec3 spec = (F*G_2*D_m)/bottom;
-//
-//    //analyze depth at the given coordinate of the object
-//    float light_dist = length(light_position - vec3(vPos));
-//
-//    vec4 sample_value = light_perspective;
-//
-//    float shadow_factor = pcf_shadow(sample_value);
-//
-//    vec3 scattering = get_scattering(sample_value);
-//
-//    //debugPrintfEXT("<%f, %f, %f> \n", surface_normal.x, surface_normal.y, surface_normal.z);
-//    float diffuse_component = 1.0;//mat.specular.r;
-//    vec3 result;
-//    result = vec3(0.1) +
-//             max(vec3(0), vec3(1) *
-//             dot(surface_normal, light_dir) *
-//             (diffuse_component * diffuse_final)  );
+vec3 getHalfVector(vec3 v, vec3 l) {
+    return normalize(l + v);
+}
 
+vec3 Schlick_F(vec3 h, vec3 v, vec3 baseReflect) {
+    return baseReflect + (1.0 - baseReflect)*pow(clamp(1.0 - dot(h, v), 0.0, 1.0), 5.0);
+}
 
+float GGX_G(vec3 v, vec3 n, float alphaSquared) {
+    float NdotV = dot(n, v);
+    float numerator = 2.0*NdotV;
+
+    float denomTerm = alphaSquared + (1.0 - alphaSquared)*pow(NdotV, 2.0);
+    float denominator = NdotV + sqrt(denomTerm);
+
+    return numerator / denominator;
+}
+
+float Smith_G(vec3 l, vec3 v, vec3 n, float alphaSquared) {
+    return GGX_G(l, n, alphaSquared) * GGX_G(v, n, alphaSquared);
+}
+
+float GGX_D(vec3 n, vec3 h, float alphaSquared) {
+    float denominator = PI*pow(pow(dot(n, h), 2)*(alphaSquared - 1) + 1, 2);
+    return alphaSquared / denominator;
+}
+
+// Cook Torrence BRDF (Specular)
+vec3 getSpecular(vec3 l, vec3 v, vec3 n, vec3 F, float roughness) {
+    float alphaSquared = getAlphaSquared(roughness);
+    vec3 h = getHalfVector(l, v);
+    float D = GGX_D(n, h, alphaSquared);
+    float G = Smith_G(l, v, n, alphaSquared);
+
+    return (D*G*F) / (4 * dot(l, n) * dot(v, n));
+}
+
+void main(){
     // TODO : introduce hard coded parameters as attributes that are controllable within the engine.
     // ---------- Hard coded paramaters
     vec3 lightColor = vec3(1.f, 1.f, 1.f); // colour of the incoming light [LIGHT]
-    float absorptionCoeff = 0.5f; // factor which determines how much light the material will absorb. [MATERIAL]
+    vec3 materialBaseReflectivity = vec3(mat.pbrParameters.x); // visually good enough for dieletric materials.
+    float roughness = mat.pbrParameters.y;
+    float metallic = mat.pbrParameters.z;
+    vec3 albedo = mat.albedo; // surface color
+
+    materialBaseReflectivity = mix(materialBaseReflectivity, albedo, metallic);
+
+    vec3 lightDirection = normalize(light_position - vec3(vPos));
+    vec3 viewDirection = normalize(camera_pos - vec3(vPos));
+    vec3 h = getHalfVector(lightDirection, viewDirection);
+    vec3 F = Schlick_F(h, viewDirection, materialBaseReflectivity);
+
+    float reflectAmt = min(max(length(F), 0.0), 1.0);
+    float refractAmt = 1 - reflectAmt;
+    refractAmt *= 1.0 - metallic;
 
     // ---------- Diffuse ---------------
-    vec3 diffuseResult = lightColor / 3.14159f; // PI = 3.14159
-    float refractAmt = 1.f;
+    vec3 diffuseResult = albedo / PI;
 
-    vec3 specularResult = vec3(0.0f);
-    float reflectAmt = 0.f;
+    // ---------- Specular --------------
+    vec3 specularResult = getSpecular(lightDirection, viewDirection, surfaceNormal, F, roughness);
+
+    // cook torrence specular: (D(h) * F * G(v, h)) / (4 * dot(n*v) * dot(n*l))
 
     // reflectance equation : L_o = integral(f_r*L_o*cos(theta) dw_i)
-    vec3 lightDirection = normalize(light_position - vec3(vPos));
 
-    vec3 result = (refractAmt*diffuseResult + reflectAmt*specularResult)*dot(surfaceNormal, lightDirection);
+    vec3 result = lightColor * (refractAmt*diffuseResult + reflectAmt*specularResult)*dot(surfaceNormal, lightDirection);
     //result = surfaceNormal;
     vec3 testColor = vec3(1, 0, 0);
-    outColor = vec4(result, 1.0f);
+    outColor = vec4(albedo, 1.0f);
 }

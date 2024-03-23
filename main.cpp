@@ -1,6 +1,7 @@
 // CREDITS: tyrant_monkey - bmw model
 
 #include "antuco.hpp"
+#include "antuco_enums.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -95,14 +96,22 @@ int main() {
   floor->add_mesh(root_project + "/objects/antuco-files/mac/surface.glb");
   floor->scale(glm::vec3(1, 0.01, 1));
 
+  floor->get_material().albedo = glm::vec3(1.0);
+  floor->get_material().metallic = 0.1;
+  floor->get_material().roughness = 0.8;
+
   auto object = antuco.create_object();
   object->add_mesh(root_project + "/objects/antuco-files/mac/cube.glb");
   object->scale(glm::vec3(0.1, 0.1, 0.1));
   object->translate(glm::vec3(0, 1, 0));
+
+  object->get_material().albedo = glm::vec3(1.0, 0.0, 0.0);
+  object->get_material().metallic = 0.1;
+  object->get_material().roughness = 0.9;
+
 #elif defined(_WIN32) || defined(_WIN64)
   auto car = antuco.create_object();
   car->add_mesh(root_project + "\\objects\\antuco-files\\windows\\bmw.glb");
->>>>>>> Stashed changes
 #endif
 
   // light_mesh->scale(glm::vec3(0.2));
@@ -151,20 +160,25 @@ int main() {
                                        glm::cos(glm::radians(pitch)));
 
     camera_face = glm::normalize(camera_face);
+    glm::vec3 camera_right =
+        glm::normalize(glm::cross(camera_face, camera_orientation));
+    glm::vec3 camera_up = glm::normalize(glm::cross(camera_face, camera_right));
 
     // handle movement
     if (window->get_key_state(tuco::WindowInput::W)) {
       camera_pos += PLAYER_SPEED * camera_face * (float)delta;
     } else if (window->get_key_state(tuco::WindowInput::A)) {
-      camera_pos -=
-          glm::normalize(glm::cross(camera_face, camera_orientation)) *
-          PLAYER_SPEED * static_cast<float>(delta);
+      camera_pos -= camera_right * PLAYER_SPEED * static_cast<float>(delta);
     } else if (window->get_key_state(tuco::WindowInput::D)) {
-      camera_pos +=
-          glm::normalize(glm::cross(camera_face, camera_orientation)) *
-          PLAYER_SPEED * static_cast<float>(delta);
+      camera_pos += camera_right * PLAYER_SPEED * static_cast<float>(delta);
     } else if (window->get_key_state(tuco::WindowInput::S)) {
       camera_pos -= PLAYER_SPEED * camera_face * static_cast<float>(delta);
+    } else if (window->get_key_state(tuco::WindowInput::Q)) {
+      camera_pos +=
+          camera_orientation * PLAYER_SPEED * 0.1f * static_cast<float>(delta);
+    } else if (window->get_key_state(tuco::WindowInput::E)) {
+      camera_pos -=
+          camera_orientation * PLAYER_SPEED * 0.1f * static_cast<float>(delta);
     }
     if (window->get_key_state(tuco::WindowInput::X)) {
       light.update(camera_pos);
