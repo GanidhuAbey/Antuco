@@ -409,7 +409,7 @@ void GraphicsImpl::create_light_layout() {
   }
 }
 
-void GraphicsImpl::create_materials_layout() {
+void GraphicsImpl::createMaterialLayout() {
   // Uniform material data binding
   VkDescriptorSetLayoutBinding matLayoutBinding{};
   matLayoutBinding.binding = 0;
@@ -420,12 +420,19 @@ void GraphicsImpl::create_materials_layout() {
 
   // Material diffuse texture binding
   VkDescriptorSetLayoutBinding matDiffuseBinding{};
+  matDiffuseBinding.binding = 1;
+  matDiffuseBinding.descriptorCount = 1;
+  matDiffuseBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  matDiffuseBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  matDiffuseBinding.pImmutableSamplers = nullptr;
 
   VkDescriptorSetLayoutCreateInfo layoutInfo{};
   layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 
-  layoutInfo.bindingCount = 1;
-  layoutInfo.pBindings = &matLayoutBinding;
+  layoutInfo.bindingCount = 2;
+  VkDescriptorSetLayoutBinding bindings[2] = {matLayoutBinding,
+                                              matDiffuseBinding};
+  layoutInfo.pBindings = bindings;
 
   VkResult result = vkCreateDescriptorSetLayout(device.get(), &layoutInfo,
                                                 nullptr, &matLayout);
@@ -436,35 +443,24 @@ void GraphicsImpl::create_materials_layout() {
 }
 
 // PURPOSE: create pool to allocate memory to.
-void GraphicsImpl::create_materials_pool() {
-  mem::PoolCreateInfo pool_info{};
-  pool_info.pool_size = MATERIALS_POOL_SIZE;
-  pool_info.set_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+void GraphicsImpl::createMaterialPool() {
+  std::vector<mem::PoolCreateInfo> poolInfo(2);
+  // material shader paramaters
+  poolInfo[0].pool_size = MATERIALS_POOL_SIZE;
+  poolInfo[0].set_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  // material diffuse texture
+  poolInfo[1].pool_size = MATERIALS_POOL_SIZE;
+  poolInfo[1].set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-  mat_pool = std::make_unique<mem::Pool>(device, pool_info);
+  mat_pool = std::make_unique<mem::Pool>(device, poolInfo);
 }
 
-void GraphicsImpl::create_materials_set(uint32_t mat_count) {
-  std::vector<VkDescriptorSetLayout> mat_layouts(mat_count, matLayout);
+void GraphicsImpl::createMaterialSets(uint32_t matCount) {
+  matSets.resize(matSets.size() + 1);
+  matSets[matSets.size() - 1].resize(matCount);
 
-  VkDescriptorSetAllocateInfo allocateInfo{};
-
-  VkDescriptorPool allocated_pool;
-  size_t pool_index = mat_pool->allocate(mat_count);
-
-  allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-  allocateInfo.descriptorPool = mat_pool->pools[pool_index];
-  allocateInfo.descriptorSetCount = mat_count;
-  allocateInfo.pSetLayouts = mat_layouts.data();
-
-  mat_sets.resize(mat_sets.size() + 1);
-  mat_sets[mat_sets.size() - 1].resize(mat_count);
-  auto result = vkAllocateDescriptorSets(device.get(), &allocateInfo,
-                                         mat_sets[mat_sets.size() - 1].data());
-  if (result != VK_SUCCESS) {
-    LOG("failed to allocate descriptor sets!");
-    throw std::runtime_error("");
-  }
+  mat_pool->allocateDescriptorSets(device, matCount, matLayout,
+                                   matSets[matSets.size() - 1].data());
 }
 
 void GraphicsImpl::create_screen_pipeline() {
@@ -557,71 +553,42 @@ void GraphicsImpl::create_ubo_layout() {
 }
 
 void GraphicsImpl::create_ubo_pool() {
-  mem::PoolCreateInfo pool_info{};
-  pool_info.pool_size = swapchain.get_image_size() * 50;
-  pool_info.set_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  std::vector<mem::PoolCreateInfo> poolInfo(1);
+  poolInfo[0].pool_size = swapchain.get_image_size() * 50;
+  poolInfo[0].set_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
-  ubo_pool = std::make_unique<mem::Pool>(device, pool_info);
+  ubo_pool = std::make_unique<mem::Pool>(device, poolInfo);
 }
 
 // create swapchain image * set_count amount of descriptor sets.
-void GraphicsImpl::create_ubo_set(uint32_t set_count) {
-  std::vector<VkDescriptorSetLayout> ubo_layouts(set_count, ubo_layout);
+void GraphicsImpl::createUboSets(uint32_t setCount) {
+  size_t current_size = uboSets.size();
+  uboSets.resize(current_size + 1);
+  uboSets[current_size].resize(setCount);
 
-  VkDescriptorSetAllocateInfo allocateInfo{};
-
-  VkDescriptorPool allocated_pool;
-  size_t pool_index = ubo_pool->allocate(set_count);
-
-  allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-  allocateInfo.descriptorPool = ubo_pool->pools[pool_index];
-  allocateInfo.descriptorSetCount = set_count;
-  allocateInfo.pSetLayouts = ubo_layouts.data();
-
-  size_t current_size = ubo_sets.size();
-  ubo_sets.resize(current_size + 1);
-  ubo_sets[current_size].resize(set_count);
-
-  auto result = vkAllocateDescriptorSets(device.get(), &allocateInfo,
-                                         ubo_sets[current_size].data());
-
-  if (result != VK_SUCCESS) {
-    throw std::runtime_error("failed to allocate descriptor sets!");
-  }
+  ubo_pool->allocateDescriptorSets(device, setCount, ubo_layout,
+                                   uboSets[current_size].data());
 }
 
 void GraphicsImpl::create_shadowmap_pool() {
-  mem::PoolCreateInfo pool_info{};
-  pool_info.pool_size = 100;
-  pool_info.set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  std::vector<mem::PoolCreateInfo> poolInfo(1);
+  poolInfo[0].pool_size = 100;
+  poolInfo[0].set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-  shadowmap_pool = std::make_unique<mem::Pool>(device, pool_info);
+  shadowmap_pool = std::make_unique<mem::Pool>(device, poolInfo);
 }
 
 void GraphicsImpl::create_texture_pool() {
-  mem::PoolCreateInfo pool_info{};
-  pool_info.pool_size = swapchain.get_image_size() * 100;
-  pool_info.set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  std::vector<mem::PoolCreateInfo> poolInfo(1);
+  poolInfo[0].pool_size = swapchain.get_image_size() * 100;
+  poolInfo[0].set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-  texture_pool = std::make_unique<mem::Pool>(device, pool_info);
+  texture_pool = std::make_unique<mem::Pool>(device, poolInfo);
 }
 
 void GraphicsImpl::create_shadowmap_set() {
-  VkDescriptorSetAllocateInfo allocateInfo{};
-  allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-  allocateInfo.descriptorPool =
-      shadowmap_pool->pools[shadowmap_pool->allocate(1)];
-  allocateInfo.descriptorSetCount = 1;
-  allocateInfo.pSetLayouts = &shadowmap_layout;
-
-  // size_t currentSize = descriptorSets.size();
-  // descriptorSets.resize(currentSize + 1);
-  // descriptorSet[currentSize].resize(swapChainImages.size());
-
-  if (vkAllocateDescriptorSets(device.get(), &allocateInfo, &shadowmap_set) !=
-      VK_SUCCESS) {
-    throw std::runtime_error("failed to allocate texture sets!");
-  }
+  shadowmap_pool->allocateDescriptorSets(device, 1, shadowmap_layout,
+                                         &shadowmap_set);
 }
 
 void GraphicsImpl::create_texture_set(size_t mesh_count) {
@@ -793,20 +760,20 @@ void GraphicsImpl::update_descriptor_set(VkDescriptorBufferInfo buffer_info,
 }
 
 void GraphicsImpl::write_to_materials() {
-  for (size_t i = 0; i < mat_sets[mat_sets.size() - 1].size(); i++) {
+  for (size_t i = 0; i < matSets[matSets.size() - 1].size(); i++) {
     VkDescriptorBufferInfo buffer_info =
         setup_descriptor_set_buffer(sizeof(MaterialBufferObject));
     mat_offsets.push_back(buffer_info.offset);
-    update_descriptor_set(buffer_info, 0, mat_sets[mat_sets.size() - 1][i]);
+    update_descriptor_set(buffer_info, 0, matSets[matSets.size() - 1][i]);
   }
 }
 
 void GraphicsImpl::write_to_ubo() {
-  for (size_t i = 0; i < ubo_sets[ubo_sets.size() - 1].size(); i++) {
+  for (size_t i = 0; i < uboSets[uboSets.size() - 1].size(); i++) {
     VkDescriptorBufferInfo buffer_info =
         setup_descriptor_set_buffer(sizeof(UniformBufferObject));
     ubo_offsets.push_back(buffer_info.offset);
-    update_descriptor_set(buffer_info, 0, ubo_sets[ubo_sets.size() - 1][i]);
+    update_descriptor_set(buffer_info, 0, uboSets[uboSets.size() - 1][i]);
   }
 }
 
@@ -1123,9 +1090,9 @@ void GraphicsImpl::create_command_buffers(
           descriptor_2.resize(4);
 
           descriptor_1[0] = light_ubo[j].get_api_set(prim.transform_index);
-          descriptor_1[1] = ubo_sets[j][prim.transform_index];
+          descriptor_1[1] = uboSets[j][prim.transform_index];
           descriptor_1[3] = shadowmap_set;
-          descriptor_1[4] = mat_sets[j][prim.mat_index];
+          descriptor_1[4] = matSets[j][prim.mat_index];
 
           descriptor_2[0] = descriptor_1[0];
           descriptor_2[1] = descriptor_1[1];

@@ -38,8 +38,8 @@ GraphicsImpl::GraphicsImpl(Window *pWindow)
   create_shadowpass();
   create_ubo_layout();
   create_light_layout();
-  create_materials_layout();
-  create_materials_pool();
+  createMaterialLayout();
+  createMaterialPool();
   create_texture_layout();
   create_shadowmap_layout();
   create_shadowmap_pool();
@@ -106,7 +106,7 @@ void GraphicsImpl::update_draw(
 
       update_command_buffers = true;
       game_objects[i]->update = false;
-      create_ubo_set(static_cast<uint32_t>(model.transforms.size()));
+      createUboSets(static_cast<uint32_t>(model.transforms.size()));
       write_to_ubo();
       create_light_set(static_cast<uint32_t>(model.transforms.size()));
 
@@ -118,7 +118,7 @@ void GraphicsImpl::update_draw(
         create_texture_set(model.model_images.size());
       }
 
-      create_materials_set(1);
+      createMaterialSets(1);
       write_to_materials();
 
       for (auto &prim : primitives) {
@@ -126,7 +126,6 @@ void GraphicsImpl::update_draw(
             game_objects[i]->material; // model.model_materials[prim.mat_index];
         game_objects[i]->material.mem_access = mat_offsets.size() - 1;
         update_materials(mat_offsets[mat_offsets.size() - 1], material);
-        
 
         /*
         // create vulkan image
