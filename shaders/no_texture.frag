@@ -22,8 +22,6 @@ layout(set=3, binding=0) uniform Material {
     vec4 padding[2];
 } mat;
 
-layout(set=3, binding=1) uniform sampler2D matDiffuse;
-
 float bias = 5e-3;
 
 int LIGHT_FACTOR = 1;

@@ -117,7 +117,7 @@ void GraphicsImpl::create_shadowpass_buffer() {
 }
 
 void GraphicsImpl::create_output_buffers() {
-  size_t image_num = swapchain.get_image_size();
+  size_t image_num = swapchain.getSwapchainSize();
   output_buffers.resize(image_num);
 
   for (size_t i = 0; i < image_num; i++) {
@@ -166,7 +166,7 @@ void GraphicsImpl::create_semaphores() {
 
 void GraphicsImpl::create_fences() {
   in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
-  images_in_flight.resize(swapchain.get_image_size(), VK_NULL_HANDLE);
+  images_in_flight.resize(swapchain.getSwapchainSize(), VK_NULL_HANDLE);
   VkFenceCreateInfo createInfo{};
   createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
   createInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
@@ -348,7 +348,7 @@ void GraphicsImpl::create_output_images() {
 
   data.image_view_info.aspect_mask = vk::ImageAspectFlagBits::eColor;
 
-  output_images.resize(swapchain.get_image_size());
+  output_images.resize(swapchain.getSwapchainSize());
 
   for (mem::Image &image : output_images) {
     image.init(physical_device, device, data);
@@ -452,15 +452,20 @@ void GraphicsImpl::createMaterialPool() {
   poolInfo[1].pool_size = MATERIALS_POOL_SIZE;
   poolInfo[1].set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-  mat_pool = std::make_unique<mem::Pool>(device, poolInfo);
+  matPool = std::make_unique<mem::Pool>(device, poolInfo);
 }
 
 void GraphicsImpl::createMaterialSets(uint32_t matCount) {
   matSets.resize(matSets.size() + 1);
   matSets[matSets.size() - 1].resize(matCount);
 
-  mat_pool->allocateDescriptorSets(device, matCount, matLayout,
-                                   matSets[matSets.size() - 1].data());
+  matPool->allocateDescriptorSets(device, matCount, matLayout,
+                                  matSets[matSets.size() - 1].data());
+
+  // materialCollection.init(device, VkDescriptorType type,
+  // VkDescriptorSetLayout layout, uint32_t resource_size, mem::Pool &pool)
+
+  // materialCollection.init(device, matLayout, matCount, *matPool);
 }
 
 void GraphicsImpl::create_screen_pipeline() {
@@ -515,7 +520,7 @@ void GraphicsImpl::create_screen_pass() {
 }
 
 void GraphicsImpl::create_screen_buffer() {
-  uint32_t image_num = swapchain.get_image_size();
+  uint32_t image_num = swapchain.getSwapchainSize();
   screen_buffers.resize(image_num);
 
   for (size_t i = 0; i < image_num; i++) {
@@ -554,7 +559,7 @@ void GraphicsImpl::create_ubo_layout() {
 
 void GraphicsImpl::create_ubo_pool() {
   std::vector<mem::PoolCreateInfo> poolInfo(1);
-  poolInfo[0].pool_size = swapchain.get_image_size() * 50;
+  poolInfo[0].pool_size = swapchain.getSwapchainSize() * 50;
   poolInfo[0].set_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
   ubo_pool = std::make_unique<mem::Pool>(device, poolInfo);
@@ -580,7 +585,7 @@ void GraphicsImpl::create_shadowmap_pool() {
 
 void GraphicsImpl::create_texture_pool() {
   std::vector<mem::PoolCreateInfo> poolInfo(1);
-  poolInfo[0].pool_size = swapchain.get_image_size() * 100;
+  poolInfo[0].pool_size = swapchain.getSwapchainSize() * 100;
   poolInfo[0].set_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
   texture_pool = std::make_unique<mem::Pool>(device, poolInfo);
@@ -596,9 +601,8 @@ void GraphicsImpl::create_texture_set(size_t mesh_count) {
   texture_sets.resize(current_size + 1);
   // texture_sets[current_size] = create_set(texture_layout, mesh_count,
   // *texture_pool);
-  texture_sets[current_size].init(device,
-                                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                  texture_layout, mesh_count, *texture_pool);
+  texture_sets[current_size].init(device, texture_layout, mesh_count,
+                                  *texture_pool);
 }
 
 std::vector<VkDescriptorSet>
@@ -820,7 +824,7 @@ void GraphicsImpl::destroy_draw() {
 
   texture_pool.get()->destroyPool();
   ubo_pool.get()->destroyPool();
-  mat_pool.get()->destroyPool();
+  matPool.get()->destroyPool();
   shadowmap_pool.get()->destroyPool();
 
   for (mem::Image &image : output_images) {
@@ -861,18 +865,18 @@ choose_best_surface_format(std::vector<vk::SurfaceFormatKHR> formats) {
 void GraphicsImpl::create_light_set(uint32_t set_count) {
   size_t current_size = light_ubo.size();
   light_ubo.resize(current_size + 1);
-  light_ubo[current_size].init(device, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                               light_layout, set_count, *ubo_pool);
+  light_ubo[current_size].init(device, light_layout, set_count, *ubo_pool);
 
   // write to set
   VkDeviceSize offset = uniform_buffer.allocate(sizeof(UniformBufferObject));
 
+  VkDeviceSize buffer_range = (VkDeviceSize)sizeof(UniformBufferObject);
+  light_ubo[current_size].addBuffer(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                    uniform_buffer.buffer, offset,
+                                    buffer_range);
+
+  light_ubo[current_size].updateSets();
   for (uint32_t i = 0; i < set_count; i++) {
-    light_ubo[current_size].set_binding(1);
-    VkDeviceSize buffer_range = (VkDeviceSize)sizeof(UniformBufferObject);
-    light_ubo[current_size].add_buffer(uniform_buffer.buffer, offset,
-                                       buffer_range);
-    light_ubo[current_size].update_set(i);
     light_offsets.push_back(offset);
   }
 }
@@ -990,7 +994,7 @@ void GraphicsImpl::create_command_buffers(
   bufferAllocate.commandPool = command_pool;
   bufferAllocate.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
-  uint32_t imageCount = static_cast<uint32_t>(swapchain.get_image_size());
+  uint32_t imageCount = static_cast<uint32_t>(swapchain.getSwapchainSize());
   bufferAllocate.commandBufferCount = imageCount;
 
   command_buffers = device.get().allocateCommandBuffers(bufferAllocate);
@@ -1213,16 +1217,14 @@ void GraphicsImpl::copy_to_swapchain(size_t i) {
 }
 
 void GraphicsImpl::create_screen_set() {
-  screen_resource.init(device, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                       texture_layout, swapchain.get_image_size(),
+  screen_resource.init(device, texture_layout, swapchain.getSwapchainSize(),
                        *texture_pool);
 
-  screen_resource.add_image(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+  screen_resource.addImages(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                             output_images, texture_sampler);
 
-  screen_resource.set_binding(0);
-
-  screen_resource.update_set();
+  screen_resource.updateSets();
 }
 
 void GraphicsImpl::render_to_screen(size_t i) {
@@ -1496,11 +1498,11 @@ void GraphicsImpl::write_to_shadowmap_set() {
 void GraphicsImpl::write_to_texture_set(ResourceCollection texture_set,
                                         mem::Image image) {
 
-  texture_set.add_image(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image,
-                        texture_sampler);
+  texture_set.addImage(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image,
+                       texture_sampler);
 
-  texture_set.set_binding(0);
-  texture_set.update_set();
+  texture_set.updateSets();
 }
 
 void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
@@ -1548,11 +1550,11 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
 
   mem::Image &image = texture_images[texture_images.size() - 1][0];
 
-  texture_sets[object].add_image(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                 image, texture_sampler);
+  texture_sets[object].addImage(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image,
+                                texture_sampler);
 
-  texture_sets[object].set_binding(0);
-  texture_sets[object].update_set(texture_set);
+  texture_sets[object].updateSet(texture_set);
 }
 
 void GraphicsImpl::create_vulkan_image(const ImageBuffer &image, size_t i,
@@ -1611,10 +1613,10 @@ void GraphicsImpl::create_vulkan_image(const ImageBuffer &image, size_t i,
   // save to resource set
   mem::Image &vulkan_image = texture_images[texture_images.size() - 1][0];
   ResourceCollection &set = texture_sets[i];
-  set.add_image(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, vulkan_image,
-                texture_sampler);
-  set.set_binding(0);
-  set.update_set(j);
+  set.addImage(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, vulkan_image,
+               texture_sampler);
+  set.updateSet(j);
 }
 
 void GraphicsImpl::create_texture_image(std::string texturePath, size_t object,
@@ -1697,10 +1699,10 @@ void GraphicsImpl::create_texture_image(std::string texturePath, size_t object,
   // texture_images[texture_images.size() - 1][0].get_api_image_view());
   mem::Image &image = texture_images[texture_images.size() - 1][0];
   ResourceCollection &set = texture_sets[object];
-  set.add_image(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image,
-                texture_sampler);
-  set.set_binding(0);
-  set.update_set(texture_set);
+  set.addImage(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image,
+               texture_sampler);
+  set.updateSet(texture_set);
 
   // free image
   stbi_image_free(pixels);

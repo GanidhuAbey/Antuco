@@ -151,6 +151,8 @@ private:
   VkDescriptorSetLayout matLayout;
   VkDescriptorSetLayout light_layout;
 
+  ResourceCollection materialCollection;
+
   vk::Sampler texture_sampler;
 
   std::vector<VkFramebuffer> output_buffers;
@@ -172,7 +174,7 @@ private:
 
   std::unique_ptr<mem::Pool> ubo_pool;
   std::unique_ptr<mem::Pool> texture_pool;
-  std::unique_ptr<mem::Pool> mat_pool;
+  std::unique_ptr<mem::Pool> matPool;
 
   std::vector<std::vector<VkDescriptorSet>> uboSets;
   std::vector<std::vector<VkDescriptorSet>> matSets; // model -> mesh
