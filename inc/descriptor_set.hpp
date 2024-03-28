@@ -9,6 +9,16 @@
 #include <vulkan/vulkan.hpp>
 
 namespace tuco {
+
+struct ResourceWriteInfo {
+  uint32_t binding;
+  uint32_t setIndex;
+  VkDescriptorType type;
+  // IMPORTANT: only one of these indices should be set.
+  int32_t imageInfoIndex = -1;
+  int32_t bufferInfoIndex = -1;
+};
+
 class ResourceCollection {
 private:
   v::Device *device;
@@ -17,7 +27,7 @@ private:
   bool image_add = false;
 
   std::vector<VkDescriptorSet> sets;
-  std::vector<std::vector<VkWriteDescriptorSet>> setsUpdateInfo;
+  std::vector<std::vector<ResourceWriteInfo>> setsUpdateInfo;
   std::vector<VkDescriptorImageInfo> descriptorImageInfo;
   std::vector<VkDescriptorBufferInfo> descriptorBufferInfo;
 

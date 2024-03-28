@@ -871,7 +871,7 @@ void GraphicsImpl::create_light_set(uint32_t set_count) {
   VkDeviceSize offset = uniform_buffer.allocate(sizeof(UniformBufferObject));
 
   VkDeviceSize buffer_range = (VkDeviceSize)sizeof(UniformBufferObject);
-  light_ubo[current_size].addBuffer(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+  light_ubo[current_size].addBuffer(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                     uniform_buffer.buffer, offset,
                                     buffer_range);
 

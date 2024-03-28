@@ -51,7 +51,21 @@ void ResourceCollection::updateSet(size_t i) {
     return;
   }
 
-  for (auto writeInfo : setsUpdateInfo[i]) {
+  for (const auto &updateInfo : setsUpdateInfo[i]) {
+    VkWriteDescriptorSet writeInfo{};
+    writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeInfo.descriptorType = updateInfo.type;
+    writeInfo.descriptorCount = 1;
+    writeInfo.dstSet = sets[updateInfo.setIndex];
+    writeInfo.dstBinding = updateInfo.binding;
+    if (updateInfo.imageInfoIndex != -1) {
+      writeInfo.pImageInfo = &descriptorImageInfo[updateInfo.imageInfoIndex];
+    }
+    if (updateInfo.bufferInfoIndex != -1) {
+      writeInfo.pBufferInfo = &descriptorBufferInfo[updateInfo.bufferInfoIndex];
+    }
+    writeInfo.dstArrayElement = 0;
+
     vkUpdateDescriptorSets(device->get(), 1, &writeInfo, 0, nullptr);
   }
 }
@@ -66,18 +80,14 @@ void ResourceCollection::addBuffer(uint32_t binding, VkDescriptorType type,
 
   descriptorBufferInfo.push_back(bufferInfo);
 
-  VkWriteDescriptorSet bufferWrite{};
-  bufferWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  bufferWrite.descriptorCount = 1;
-  bufferWrite.dstBinding = binding;
-  bufferWrite.descriptorType = type;
-  bufferWrite.pBufferInfo =
-      &descriptorBufferInfo[descriptorBufferInfo.size() - 1];
-  bufferWrite.dstArrayElement = 0;
+  ResourceWriteInfo writeInfo{};
+  writeInfo.binding = binding;
+  writeInfo.type = type;
+  writeInfo.bufferInfoIndex = descriptorBufferInfo.size() - 1;
 
   for (uint32_t i = 0; i < sets.size(); i++) {
-    bufferWrite.dstSet = sets[i];
-    setsUpdateInfo[i].push_back(bufferWrite);
+    writeInfo.setIndex = i;
+    setsUpdateInfo[i].push_back(writeInfo);
   }
 }
 
@@ -100,17 +110,13 @@ void ResourceCollection::addImages(uint32_t binding, VkDescriptorType type,
 
     descriptorImageInfo.push_back(imageInfo);
 
-    VkWriteDescriptorSet writeImage{};
-    writeImage.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeImage.descriptorType = type;
-    writeImage.descriptorCount = 1;
-    writeImage.dstBinding = binding;
-    writeImage.pImageInfo =
-        &descriptorImageInfo[descriptorImageInfo.size() - 1];
-    writeImage.dstArrayElement = 0;
+    ResourceWriteInfo writeInfo{};
+    writeInfo.binding = binding;
+    writeInfo.type = type;
+    writeInfo.imageInfoIndex = descriptorImageInfo.size() - 1;
 
-    writeImage.dstSet = sets[i];
-    setsUpdateInfo[i].push_back(writeImage);
+    writeInfo.setIndex = i;
+    setsUpdateInfo[i].push_back(writeInfo);
   }
 }
 
@@ -125,16 +131,13 @@ void ResourceCollection::addImage(uint32_t binding, VkDescriptorType type,
 
   descriptorImageInfo.push_back(imageInfo);
 
-  VkWriteDescriptorSet writeImage{};
-  writeImage.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  writeImage.descriptorType = type;
-  writeImage.descriptorCount = 1;
-  writeImage.dstBinding = binding;
-  writeImage.pImageInfo = &descriptorImageInfo[descriptorImageInfo.size() - 1];
-  writeImage.dstArrayElement = 0;
+  ResourceWriteInfo writeInfo{};
+  writeInfo.binding = binding;
+  writeInfo.type = type;
+  writeInfo.imageInfoIndex = descriptorImageInfo.size() - 1;
 
   for (uint32_t i = 0; i < sets.size(); i++) {
-    writeImage.dstSet = sets[i];
-    setsUpdateInfo[i].push_back(writeImage);
+    writeInfo.setIndex = i;
+    setsUpdateInfo[i].push_back(writeInfo);
   }
 }

@@ -93,7 +93,7 @@ int main() {
 
 #if defined(__APPLE__)
   auto floor = antuco.create_object();
-  floor->add_mesh(root_project + "/objects/antuco-files/mac/surface.glb");
+  floor->add_mesh(root_project + "/objects/antuco-files/mac/cube.glb");
   floor->scale(glm::vec3(1, 0.01, 1));
 
   floor->get_material().albedo = glm::vec3(1.0);
