@@ -4,6 +4,7 @@
 #include "api_graphics.hpp"
 
 #include "data_structures.hpp"
+#include "descriptor_set.hpp"
 #include "material.hpp"
 #include "memory_allocator.hpp"
 
@@ -455,17 +456,14 @@ void GraphicsImpl::createMaterialPool() {
   matPool = std::make_unique<mem::Pool>(device, poolInfo);
 }
 
-void GraphicsImpl::createMaterialSets(uint32_t matCount) {
-  matSets.resize(matSets.size() + 1);
-  matSets[matSets.size() - 1].resize(matCount);
+void GraphicsImpl::createMaterialCollection() {
+  // matSets.resize(matSets.size() + 1);
+  // matSets[matSets.size() - 1].resize(matCount);
 
-  matPool->allocateDescriptorSets(device, matCount, matLayout,
-                                  matSets[matSets.size() - 1].data());
+  // matPool->allocateDescriptorSets(device, matCount, matLayout,
+  //                                 matSets[matSets.size() - 1].data());
 
-  // materialCollection.init(device, VkDescriptorType type,
-  // VkDescriptorSetLayout layout, uint32_t resource_size, mem::Pool &pool)
-
-  // materialCollection.init(device, matLayout, matCount, *matPool);
+  materialCollection.init(device, matLayout);
 }
 
 void GraphicsImpl::create_screen_pipeline() {
@@ -601,8 +599,9 @@ void GraphicsImpl::create_texture_set(size_t mesh_count) {
   texture_sets.resize(current_size + 1);
   // texture_sets[current_size] = create_set(texture_layout, mesh_count,
   // *texture_pool);
-  texture_sets[current_size].init(device, texture_layout, mesh_count,
-                                  *texture_pool);
+  texture_sets[current_size].init(device, texture_layout);
+
+  texture_sets[current_size].addSets(mesh_count, *texture_pool);
 }
 
 std::vector<VkDescriptorSet>
@@ -736,14 +735,13 @@ void GraphicsImpl::create_shadowpass_pipeline() {
   shadowmap_pipeline.init(device, config);
 }
 
-VkDescriptorBufferInfo
-GraphicsImpl::setup_descriptor_set_buffer(uint32_t set_size) {
-  VkDeviceSize offset = uniform_buffer.allocate(set_size);
+VkDescriptorBufferInfo GraphicsImpl::allocateDescriptorBuffer(uint32_t size) {
+  VkDeviceSize offset = uniform_buffer.allocate(size);
 
   VkDescriptorBufferInfo buffer_info{};
   buffer_info.buffer = uniform_buffer.buffer;
   buffer_info.offset = offset;
-  buffer_info.range = (VkDeviceSize)set_size;
+  buffer_info.range = (VkDeviceSize)size;
 
   return buffer_info;
 }
@@ -763,19 +761,26 @@ void GraphicsImpl::update_descriptor_set(VkDescriptorBufferInfo buffer_info,
   vkUpdateDescriptorSets(device.get(), 1, &writeInfo, 0, nullptr);
 }
 
-void GraphicsImpl::write_to_materials() {
-  for (size_t i = 0; i < matSets[matSets.size() - 1].size(); i++) {
-    VkDescriptorBufferInfo buffer_info =
-        setup_descriptor_set_buffer(sizeof(MaterialBufferObject));
-    mat_offsets.push_back(buffer_info.offset);
-    update_descriptor_set(buffer_info, 0, matSets[matSets.size() - 1][i]);
-  }
+MaterialGpuInfo GraphicsImpl::setupMaterialBuffers() {
+  // VkDeviceSize allocationSize = sizeof(MaterialBufferObject);
+  // VkDeviceSize bufferOffset = uniform_buffer.allocate(allocationSize);
+
+  // materialCollection.addBuffer(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+  //                              uniform_buffer.buffer, bufferOffset,
+  //                              allocationSize);
+
+  // materialCollection.updateSets();
+
+  // MaterialGpuInfo offsets{};
+  // offsets.descriptorOffset = bufferOffset;
+
+  // return offsets;
 }
 
 void GraphicsImpl::write_to_ubo() {
   for (size_t i = 0; i < uboSets[uboSets.size() - 1].size(); i++) {
     VkDescriptorBufferInfo buffer_info =
-        setup_descriptor_set_buffer(sizeof(UniformBufferObject));
+        allocateDescriptorBuffer(sizeof(UniformBufferObject));
     ubo_offsets.push_back(buffer_info.offset);
     update_descriptor_set(buffer_info, 0, uboSets[uboSets.size() - 1][i]);
   }
@@ -865,7 +870,8 @@ choose_best_surface_format(std::vector<vk::SurfaceFormatKHR> formats) {
 void GraphicsImpl::create_light_set(uint32_t set_count) {
   size_t current_size = light_ubo.size();
   light_ubo.resize(current_size + 1);
-  light_ubo[current_size].init(device, light_layout, set_count, *ubo_pool);
+  light_ubo[current_size].init(device, light_layout);
+  light_ubo[current_size].addSets(set_count, *ubo_pool);
 
   // write to set
   VkDeviceSize offset = uniform_buffer.allocate(sizeof(UniformBufferObject));
@@ -985,6 +991,33 @@ void GraphicsImpl::create_shadow_map(
   vkCmdEndRenderPass(command_buffers[command_index]);
 }
 
+void GraphicsImpl::updateMaterialResources(Material &material) {
+  // update_materials(material.gpuInfo.descriptorOffset, material);
+}
+
+void GraphicsImpl::writeMaterial(Material &material) {
+  // material.offsets.descriptorOffset = globalMaterialOffsets.descriptorOffset;
+  material.gpuInfo.bufferOffset =
+      uniform_buffer.allocate(sizeof(MaterialBufferObject));
+  // update_materials(material.offsets.bufferOffset, material);
+  MaterialBufferObject matObj = material.convert();
+  updateUniformBuffer(material.gpuInfo.bufferOffset,
+                      sizeof(MaterialBufferObject), &matObj);
+
+  material.gpuInfo.setIndex = materialCollection.addSets(1, *matPool);
+
+  BufferDescription info{};
+  info.binding = 0;
+  info.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  info.buffer = uniform_buffer.buffer;
+  info.bufferRange = sizeof(MaterialBufferObject);
+  info.bufferOffset = material.gpuInfo.bufferOffset;
+
+  materialCollection.addBuffer(info, material.gpuInfo.setIndex);
+
+  materialCollection.updateSet(material.gpuInfo.setIndex);
+}
+
 void GraphicsImpl::create_command_buffers(
     const std::vector<std::unique_ptr<GameObject>> &game_objects) {
   // allocate memory for command buffer, you have to create a draw command for
@@ -1082,6 +1115,7 @@ void GraphicsImpl::create_command_buffers(
       if (!game_objects[j]->update) {
         auto model_primitive_count =
             game_objects[j]->object_model.primitives.size();
+
         for (size_t k = 0; k < model_primitive_count; k++) {
 
           Primitive prim = game_objects[j]->object_model.primitives[k];
@@ -1096,7 +1130,11 @@ void GraphicsImpl::create_command_buffers(
           descriptor_1[0] = light_ubo[j].get_api_set(prim.transform_index);
           descriptor_1[1] = uboSets[j][prim.transform_index];
           descriptor_1[3] = shadowmap_set;
-          descriptor_1[4] = matSets[j][prim.mat_index];
+          // TODO: currently we update all our descriptor sets once at the
+          // beginning of the frame. however, if we want to have per-material
+          // descriptors, then we need to update more frequently (whenever the
+          // material changes).
+          descriptor_1[4] = materialCollection.get_api_set(0);
 
           descriptor_2[0] = descriptor_1[0];
           descriptor_2[1] = descriptor_1[1];
@@ -1217,12 +1255,13 @@ void GraphicsImpl::copy_to_swapchain(size_t i) {
 }
 
 void GraphicsImpl::create_screen_set() {
-  screen_resource.init(device, texture_layout, swapchain.getSwapchainSize(),
-                       *texture_pool);
+  screen_resource.init(device, texture_layout);
 
-  screen_resource.addImages(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                            output_images, texture_sampler);
+  screen_resource.addSets(swapchain.getSwapchainSize(), *texture_pool);
+
+  screen_resource.addImagePerSet(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                 output_images, texture_sampler);
 
   screen_resource.updateSets();
 }
@@ -1358,7 +1397,12 @@ void GraphicsImpl::copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer,
 
 void GraphicsImpl::update_light_buffer(VkDeviceSize memory_offset,
                                        LightBufferObject lbo) {
-  uniform_buffer.write(device.get(), memory_offset, sizeof(lbo), &lbo);
+  uniform_buffer.writeLocal(device.get(), memory_offset, sizeof(lbo), &lbo);
+}
+
+void GraphicsImpl::updateUniformBuffer(VkDeviceSize offset, VkDeviceSize size,
+                                       void *data) {
+  uniform_buffer.writeLocal(device.get(), offset, size, data);
 }
 
 void GraphicsImpl::update_materials(VkDeviceSize memory_offset, Material mat) {
@@ -1366,15 +1410,16 @@ void GraphicsImpl::update_materials(VkDeviceSize memory_offset, Material mat) {
   float has_image = 1.0f;
   // if (mat.image_index == std::numeric_limits<uint32_t>::max()) {
   has_image = 0.0f;
-  //}
+  //
 
-  uniform_buffer.write(device.get(), memory_offset, sizeof(mat_obj), &mat_obj);
+  uniform_buffer.writeLocal(device.get(), memory_offset, sizeof(mat_obj),
+                            &mat_obj);
 }
 
 void GraphicsImpl::update_uniform_buffer(VkDeviceSize memory_offset,
                                          UniformBufferObject ubo) {
   // overwrite memory
-  uniform_buffer.write(device.get(), memory_offset, sizeof(ubo), &ubo);
+  uniform_buffer.writeLocal(device.get(), memory_offset, sizeof(ubo), &ubo);
 }
 
 /// <summary>

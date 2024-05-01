@@ -10,6 +10,7 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include "material.hpp"
 #include "window.hpp"
 
 #include <GLFW/glfw3.h>
@@ -152,6 +153,7 @@ private:
   VkDescriptorSetLayout light_layout;
 
   ResourceCollection materialCollection;
+  MaterialGpuInfo globalMaterialOffsets;
 
   vk::Sampler texture_sampler;
 
@@ -190,7 +192,7 @@ private:
   std::vector<VkDeviceSize>
       ubo_offsets; // holds the offset data for a objects ubo information within
                    // the uniform buffer
-  std::vector<VkDeviceSize> mat_offsets;
+  std::vector<VkDeviceSize> matOffsets;
   std::vector<std::vector<mem::Image>> texture_images;
 
   size_t current_frame = 0;
@@ -262,7 +264,7 @@ private:
   void createUboSets(uint32_t setCount);
   void createMaterialLayout();
   void createMaterialPool();
-  void createMaterialSets(uint32_t matCount);
+  void createMaterialCollection();
   void create_texture_layout();
   void create_texture_pool();
   void create_texture_set(size_t mesh_count);
@@ -296,9 +298,14 @@ private:
                            VkShaderModule shaderModule);
 
   void write_to_ubo();
-  void write_to_materials();
+  MaterialGpuInfo setupMaterialBuffers();
+  void updateMaterialResources(Material &material);
+  void writeMaterial(Material &material);
+
   void update_uniform_buffer(VkDeviceSize memory_offset,
                              UniformBufferObject ubo);
+
+  void updateUniformBuffer(VkDeviceSize offset, VkDeviceSize size, void *data);
   void update_materials(VkDeviceSize memory_offset, Material mat);
   void copy_image_to_image(VkImage src_image, VkImageLayout src_layout,
                            VkImage dst_image, VkImageLayout dst_layout,
@@ -321,7 +328,7 @@ private:
 
   // helper functions
 private:
-  VkDescriptorBufferInfo setup_descriptor_set_buffer(uint32_t set_size);
+  VkDescriptorBufferInfo allocateDescriptorBuffer(uint32_t size);
   void update_descriptor_set(VkDescriptorBufferInfo buffer_info,
                              uint32_t dst_binding, VkDescriptorSet set);
   vk::Framebuffer create_frame_buffer(vk::RenderPass pass,

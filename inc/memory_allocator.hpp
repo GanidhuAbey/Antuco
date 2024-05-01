@@ -159,8 +159,12 @@ public:
             BufferCreateInfo &buffer_info);
 
   void destroy();
-  void write(VkDevice device, VkDeviceSize offset, VkDeviceSize data_size,
-             void *p_data);
+  void writeLocal(VkDevice device, VkDeviceSize offset, VkDeviceSize data_size,
+                  void *p_data);
+
+  void writeDevice(VkDevice device, VkDeviceSize srcOffset,
+                   VkDeviceSize dstOffset, VkDeviceSize dataSize,
+                   VkBuffer srcBuffer, VkCommandBuffer cmdBuffer);
 
   VkDeviceSize allocate(VkDeviceSize allocation_size);
   void free(VkDeviceSize offset);
@@ -204,8 +208,8 @@ private:
                            vk::MemoryPropertyFlags memory_properties,
                            vk::Buffer &buffer, vk::DeviceMemory &memory);
   VkDeviceSize allocate(VkDeviceSize allocation_size);
-  void copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer,
-                   VkDeviceSize dst_offset, VkDeviceSize data_size);
+  void copyBuffer(VkBuffer src_buffer, VkBuffer dst_buffer,
+                  VkDeviceSize dst_offset, VkDeviceSize data_size);
 };
 
 struct PoolCreateInfo {

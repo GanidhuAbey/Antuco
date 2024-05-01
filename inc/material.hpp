@@ -3,14 +3,21 @@
 #include <glm/glm.hpp>
 #include <vector>
 
+#include <vulkan/vulkan.h>
+
 namespace tuco {
+
+struct MaterialGpuInfo {
+  VkDeviceSize bufferOffset;
+  uint32_t setIndex;
+};
 
 struct MaterialBufferObject {
   // baseReflectivity, roughness, metallic
   glm::vec4 pbrParameters = glm::vec4(0.0);
   glm::vec4 albedo = glm::vec4(0.0);
 
-  glm::vec4 padding[2] = { glm::vec4(0), glm::vec4(0) };
+  glm::vec4 padding[2] = {glm::vec4(0), glm::vec4(0)};
 
   std::vector<float> linearize();
 };
@@ -26,8 +33,7 @@ public:
 
   glm::vec3 albedo = glm::vec3(1.0);
 
-  // signifies where the material is written to in memory.
-  uint32_t mem_access = 0;
+  MaterialGpuInfo gpuInfo;
 
 public:
   Material() {}

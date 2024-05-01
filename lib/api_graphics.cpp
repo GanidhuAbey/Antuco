@@ -66,6 +66,9 @@ GraphicsImpl::GraphicsImpl(Window *pWindow)
   create_screen_buffer();
   create_screen_pipeline();
   create_screen_set();
+
+  createMaterialCollection();
+  // globalMaterialOffsets = setupMaterialBuffers();
 }
 
 GraphicsImpl::~GraphicsImpl() {
@@ -118,15 +121,10 @@ void GraphicsImpl::update_draw(
         create_texture_set(model.model_images.size());
       }
 
-      createMaterialSets(1);
-      write_to_materials();
+      // writeMaterial(game_objects[i]->material);
+      writeMaterial(game_objects[i]->material);
 
       for (auto &prim : primitives) {
-        auto material =
-            game_objects[i]->material; // model.model_materials[prim.mat_index];
-        game_objects[i]->material.mem_access = mat_offsets.size() - 1;
-        update_materials(mat_offsets[mat_offsets.size() - 1], material);
-
         /*
         // create vulkan image
         // why is textures even a vector???

@@ -48,8 +48,10 @@ VkDeviceSize SearchBuffer::allocate(VkDeviceSize allocation_size) {
   return offset;
 }
 
-void SearchBuffer::write(VkDevice device, VkDeviceSize offset,
-                         VkDeviceSize data_size, void *p_data) {
+// TODO: this type of allocation will only work if the search buffer is host
+// visible.
+void SearchBuffer::writeLocal(VkDevice device, VkDeviceSize offset,
+                              VkDeviceSize data_size, void *p_data) {
   void *pData;
   if (vkMapMemory(device, buffer_memory, offset, data_size, 0, &pData) !=
       VK_SUCCESS) {
@@ -57,6 +59,18 @@ void SearchBuffer::write(VkDevice device, VkDeviceSize offset,
   }
   memcpy(pData, p_data, data_size);
   vkUnmapMemory(device, buffer_memory);
+}
+
+void SearchBuffer::writeDevice(VkDevice device, VkDeviceSize srcOffset,
+                               VkDeviceSize dstOffset, VkDeviceSize dataSize,
+                               VkBuffer srcBuffer, VkCommandBuffer cmdBuffer) {
+  // transfer between buffers
+  VkBufferCopy copyData{};
+  copyData.srcOffset = srcOffset;
+  copyData.dstOffset = dstOffset;
+  copyData.size = dataSize;
+
+  vkCmdCopyBuffer(cmdBuffer, srcBuffer, buffer, 1, &copyData);
 }
 
 // this almost never needed when dealing with uniform buffer, so i'm not gonna
@@ -634,7 +648,7 @@ VkDeviceSize StackBuffer::map(VkDeviceSize data_size, void *data) {
   memcpy(p_data, data, data_size);
 
   // map memory to buffer
-  copy_buffer(temp_buffer, buffer, memory_loc, data_size);
+  copyBuffer(temp_buffer, buffer, memory_loc, data_size);
 
   device->get().unmapMemory(temp_memory);
   device->get().freeMemory(temp_memory);
@@ -643,8 +657,8 @@ VkDeviceSize StackBuffer::map(VkDeviceSize data_size, void *data) {
   return memory_loc;
 }
 
-void StackBuffer::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer,
-                              VkDeviceSize dst_offset, VkDeviceSize data_size) {
+void StackBuffer::copyBuffer(VkBuffer src_buffer, VkBuffer dst_buffer,
+                             VkDeviceSize dst_offset, VkDeviceSize data_size) {
 
   auto transfer_buffer = tuco::begin_command_buffer(*device, command_pool);
 

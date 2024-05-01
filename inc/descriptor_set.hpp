@@ -19,6 +19,14 @@ struct ResourceWriteInfo {
   int32_t bufferInfoIndex = -1;
 };
 
+struct BufferDescription {
+  uint32_t binding;
+  VkDescriptorType type;
+  VkBuffer buffer;
+  VkDeviceSize bufferOffset;
+  VkDeviceSize bufferRange;
+};
+
 class ResourceCollection {
 private:
   v::Device *device;
@@ -31,32 +39,46 @@ private:
   std::vector<VkDescriptorImageInfo> descriptorImageInfo;
   std::vector<VkDescriptorBufferInfo> descriptorBufferInfo;
 
+  // A resource collection should only hold sets of the same type (i.e same
+  // layout)
+  VkDescriptorSetLayout m_layout;
+
   bool built = false;
 
 public:
-  void init(const v::Device &device, VkDescriptorSetLayout layout,
-            uint32_t setCount, mem::Pool &pool);
+  void init(const v::Device &device, VkDescriptorSetLayout layout);
+
+  uint32_t getSetCount() { return sets.size(); }
 
   ~ResourceCollection() { destroy(); }
 
   void updateSets();
   void updateSet(size_t i);
+  uint32_t addSets(uint32_t setCount, mem::Pool &pool);
 
   void addImage(uint32_t binding, VkDescriptorType type,
                 VkImageLayout image_layout, mem::Image &image,
                 vk::Sampler &image_sampler);
 
-  void addImages(uint32_t binding, VkDescriptorType type,
-                 VkImageLayout imageLayout, std::vector<mem::Image> &images,
-                 vk::Sampler &imageSampler);
+  void addImagePerSet(uint32_t binding, VkDescriptorType type,
+                      VkImageLayout imageLayout,
+                      std::vector<mem::Image> &images,
+                      vk::Sampler &imageSampler);
 
   void addBuffer(uint32_t binding, VkDescriptorType type, VkBuffer buffer,
                  VkDeviceSize buffer_offset, VkDeviceSize buffer_range);
 
+  void addBuffer(BufferDescription info, uint32_t setIndex);
+
+  void addBufferPerSet(uint32_t binding, VkDescriptorType type,
+                       std::vector<VkBuffer> buffers,
+                       std::vector<VkDeviceSize> bufferOffsets,
+                       std::vector<VkDeviceSize> bufferRanges);
+
   VkDescriptorSet get_api_set(size_t i);
 
 private:
-  void create_set(VkDescriptorSetLayout layout, mem::Pool &pool);
+  void createSets(VkDescriptorSetLayout layout, mem::Pool &pool);
   bool check_size(size_t i);
 
   void destroy();
