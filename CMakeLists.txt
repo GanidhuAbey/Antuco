@@ -7,7 +7,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_BUILD_TYPE Debug)
 
-find_package(PythonInterp 3.9.10 REQUIRED)
+find_package(PythonInterp 3.9 REQUIRED)
 
 set(_change_MSVC_flags FALSE)
 if(WIN32)
@@ -55,9 +55,8 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/stb")
 #compile assimp
 add_executable(main main.cpp "render_examples/bmw.hpp" "render_examples/bmw.cpp")
 
-target_link_libraries(main PRIVATE REQUIRED_LIBRARIES 
-                                   "${Vulkan_LIBRARIES}" 
-                                   glfw 
-                                   shaderc 
+target_link_libraries(main PRIVATE REQUIRED_LIBRARIES
+                                   "${Vulkan_LIBRARIES}"
+                                   glfw
+                                   shaderc
                                    spirv-cross-core)
-

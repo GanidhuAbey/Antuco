@@ -1,7 +1,12 @@
 # Antuco
+
 A game engine/renderer made from vulkan
 
-## Build Instructions 
+## Build Instructions
+
+To get all required dependencies for shaderc, run the following python script:
+
+`py %PROJECT_DIR%/external/include/shaderc/utils/git-sync-deps`
 
 #### Windows
 
@@ -39,6 +44,5 @@ credit to tyrant_monkey for the model
 #### Microfacet Material Reflections
 
 ![Teapot](antuco_screenshots/microfacet_specular.JPG?raw=true "Teapot")
-
 
 ## Road Map
