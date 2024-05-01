@@ -1103,7 +1103,7 @@ void GraphicsImpl::create_command_buffers(
         vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
                           graphics_pipelines[index].get_api_pipeline());
 
-        Material &mat = game_objects[i]->get_material();
+        Material &mat = game_objects[j]->get_material();
         VkDescriptorSet materialSet =
             materialCollection.get_api_set(mat.gpuInfo.setIndex);
 
