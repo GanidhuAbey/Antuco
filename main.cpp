@@ -114,7 +114,7 @@ int main() {
   floor->add_mesh(root_project + "\\objects\\antuco-files\\windows\\cube.glb");
   floor->scale(glm::vec3(1, 0.01, 1));
 
-  floor->get_material().albedo = glm::vec3(1.0);
+  floor->get_material().albedo = glm::vec3(0.0, 0.0, 1.0);
   floor->get_material().metallic = 0.1;
   floor->get_material().roughness = 0.8;
 

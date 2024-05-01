@@ -761,22 +761,6 @@ void GraphicsImpl::update_descriptor_set(VkDescriptorBufferInfo buffer_info,
   vkUpdateDescriptorSets(device.get(), 1, &writeInfo, 0, nullptr);
 }
 
-MaterialGpuInfo GraphicsImpl::setupMaterialBuffers() {
-  // VkDeviceSize allocationSize = sizeof(MaterialBufferObject);
-  // VkDeviceSize bufferOffset = uniform_buffer.allocate(allocationSize);
-
-  // materialCollection.addBuffer(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-  //                              uniform_buffer.buffer, bufferOffset,
-  //                              allocationSize);
-
-  // materialCollection.updateSets();
-
-  // MaterialGpuInfo offsets{};
-  // offsets.descriptorOffset = bufferOffset;
-
-  // return offsets;
-}
-
 void GraphicsImpl::write_to_ubo() {
   for (size_t i = 0; i < uboSets[uboSets.size() - 1].size(); i++) {
     VkDescriptorBufferInfo buffer_info =
@@ -1089,16 +1073,16 @@ void GraphicsImpl::create_command_buffers(
                          VK_INDEX_TYPE_UINT32);
 
     auto texture_less = false;
-    auto index = 0;
+    auto index = 1;
     vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
-                      graphics_pipelines[0].get_api_pipeline());
+                      graphics_pipelines[index].get_api_pipeline());
 
     vkCmdPushConstants(command_buffers[i],
-                       graphics_pipelines[0].get_api_layout(),
+                       graphics_pipelines[index].get_api_layout(),
                        VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(light), &light);
 
     vkCmdPushConstants(command_buffers[i],
-                       graphics_pipelines[0].get_api_layout(),
+                       graphics_pipelines[index].get_api_layout(),
                        VK_SHADER_STAGE_VERTEX_BIT, sizeof(light),
                        sizeof(glm::vec4), &camera_pos);
 
@@ -1115,6 +1099,13 @@ void GraphicsImpl::create_command_buffers(
       if (!game_objects[j]->update) {
         auto model_primitive_count =
             game_objects[j]->object_model.primitives.size();
+
+        vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          graphics_pipelines[index].get_api_pipeline());
+
+        Material &mat = game_objects[i]->get_material();
+        VkDescriptorSet materialSet =
+            materialCollection.get_api_set(mat.gpuInfo.setIndex);
 
         for (size_t k = 0; k < model_primitive_count; k++) {
 
@@ -1134,23 +1125,12 @@ void GraphicsImpl::create_command_buffers(
           // beginning of the frame. however, if we want to have per-material
           // descriptors, then we need to update more frequently (whenever the
           // material changes).
-          descriptor_1[4] = materialCollection.get_api_set(0);
+          descriptor_1[4] = materialSet;
 
           descriptor_2[0] = descriptor_1[0];
           descriptor_2[1] = descriptor_1[1];
           descriptor_2[2] = descriptor_1[3];
           descriptor_2[3] = descriptor_1[4];
-
-          if (prim.image_index == -1) {
-            // texture_less = true;
-            index = 1;
-          } else {
-            // texture_less = false;
-            index = 0;
-            descriptor_1[2] = texture_sets[j].get_api_set(prim.image_index);
-          }
-          vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            graphics_pipelines[index].get_api_pipeline());
 
           auto layout = graphics_pipelines[index].get_api_layout();
 

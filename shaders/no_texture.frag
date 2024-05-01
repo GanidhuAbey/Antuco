@@ -160,5 +160,5 @@ void main(){
     vec3 result = lightColor * (refractAmt*diffuseResult + reflectAmt*specularResult)*dot(surfaceNormal, lightDirection);
     //result = surfaceNormal;
     vec3 testColor = vec3(1, 0, 0);
-    outColor = vec4(result, 1.0f);
+    outColor = vec4(mat.albedo, 1.0f);
 }
