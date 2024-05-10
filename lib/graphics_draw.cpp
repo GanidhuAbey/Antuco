@@ -419,20 +419,20 @@ void GraphicsImpl::createMaterialLayout() {
   matLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
   matLayoutBinding.pImmutableSamplers = nullptr;
 
-  // Material diffuse texture binding
-  VkDescriptorSetLayoutBinding matDiffuseBinding{};
-  matDiffuseBinding.binding = 1;
-  matDiffuseBinding.descriptorCount = 1;
-  matDiffuseBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  matDiffuseBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-  matDiffuseBinding.pImmutableSamplers = nullptr;
+  // Material base color texture binding
+  VkDescriptorSetLayoutBinding matBaseTexBinding{};
+  matBaseTexBinding.binding = 1;
+  matBaseTexBinding.descriptorCount = 1;
+  matBaseTexBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  matBaseTexBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  matBaseTexBinding.pImmutableSamplers = nullptr;
 
   VkDescriptorSetLayoutCreateInfo layoutInfo{};
   layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 
   layoutInfo.bindingCount = 2;
   VkDescriptorSetLayoutBinding bindings[2] = {matLayoutBinding,
-                                              matDiffuseBinding};
+                                              matBaseTexBinding};
   layoutInfo.pBindings = bindings;
 
   VkResult result = vkCreateDescriptorSetLayout(device.get(), &layoutInfo,

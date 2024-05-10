@@ -2,11 +2,20 @@
 
 using namespace tuco;
 
+void Material::setBaseColorTexture(std::string filePath) {
+    baseColorTexturePath = filePath;
+    hasBaseTexture = true;
+}
+
 MaterialBufferObject Material::convert() {
   MaterialBufferObject obj{};
   obj.pbrParameters.x = baseReflectivity;
   obj.pbrParameters.y = roughness;
   obj.pbrParameters.z = metallic;
+
+  obj.hasTexture.x = static_cast<float>(hasBaseTexture);
+  obj.hasTexture.y = static_cast<float>(hasMetallicTexture);
+  obj.hasTexture.z = static_cast<float>(hasRoughnessTexture);
 
   obj.albedo.x = albedo.x;
   obj.albedo.y = albedo.y;

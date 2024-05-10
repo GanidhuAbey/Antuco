@@ -51,6 +51,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/tinygltf")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glfw/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/glm")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/stb")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/include/cimg")
 
 #compile assimp
 add_executable(main main.cpp "render_examples/bmw.hpp" "render_examples/bmw.cpp")

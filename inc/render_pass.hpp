@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vulkan/vulkan.hpp>
 
 #include "vulkan_wrapper/device.hpp"

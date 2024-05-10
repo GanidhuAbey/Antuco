@@ -7,6 +7,11 @@
 
 #include <glm/ext.hpp>
 
+// disable window capabilities of CImg library.
+#define cimg_display 0
+#include <CImg.h>
+using namespace cimg_library;
+
 using namespace tuco;
 
 GraphicsImpl::GraphicsImpl(Window *pWindow)
@@ -102,6 +107,7 @@ void GraphicsImpl::update_draw(
   for (size_t i = 0; i < game_objects.size(); i++) {
     const auto &model = game_objects[i]->object_model;
 
+    // TODO: move this outside of per-frame loop, call only when user wants to update scene.
     if (game_objects[i]->update) {
       // update the buffer data of game objects
       uint32_t index_mem = update_index_buffer(model.model_indices);
@@ -118,11 +124,17 @@ void GraphicsImpl::update_draw(
       // means that the object index in the objects array does not always refer
       // corresponding texture set.
       if (model.model_images.size() > 0) {
-        create_texture_set(model.model_images.size());
+        //create_texture_set(model.model_images.size());
+      }
+
+      // load textures.
+      Material &mat = game_objects[i]->material;
+      if (mat.hasBaseTexture) {
+          CImg<unsigned char> baseColor(mat.baseColorTexturePath.c_str());
       }
 
       // writeMaterial(game_objects[i]->material);
-      writeMaterial(game_objects[i]->material);
+      writeMaterial(mat);
 
       for (auto &prim : primitives) {
         /*

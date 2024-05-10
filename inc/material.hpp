@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <vector>
+#include <string>
 
 #include <vulkan/vulkan.h>
 
@@ -15,6 +16,7 @@ struct MaterialGpuInfo {
 struct MaterialBufferObject {
   // baseReflectivity, roughness, metallic
   glm::vec4 pbrParameters = glm::vec4(0.0);
+  glm::vec4 hasTexture = glm::vec4(0.0); // hasBaseTexture, hasMetallic, hasRoughness
   glm::vec4 albedo = glm::vec4(0.0);
 
   glm::vec4 padding[2] = {glm::vec4(0), glm::vec4(0)};
@@ -26,10 +28,15 @@ class Material {
 public:
   // uint32_t image_index;
   // std::optional<std::string> texturePath;
+  std::string baseColorTexturePath = "";
 
   float baseReflectivity = 0.04;
   float roughness = 1.0f;
   float metallic = 1.0f;
+
+  bool hasBaseTexture = false;
+  bool hasRoughnessTexture = false;
+  bool hasMetallicTexture = false;
 
   glm::vec3 albedo = glm::vec3(1.0);
 
@@ -39,6 +46,8 @@ public:
   Material() {}
   ~Material() {}
   MaterialBufferObject convert();
+
+  void setBaseColorTexture(std::string filePath);
 };
 
 } // namespace tuco

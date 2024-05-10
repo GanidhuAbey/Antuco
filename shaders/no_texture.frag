@@ -17,10 +17,13 @@ layout(set=2, binding=1) uniform sampler2D shadowmap;
 
 layout(set=3, binding=0) uniform Material {
     vec3 pbrParameters; // baseReflectivity, roughness, metallic
+    vec3 hasTexture; // hasDiffuse, hasMetallic, hasRoughness
     vec3 albedo;
 
     vec4 padding[2];
 } mat;
+
+layout(set=3, binding=1) uniform sampler2D diffuseTexture;
 
 float bias = 5e-3;
 

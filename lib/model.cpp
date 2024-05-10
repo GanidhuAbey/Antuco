@@ -167,7 +167,6 @@ void Model::process_gltf_textures(tinygltf::Model model,
       msg::print_line("probably doesnt work");
       images[index].buffer_size = image.width * image.height * 4;
       unsigned char *rgba = new unsigned char[images[index].buffer_size];
-      ;
       unsigned char *rgb = &image.image[0];
       for (size_t i = 0; i < image.width * image.height; i++) {
         memcpy(rgba, rgb, sizeof(unsigned char) * 3);

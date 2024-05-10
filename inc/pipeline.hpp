@@ -1,3 +1,5 @@
+#pragma once
+
 //an api wrapper for vulkan pipeline
 //
 #include "data_structures.hpp"
@@ -32,17 +34,20 @@ namespace tuco {
  *      the pipeline will be used by.
  *  blend_colours : when set to true, :the alpha value of a fragment will be accounted for when computing
  *      the final colour of a pixel.
- *  
+ *
  * --------------------------------------------------------------------------------
 */
-
 
 struct PipelineConfig {
     vk::Extent2D screen_extent;
     std::optional<std::string> vert_shader_path = std::nullopt;
     std::optional<std::string> frag_shader_path = std::nullopt;
     std::optional<std::string> compute_shader_path = std::nullopt;
-    std::vector<VkDynamicState> dynamic_states;
+    std::vector<VkDynamicState> dynamic_states = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR,
+        VK_DYNAMIC_STATE_DEPTH_BIAS,
+    };
     VkCompareOp depth_compare_op = VK_COMPARE_OP_LESS;
     VkBool32 depth_bias_enable = VK_FALSE;
     VkRenderPass pass;
@@ -52,31 +57,31 @@ struct PipelineConfig {
     std::vector<VkDescriptorSetLayout> descriptor_layouts;
     std::vector<VkPushConstantRange> push_ranges = std::vector<VkPushConstantRange>(0);
 
-    std::vector<vk::VertexInputBindingDescription> 
+    std::vector<vk::VertexInputBindingDescription>
     binding_descriptions = {
         vk::VertexInputBindingDescription({
-            0, 
-            sizeof(Vertex), 
+            0,
+            sizeof(Vertex),
             VK_VERTEX_INPUT_RATE_VERTEX})
     };
 
     //attribute description
-    std::vector<vk::VertexInputAttributeDescription> 
+    std::vector<vk::VertexInputAttributeDescription>
     attribute_descriptions = {
         vk::VertexInputAttributeDescription({
-                0, 
-                0, 
-                VK_FORMAT_R32G32B32_SFLOAT, 
+                0,
+                0,
+                VK_FORMAT_R32G32B32_SFLOAT,
                 offsetof(Vertex, position)}), //position
         vk::VertexInputAttributeDescription({
-                1, 
-                0, 
-                VK_FORMAT_R32G32B32_SFLOAT, 
+                1,
+                0,
+                VK_FORMAT_R32G32B32_SFLOAT,
                 offsetof(Vertex, normal)}), //normal
         vk::VertexInputAttributeDescription({
-                2, 
-                0, 
-                VK_FORMAT_R32G32_SFLOAT, 
+                2,
+                0,
+                VK_FORMAT_R32G32_SFLOAT,
                 offsetof(Vertex, tex_coord)}) //texture coord
     };
 
@@ -105,11 +110,11 @@ class TucoPipeline {
 
     //helper functions
     private:
-        
+
         VkPipelineColorBlendAttachmentState enable_alpha_blending();
         vk::ShaderModule create_shader_module(std::vector<uint32_t> shaderCode);
         vk::PipelineShaderStageCreateInfo fill_shader_stage_struct(
-                vk::ShaderStageFlagBits stage, 
+                vk::ShaderStageFlagBits stage,
                 vk::ShaderModule shaderModule
             );
         void create_pipeline_layout(const std::vector<VkDescriptorSetLayout>& set_layouts,

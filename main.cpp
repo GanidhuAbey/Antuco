@@ -101,7 +101,7 @@ int main() {
   floor->get_material().roughness = 0.8;
 
   auto object = antuco.create_object();
-  object->add_mesh(root_project + "/objects/antuco-files/mac/cube.glb");
+  object->add_mesh(root_project + "/objects/antuco-files/mac/texturedCube.glb");
   object->scale(glm::vec3(0.1, 0.1, 0.1));
   object->translate(glm::vec3(0, 1, 0));
 

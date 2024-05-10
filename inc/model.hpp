@@ -13,6 +13,7 @@
 
 #include "material.hpp"
 #include "memory_allocator.hpp"
+#include "material_type.hpp"
 
 #include <string>
 
@@ -61,6 +62,7 @@ private:
   void process_gltf_textures(tinygltf::Model model,
                              std::vector<ImageBuffer> &images);
 
+
 private:
   std::string model_name;
   // push the model loading onto a different thread
@@ -77,8 +79,10 @@ private:
   std::vector<uint32_t> linearlize_primitive(Primitive primitive);
 
 private:
+  // TODO - move to separate class (DrawItem)
   std::vector<Vertex> model_vertices;
   std::vector<uint32_t> model_indices;
+
   std::vector<ImageBuffer> model_images;
   std::vector<Primitive> primitives;
   std::vector<std::unique_ptr<model::Node>> nodes;
