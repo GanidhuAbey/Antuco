@@ -15,6 +15,8 @@
 #include "memory_allocator.hpp"
 #include "material_type.hpp"
 
+#include <bedrock/image.hpp>
+
 #include <string>
 
 namespace tuco {
@@ -45,7 +47,7 @@ private:
 
   void assign_mesh(uint32_t index_start, uint32_t index_count,
                    std::vector<Material> materials,
-                   std::vector<mem::Image> images);
+                   std::vector<br::Image> images);
 
   void process_gltf_indices(tinygltf::Model model,
                             const tinygltf::Primitive &primitive,

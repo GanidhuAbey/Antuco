@@ -8,6 +8,8 @@
 
 #include <cstdio>
 #include <string>
+#include <fmt/color.h>
+#include <fmt/core.h>
 
 #define FUNCTION_NAME '__FUNCTION__'
 
@@ -15,22 +17,36 @@
         HANDLE ERROR MESSAGES THAT WILL CAUSE TERMINATION
 */
 #ifndef NDEBUG
-#define ERR_V_MSG(m_msg)                                                       \
-  printf("[ERROR] (in %s at %s on line %u) : %s \n", __FILE__, __func__,       \
-         __LINE__, m_msg);
 
-#define LOG(m_msg) printf("[LOG] (fn - %s) : %s \n", __func__, m_msg);
+#include <cassert>
 
-#define ASSERT(cond, ...)                                                      \
-  if (!cond) {                                                                 \
-    printf("[ERROR] (fn - %s) - Assert failed. \n", __func__);                 \
-    assert(false);                                                             \
-  }
+#define WARN(...)                                                        \
+  fmt::print(fg(fmt::color::yellow), "[WARNING ( {}() )] - ", __func__); \
+  fmt::print(__VA_ARGS__);                                               \
+  fmt::print("\n")
+#define ERR(...)                                                    \
+  fmt::print(stderr, fg(fmt::color::crimson) | fmt::emphasis::bold, \
+             "[ERROR ( {}() )] - ", __func__);                      \
+  fmt::print(stderr, fg(fmt::color::crimson) | fmt::emphasis::bold, __VA_ARGS__);                                          \
+  fmt::print("\n");                                                 \
+  assert(false)
+
+#define ERR_LOG(...)                                                \
+  fmt::print(stderr, fg(fmt::color::crimson) | fmt::emphasis::bold, \
+             "[ERROR ( {}() )] - ", __func__);                      \
+  fmt::print(stderr, fg(fmt::color::crimson) | fmt::emphasis::bold, __VA_ARGS__);                                          \
+  fmt::print("\n")
+
+#define INFO(...)                             \
+  fmt::print("[INFO ( {}() )] - ", __func__); \
+  fmt::print(__VA_ARGS__);                    \
+  fmt::print("\n")
 #else
-#define ERR_V_MSG(m_msg) // nothing
-#define LOG(m_msg)       // nothing
-#define ASSERT(...)      // nothing
+#define WARN(...)  // nothing
+#define ERR(...)   // nothing
+#define INFO(...)  // nothing
 #endif
+
 
 namespace msg {
 static void print_line(const std::string &msg) { printf("%s \n", msg.c_str()); }

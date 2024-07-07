@@ -6,6 +6,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <bedrock/image.hpp>
+
 namespace tuco {
 
 struct MaterialGpuInfo {
@@ -25,29 +27,31 @@ struct MaterialBufferObject {
 };
 
 class Material {
+private:
+	br::Image baseColorImage;
 public:
-  // uint32_t image_index;
-  // std::optional<std::string> texturePath;
-  std::string baseColorTexturePath = "";
+	// uint32_t image_index;
+	// std::optional<std::string> texturePath;
+	std::string baseColorTexturePath = "";
 
-  float baseReflectivity = 0.04;
-  float roughness = 1.0f;
-  float metallic = 1.0f;
+	float baseReflectivity = 0.04;
+	float roughness = 1.0f;
+	float metallic = 1.0f;
 
-  bool hasBaseTexture = false;
-  bool hasRoughnessTexture = false;
-  bool hasMetallicTexture = false;
+	bool hasBaseTexture = false;
+	bool hasRoughnessTexture = false;
+	bool hasMetallicTexture = false;
 
-  glm::vec3 albedo = glm::vec3(1.0);
+	glm::vec3 albedo = glm::vec3(1.0);
 
-  MaterialGpuInfo gpuInfo;
+	MaterialGpuInfo gpuInfo;
 
-public:
-  Material() {}
-  ~Material() {}
-  MaterialBufferObject convert();
+	public:
+	Material() {}
+	~Material() {}
+	MaterialBufferObject convert();
 
-  void setBaseColorTexture(std::string filePath);
+	void setBaseColorTexture(std::string filePath);
 };
 
 } // namespace tuco

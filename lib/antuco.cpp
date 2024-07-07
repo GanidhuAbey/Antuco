@@ -18,7 +18,8 @@ Antuco::~Antuco() {
 }
 
 /* Window Initialization */
-Window* Antuco::init_window(int w, int h, const char* title) {
+Window* Antuco::init_window(int w, int h, const char* title) 
+{
 	Window* window = new Window(w, h, title);
 
 	pWindow = window;
@@ -26,11 +27,17 @@ Window* Antuco::init_window(int w, int h, const char* title) {
 	return window;
 }
 
-void Antuco::init_graphics(RenderEngine api) {
+void Antuco::init_graphics(RenderEngine api) 
+{
 	//when/if other render api's implemented, add graphics interface, to which
 	//each render api object would obey.
 	Antuco::api = api;
 	p_graphics = new Graphics(pWindow); 
+}
+
+GraphicsImpl* Antuco::get_backend()
+{
+	return p_graphics->p_graphics.get();
 }
 
 /* World Object Initalization */
@@ -44,7 +51,7 @@ DirectionalLight& Antuco::create_spotlight(glm::vec3 light_pos, glm::vec3 light_
 	}
 	else if (shadow_casters.size() >= MAX_SHADOW_CASTERS) {
 		//log error here
-		ERR_V_MSG("too many shadow casters");
+		ERR("Too many shadow casters");
 	}
 	directional_lights.push_back(light);
 

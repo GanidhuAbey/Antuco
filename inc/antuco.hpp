@@ -19,6 +19,7 @@ class Antuco {
 public:
 	Window* init_window(int w, int h, const char* title);
 	void init_graphics(RenderEngine api);
+	GraphicsImpl* get_backend();
 private:
 	Window* pWindow;
 	Graphics* p_graphics;

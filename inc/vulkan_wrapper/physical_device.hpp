@@ -15,6 +15,8 @@ private:
     void pick_physical_device(Instance& instance);
     uint32_t score_physical_device(vk::PhysicalDevice);
 
+    void set_device_limits();
+
 public:
     PhysicalDevice() {}
 

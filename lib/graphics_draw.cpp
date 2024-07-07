@@ -8,6 +8,8 @@
 #include "material.hpp"
 #include "memory_allocator.hpp"
 
+#include <vulkan_wrapper/limits.hpp>
+
 #include "queue.hpp"
 
 #include "logger/interface.hpp"
@@ -53,6 +55,7 @@ void GraphicsImpl::create_depth_pipeline() {
   // config.pass
 }
 
+/*
 /// <summary>
 /// Creates a large image to contain the depth
 /// textures of all the lights in the scene
@@ -84,6 +87,7 @@ void GraphicsImpl::create_shadowmap_atlas() {
 
   shadowmap_atlas.init(physical_device, device, data);
 }
+*/
 
 void GraphicsImpl::create_texture_sampler() {
   auto sampler_info = vk::SamplerCreateInfo(
@@ -97,25 +101,25 @@ void GraphicsImpl::create_texture_sampler() {
   texture_sampler = device.get().createSampler(sampler_info);
 }
 
-void GraphicsImpl::create_shadowmap_sampler() {
-  auto sampler_info = vk::SamplerCreateInfo(
-      {}, vk::Filter::eNearest, vk::Filter::eNearest,
-      vk::SamplerMipmapMode::eNearest, vk::SamplerAddressMode::eClampToEdge,
-      vk::SamplerAddressMode::eClampToEdge,
-      vk::SamplerAddressMode::eClampToEdge, 0.0f, false, 0.0f, false,
-      vk::CompareOp::eNever, 0.0f, 0.0f, vk::BorderColor::eFloatOpaqueBlack,
-      false);
+//void GraphicsImpl::create_shadowmap_sampler() {
+//  auto sampler_info = vk::SamplerCreateInfo(
+//      {}, vk::Filter::eNearest, vk::Filter::eNearest,
+//      vk::SamplerMipmapMode::eNearest, vk::SamplerAddressMode::eClampToEdge,
+//      vk::SamplerAddressMode::eClampToEdge,
+//      vk::SamplerAddressMode::eClampToEdge, 0.0f, false, 0.0f, false,
+//      vk::CompareOp::eNever, 0.0f, 0.0f, vk::BorderColor::eFloatOpaqueBlack,
+//      false);
+//
+//  shadowmap_sampler = device.get().createSampler(sampler_info);
+//}
 
-  shadowmap_sampler = device.get().createSampler(sampler_info);
-}
-
-void GraphicsImpl::create_shadowpass_buffer() {
-  vk::ImageView image_views[1] = {shadow_pass_texture.get_api_image_view()};
-
-  shadowpass_buffer =
-      create_frame_buffer(shadowpass.get_api_pass(), 1, image_views,
-                          shadowmap_width, shadowmap_height);
-}
+//void GraphicsImpl::create_shadowpass_buffer() {
+//  vk::ImageView image_views[1] = {shadow_pass_texture.get_api_image_view()};
+//
+//  shadowpass_buffer =
+//      create_frame_buffer(shadowpass.get_api_pass(), 1, image_views,
+//                          shadowmap_width, shadowmap_height);
+//}
 
 void GraphicsImpl::create_output_buffers() {
   size_t image_num = swapchain.getSwapchainSize();
@@ -181,32 +185,32 @@ void GraphicsImpl::create_fences() {
   }
 }
 
-void GraphicsImpl::create_shadowpass_resources() {
-  mem::ImageCreateInfo shadow_image_info{};
-  shadow_image_info.extent = VkExtent3D{shadowmap_width, shadowmap_height, 1};
-
-  shadow_image_info.format = vk::Format::eD16Unorm;
-  shadow_image_info.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment |
-                            vk::ImageUsageFlagBits::eSampled;
-  shadow_image_info.queueFamilyIndexCount = 1;
-  shadow_image_info.pQueueFamilyIndices = &device.get_graphics_family();
-
-  VkImageViewUsageCreateInfo usageInfo{};
-  usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
-  usageInfo.usage =
-      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-
-  // setup create struct for image views
-  mem::ImageViewCreateInfo createInfo{};
-  createInfo.pNext = &usageInfo;
-  createInfo.aspect_mask = vk::ImageAspectFlagBits::eDepth;
-
-  mem::ImageData data{};
-  data.image_info = shadow_image_info;
-  data.image_view_info = createInfo;
-
-  shadow_pass_texture.init(physical_device, device, data);
-}
+//void GraphicsImpl::create_shadowpass_resources() {
+//  mem::ImageCreateInfo shadow_image_info{};
+//  shadow_image_info.extent = VkExtent3D{shadowmap_width, shadowmap_height, 1};
+//
+//  shadow_image_info.format = vk::Format::eD16Unorm;
+//  shadow_image_info.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment |
+//                            vk::ImageUsageFlagBits::eSampled;
+//  shadow_image_info.queueFamilyIndexCount = 1;
+//  shadow_image_info.pQueueFamilyIndices = &device.get_graphics_family();
+//
+//  VkImageViewUsageCreateInfo usageInfo{};
+//  usageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
+//  usageInfo.usage =
+//      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+//
+//  // setup create struct for image views
+//  mem::ImageViewCreateInfo createInfo{};
+//  createInfo.pNext = &usageInfo;
+//  createInfo.aspect_mask = vk::ImageAspectFlagBits::eDepth;
+//
+//  mem::ImageData data{};
+//  data.image_info = shadow_image_info;
+//  data.image_view_info = createInfo;
+//
+//  shadow_pass_texture.init(physical_device, device, data);
+//}
 
 void GraphicsImpl::create_graphics_pipeline() {
   // create 2 pipelines, 1 for materials with textures, one without
@@ -220,7 +224,7 @@ void GraphicsImpl::create_graphics_pipeline() {
 
   // TEX
   std::vector<VkDescriptorSetLayout> descriptor_layouts = {
-      light_layout, ubo_layout, texture_layout, shadowmap_layout, matLayout};
+      light_layout, ubo_layout, texture_layout, matLayout};
 
   std::vector<VkPushConstantRange> push_ranges;
 
@@ -266,7 +270,7 @@ void GraphicsImpl::create_oit_pass() {
 
 void GraphicsImpl::create_depth_resources() {
   // create image to represent depth
-  mem::ImageCreateInfo depth_image_info{};
+  br::ImageCreateInfo depth_image_info{};
   depth_image_info.extent = VkExtent3D{swapchain.get_extent().width,
                                        swapchain.get_extent().height, 1};
   depth_image_info.format = vk::Format::eD16Unorm;
@@ -280,13 +284,13 @@ void GraphicsImpl::create_depth_resources() {
   usageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
   // setup create struct for image views
-  mem::ImageViewCreateInfo depth_image_view_info{};
+  br::ImageViewCreateInfo depth_image_view_info{};
   depth_image_view_info.pNext = &usageInfo;
   depth_image_view_info.format = vk::Format::eD16Unorm;
 
   depth_image_view_info.aspect_mask = vk::ImageAspectFlagBits::eDepth;
 
-  mem::ImageData data{};
+  br::ImageData data{};
   data.image_info = depth_image_info;
   data.image_view_info = depth_image_view_info;
 
@@ -331,7 +335,7 @@ void GraphicsImpl::create_geometry_buffer() {
 }
 
 void GraphicsImpl::create_output_images() {
-  mem::ImageData data{};
+  br::ImageData data{};
   data.image_info.extent.width = swapchain.get_extent().width;
   data.image_info.extent.height = swapchain.get_extent().height;
   data.image_info.extent.depth = 1.0;
@@ -351,7 +355,7 @@ void GraphicsImpl::create_output_images() {
 
   output_images.resize(swapchain.getSwapchainSize());
 
-  for (mem::Image &image : output_images) {
+  for (br::Image &image : output_images) {
     image.init(physical_device, device, data);
   }
 }
@@ -406,7 +410,7 @@ void GraphicsImpl::create_light_layout() {
 
   if (vkCreateDescriptorSetLayout(device.get(), &layout_info, nullptr,
                                   &light_layout) != VK_SUCCESS) {
-    ERR_V_MSG("COULD NOT CREATE DESCRIPTOR SET");
+    ERR("Failed to create descriptor set.");
   }
 }
 
@@ -439,7 +443,7 @@ void GraphicsImpl::createMaterialLayout() {
                                                 nullptr, &matLayout);
 
   if (result != VK_SUCCESS) {
-    LOG("[ERROR] - could not create materials layout");
+    ERR("Could not create materials layout");
   }
 }
 
@@ -589,10 +593,10 @@ void GraphicsImpl::create_texture_pool() {
   texture_pool = std::make_unique<mem::Pool>(device, poolInfo);
 }
 
-void GraphicsImpl::create_shadowmap_set() {
-  shadowmap_pool->allocateDescriptorSets(device, 1, shadowmap_layout,
-                                         &shadowmap_set);
-}
+//void GraphicsImpl::create_shadowmap_set() {
+//  shadowmap_pool->allocateDescriptorSets(device, 1, shadowmap_layout,
+//                                         &shadowmap_set);
+//}
 
 void GraphicsImpl::create_texture_set(size_t mesh_count) {
   size_t current_size = texture_sets.size();
@@ -627,27 +631,27 @@ GraphicsImpl::create_set(VkDescriptorSetLayout layout, size_t set_count,
   return sets;
 }
 
-void GraphicsImpl::create_shadowmap_layout() {
-  /* SAMPLED IMAGE DESCRIPTOR SET (FOR TEXTURING) */
-  VkDescriptorSetLayoutBinding texture_layout_binding{};
-  texture_layout_binding.binding = 1;
-  texture_layout_binding.descriptorCount = 1;
-  texture_layout_binding.descriptorType =
-      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  texture_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-  texture_layout_binding.pImmutableSamplers = nullptr;
-
-  VkDescriptorSetLayoutCreateInfo layout_info{};
-  layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-
-  layout_info.bindingCount = 1;
-  layout_info.pBindings = &texture_layout_binding;
-
-  if (vkCreateDescriptorSetLayout(device.get(), &layout_info, nullptr,
-                                  &shadowmap_layout) != VK_SUCCESS) {
-    throw std::runtime_error("could not create texture layout");
-  }
-}
+//void GraphicsImpl::create_shadowmap_layout() {
+//  /* SAMPLED IMAGE DESCRIPTOR SET (FOR TEXTURING) */
+//  VkDescriptorSetLayoutBinding texture_layout_binding{};
+//  texture_layout_binding.binding = 1;
+//  texture_layout_binding.descriptorCount = 1;
+//  texture_layout_binding.descriptorType =
+//      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+//  texture_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+//  texture_layout_binding.pImmutableSamplers = nullptr;
+//
+//  VkDescriptorSetLayoutCreateInfo layout_info{};
+//  layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+//
+//  layout_info.bindingCount = 1;
+//  layout_info.pBindings = &texture_layout_binding;
+//
+//  if (vkCreateDescriptorSetLayout(device.get(), &layout_info, nullptr,
+//                                  &shadowmap_layout) != VK_SUCCESS) {
+//    throw std::runtime_error("could not create texture layout");
+//  }
+//}
 
 void GraphicsImpl::create_texture_layout() {
   /* SAMPLED IMAGE DESCRIPTOR SET (FOR TEXTURING) */
@@ -736,7 +740,7 @@ void GraphicsImpl::create_shadowpass_pipeline() {
 }
 
 VkDescriptorBufferInfo GraphicsImpl::allocateDescriptorBuffer(uint32_t size) {
-  VkDeviceSize offset = uniform_buffer.allocate(size);
+  VkDeviceSize offset = uniform_buffer.allocate(size, v::Limits::get().uniformBufferOffsetAlignment);
 
   VkDescriptorBufferInfo buffer_info{};
   buffer_info.buffer = uniform_buffer.buffer;
@@ -789,17 +793,17 @@ void GraphicsImpl::destroy_draw() {
 
   vkDestroyDescriptorSetLayout(device.get(), ubo_layout, nullptr);
   vkDestroyDescriptorSetLayout(device.get(), light_layout, nullptr);
-  vkDestroyDescriptorSetLayout(device.get(), shadowmap_layout, nullptr);
+  //vkDestroyDescriptorSetLayout(device.get(), shadowmap_layout, nullptr);
   vkDestroyDescriptorSetLayout(device.get(), texture_layout, nullptr);
   vkDestroyDescriptorSetLayout(device.get(), matLayout, nullptr);
 
   vkDestroySampler(device.get(), texture_sampler, nullptr);
-  vkDestroySampler(device.get(), shadowmap_sampler, nullptr);
+  //vkDestroySampler(device.get(), shadowmap_sampler, nullptr);
 
   for (auto &graphics_pipeline : graphics_pipelines) {
     graphics_pipeline.destroy();
   }
-  shadowmap_pipeline.destroy();
+
   screen_pipeline.destroy();
 
   for (const auto &output_buffer : output_buffers) {
@@ -816,19 +820,19 @@ void GraphicsImpl::destroy_draw() {
   matPool.get()->destroyPool();
   shadowmap_pool.get()->destroyPool();
 
-  for (mem::Image &image : output_images) {
+  for (br::Image &image : output_images) {
     image.destroy();
   }
 
   depth_image.destroy();
 
   for (size_t i = 0; i < texture_images.size(); i++) {
-    for (mem::Image &image : texture_images[i]) {
+    for (br::Image &image : texture_images[i]) {
       image.destroy();
     }
   }
 
-  shadow_pass_texture.destroy();
+  //shadow_pass_texture.destroy();
 
   render_pass.destroy();
   screen_pass.destroy();
@@ -982,7 +986,7 @@ void GraphicsImpl::updateMaterialResources(Material &material) {
 void GraphicsImpl::writeMaterial(Material &material) {
   // material.offsets.descriptorOffset = globalMaterialOffsets.descriptorOffset;
   material.gpuInfo.bufferOffset =
-      uniform_buffer.allocate(sizeof(MaterialBufferObject));
+      uniform_buffer.allocate(sizeof(MaterialBufferObject), v::Limits::get().uniformBufferOffsetAlignment);
   // update_materials(material.offsets.bufferOffset, material);
   MaterialBufferObject matObj = material.convert();
   updateUniformBuffer(material.gpuInfo.bufferOffset,
@@ -1031,7 +1035,8 @@ void GraphicsImpl::create_command_buffers(
     light.color = light_data[0].color;
     light.light_count = glm::vec4(MAX_SHADOW_CASTERS, 1, 1, 1);
 
-    create_shadow_map(game_objects, i, light);
+    // TODO : support shadow maps.
+    //create_shadow_map(game_objects, i, light);
 
     auto render_area = vk::Rect2D(vk::Offset2D(0, 0), swapchain.get_extent());
 
@@ -1115,22 +1120,21 @@ void GraphicsImpl::create_command_buffers(
           auto descriptor_2 = std::vector<VkDescriptorSet>();
           auto descriptors = std::vector<std::vector<VkDescriptorSet>>();
 
-          descriptor_1.resize(5);
-          descriptor_2.resize(4);
+          descriptor_1.resize(4);
+          descriptor_2.resize(3);
 
           descriptor_1[0] = light_ubo[j].get_api_set(prim.transform_index);
           descriptor_1[1] = uboSets[j][prim.transform_index];
-          descriptor_1[3] = shadowmap_set;
+          //descriptor_1[3] = shadowmap_set;
           // TODO: currently we update all our descriptor sets once at the
           // beginning of the frame. however, if we want to have per-material
           // descriptors, then we need to update more frequently (whenever the
           // material changes).
-          descriptor_1[4] = materialSet;
+          descriptor_1[3] = materialSet;
 
           descriptor_2[0] = descriptor_1[0];
           descriptor_2[1] = descriptor_1[1];
           descriptor_2[2] = descriptor_1[3];
-          descriptor_2[3] = descriptor_1[4];
 
           auto layout = graphics_pipelines[index].get_api_layout();
 
@@ -1496,32 +1500,32 @@ void GraphicsImpl::draw_frame() {
   current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void GraphicsImpl::write_to_shadowmap_set() {
-  VkDescriptorImageInfo imageInfo;
-  imageInfo.sampler = shadowmap_sampler;
-  imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  imageInfo.imageView = shadow_pass_texture.get_api_image_view();
-
-  VkWriteDescriptorSet writeInfo{};
-  writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  writeInfo.dstBinding = 1;
-  writeInfo.dstSet = shadowmap_set;
-  writeInfo.descriptorCount = 1;
-  writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  writeInfo.pImageInfo = &imageInfo;
-  writeInfo.dstArrayElement = 0;
-
-  vkUpdateDescriptorSets(device.get(), 1, &writeInfo, 0, nullptr);
-
-  // wonder if this is a fine time to transfer the image from undefined to
-  // shader
-  // TODO: move this somewhere else (into its own function if you absolutely
-  // have to) shadowmap_atlas.transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-  // graphics_queue, command_pool);
-}
+//void GraphicsImpl::write_to_shadowmap_set() {
+//  VkDescriptorImageInfo imageInfo;
+//  imageInfo.sampler = shadowmap_sampler;
+//  imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+//  imageInfo.imageView = shadow_pass_texture.get_api_image_view();
+//
+//  VkWriteDescriptorSet writeInfo{};
+//  writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+//  writeInfo.dstBinding = 1;
+//  writeInfo.dstSet = shadowmap_set;
+//  writeInfo.descriptorCount = 1;
+//  writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+//  writeInfo.pImageInfo = &imageInfo;
+//  writeInfo.dstArrayElement = 0;
+//
+//  vkUpdateDescriptorSets(device.get(), 1, &writeInfo, 0, nullptr);
+//
+//  // wonder if this is a fine time to transfer the image from undefined to
+//  // shader
+//  // TODO: move this somewhere else (into its own function if you absolutely
+//  // have to) shadowmap_atlas.transfer(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+//  // graphics_queue, command_pool);
+//}
 
 void GraphicsImpl::write_to_texture_set(ResourceCollection texture_set,
-                                        mem::Image image) {
+                                        br::Image image) {
 
   texture_set.addImage(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image,
@@ -1538,7 +1542,7 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
   texture_images.resize(texture_images.size() + 1);
   texture_images[texture_images.size() - 1].resize(1);
 
-  mem::ImageCreateInfo imageInfo{};
+  br::ImageCreateInfo imageInfo{};
   imageInfo.format = vk::Format::eR8G8B8A8Srgb;
   VkExtent3D extent{};
   extent.width = 1;
@@ -1551,10 +1555,10 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
   imageInfo.pQueueFamilyIndices = &device.get_graphics_family();
   imageInfo.memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 
-  mem::ImageViewCreateInfo viewInfo{};
+  br::ImageViewCreateInfo viewInfo{};
   viewInfo.aspect_mask = vk::ImageAspectFlagBits::eColor;
 
-  mem::ImageData data{};
+  br::ImageData data{};
   data.name = "empty";
   data.image_info = imageInfo;
   data.image_view_info = viewInfo;
@@ -1573,7 +1577,7 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
   // write_to_texture_set(texture_sets[object],
   // texture_images[texture_images.size() - 1][0].get_api_image_view());
 
-  mem::Image &image = texture_images[texture_images.size() - 1][0];
+  br::Image &image = texture_images[texture_images.size() - 1][0];
 
   texture_sets[object].addImage(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image,
@@ -1582,6 +1586,7 @@ void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
   texture_sets[object].updateSet(texture_set);
 }
 
+/*
 void GraphicsImpl::create_vulkan_image(const ImageBuffer &image, size_t i,
                                        size_t j) {
   // create image
@@ -1643,6 +1648,7 @@ void GraphicsImpl::create_vulkan_image(const ImageBuffer &image, size_t i,
                texture_sampler);
   set.updateSet(j);
 }
+*/
 
 void GraphicsImpl::create_texture_image(std::string texturePath, size_t object,
                                         size_t texture_set) {
@@ -1670,7 +1676,7 @@ void GraphicsImpl::create_texture_image(std::string texturePath, size_t object,
   texture_images.resize(texture_images.size() + 1);
   texture_images[texture_images.size() - 1].resize(1);
 
-  mem::ImageCreateInfo imageInfo{};
+  br::ImageCreateInfo imageInfo{};
   imageInfo.format = vk::Format::eR8G8B8A8Srgb;
   VkExtent3D extent{};
   extent.width = static_cast<uint32_t>(imageWidth);
@@ -1685,10 +1691,10 @@ void GraphicsImpl::create_texture_image(std::string texturePath, size_t object,
   imageInfo.pQueueFamilyIndices = &device.get_transfer_family();
   imageInfo.memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 
-  mem::ImageViewCreateInfo viewInfo{};
+  br::ImageViewCreateInfo viewInfo{};
   viewInfo.aspect_mask = vk::ImageAspectFlagBits::eColor;
 
-  mem::ImageData data{};
+  br::ImageData data{};
   data.name = "texture";
   data.image_info = imageInfo;
   data.image_view_info = viewInfo;
@@ -1722,7 +1728,7 @@ void GraphicsImpl::create_texture_image(std::string texturePath, size_t object,
   // write to texture set
   // write_to_texture_set(texture_sets[object][texture_set],
   // texture_images[texture_images.size() - 1][0].get_api_image_view());
-  mem::Image &image = texture_images[texture_images.size() - 1][0];
+  br::Image &image = texture_images[texture_images.size() - 1][0];
   ResourceCollection &set = texture_sets[object];
   set.addImage(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image,

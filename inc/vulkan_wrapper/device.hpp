@@ -40,6 +40,5 @@ public:
 private:
     void create_logical_device(PhysicalDevice& physical_device, Surface& surface, bool print_debug);
     bool check_device_extensions(PhysicalDevice& phys_device, std::vector<const char*> extensions, uint32_t extensions_count);
-
 };
 }

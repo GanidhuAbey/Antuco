@@ -126,6 +126,7 @@ int main() {
   cube->get_material().albedo = glm::vec3(1.0, 0.0, 0.0);
   cube->get_material().metallic = 0.7;
   cube->get_material().roughness = 0.3;
+  cube->get_material().setBaseColorTexture(root_project + "\\objects\\antuco-files\\textures\\brick.jpg");
 #endif
 
   // light_mesh->scale(glm::vec3(0.2));

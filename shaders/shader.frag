@@ -12,9 +12,9 @@ layout(location=8) in vec3 light_color;
 layout(location=9) in vec3 camera_pos;
 
 layout(set=2, binding=0) uniform sampler2D texture1;
-layout(set=3, binding=1) uniform sampler2D shadowmap;
+//layout(set=3, binding=1) uniform sampler2D shadowmap;
 
-layout(set=4, binding=0) uniform Materials {
+layout(set=3, binding=0) uniform Materials {
     vec3 has_texture;
     vec3 ambient; //Ka
     vec3 diffuse; //Kd
@@ -37,42 +37,42 @@ float SCATTER_STRENGTH = 200.0f;
 
 
 //returns 0 if in shadow, otherwise 1
-float check_shadow(vec4 light_view) {
-	float pixel_depth = light_view.z;
-
-  	//float closest_depth = texelFetch(shadowmap, ivec2(light_view.st), 0).r;
-    float closest_depth = texture(shadowmap, vec2(light_view.st), 0).r;
-
-	float in_shadow = ceil(closest_depth - pixel_depth) + 0.1;
-
-  	return in_shadow;
-}
-
-
-float pcf_shadow(vec4 light_view) {
-    vec2 d = 1.0001 * 1 / textureSize(shadowmap, 0); //multiply by constant value, to make amplify softness of shadow
-
-    //sample 4 points of the shadowmap
-    float s1 = check_shadow(vec4(light_view.s + d.x, light_view.t, light_view.z, light_view.w));
-    float s2 = check_shadow(vec4(light_view.s - d.x, light_view.t, light_view.z, light_view.w));
-    float s3 = check_shadow(vec4(light_view.s, light_view.t + d.y, light_view.z, light_view.w));
-    float s4 = check_shadow(vec4(light_view.s, light_view.t - d.y, light_view.z, light_view.w));
-
-    float amb_val = 1.2f;
-    return ((s1 + s2 + s3 + s4 + amb_val) / 5);
-}
-
-
-
-vec3 get_scattering(vec4 light_view) {
-    float light_enter = texture(shadowmap, light_view.st).r;
-
-    float light_exit = light_view.z;
-
-    float surface_depth = light_exit - light_enter;
-
-    return exp(-surface_depth * SCATTER_STRENGTH) * vec3(0.10f, 0.05f, 0.05f);
-}
+//float check_shadow(vec4 light_view) {
+//	float pixel_depth = light_view.z;
+//
+//  	//float closest_depth = texelFetch(shadowmap, ivec2(light_view.st), 0).r;
+//    float closest_depth = texture(shadowmap, vec2(light_view.st), 0).r;
+//
+//	float in_shadow = ceil(closest_depth - pixel_depth) + 0.1;
+//
+//  	return in_shadow;
+//}
+//
+//
+//float pcf_shadow(vec4 light_view) {
+//    vec2 d = 1.0001 * 1 / textureSize(shadowmap, 0); //multiply by constant value, to make amplify softness of shadow
+//
+//    //sample 4 points of the shadowmap
+//    float s1 = check_shadow(vec4(light_view.s + d.x, light_view.t, light_view.z, light_view.w));
+//    float s2 = check_shadow(vec4(light_view.s - d.x, light_view.t, light_view.z, light_view.w));
+//    float s3 = check_shadow(vec4(light_view.s, light_view.t + d.y, light_view.z, light_view.w));
+//    float s4 = check_shadow(vec4(light_view.s, light_view.t - d.y, light_view.z, light_view.w));
+//
+//    float amb_val = 1.2f;
+//    return ((s1 + s2 + s3 + s4 + amb_val) / 5);
+//}
+//
+//
+//
+//vec3 get_scattering(vec4 light_view) {
+//    float light_enter = texture(shadowmap, light_view.st).r;
+//
+//    float light_exit = light_view.z;
+//
+//    float surface_depth = light_exit - light_enter;
+//
+//    return exp(-surface_depth * SCATTER_STRENGTH) * vec3(0.10f, 0.05f, 0.05f);
+//}
 
 void main() {
     float dist = length(light_position - vec3(vPos));
@@ -97,9 +97,9 @@ void main() {
 
     vec4 sample_value = light_perspective;
 
-    float shadow_factor = pcf_shadow(sample_value);
+    float shadow_factor = 0.f; //pcf_shadow(sample_value);
 
-    vec3 scattering = get_scattering(sample_value);
+    //vec3 scattering = get_scattering(sample_value);
 
     //TODO: get rid of this if statement once everything works
     vec3 result;

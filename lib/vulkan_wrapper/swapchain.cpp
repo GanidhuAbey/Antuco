@@ -106,7 +106,7 @@ void Swapchain::create_swapchain(
     swapchain = device->get().createSwapchainKHR(swap_info);
 
     //grab swapchain images
-    mem::ImageViewCreateInfo image_info{};
+    br::ImageViewCreateInfo image_info{};
     image_info.aspect_mask = vk::ImageAspectFlagBits::eColor;
     image_info.format = format;
  
@@ -122,7 +122,7 @@ void Swapchain::create_swapchain(
     images = device->get().getSwapchainImagesKHR(swapchain);
     swapchain_images.resize(images.size());
 
-    mem::ImageData data;
+    br::ImageData data;
     data.name = "swapchain";
     data.image_view_info = image_info;
 

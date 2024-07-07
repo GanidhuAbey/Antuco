@@ -37,13 +37,13 @@ void Model::add_gltf_model(const std::string &filepath) {
 
   // print any warnings/errors
   if (!warn.empty()) {
-    LOG(warn.c_str());
+    WARN(warn.c_str());
   }
   if (!err.empty()) {
-    LOG(err.c_str());
+    ERR(err.c_str());
   }
   if (!ret) {
-    LOG("something went wrong while trying to import GLTF model");
+    ERR("something went wrong while trying to import GLTF model");
   }
 
   // get scene
@@ -348,7 +348,7 @@ void Model::add_mesh(const std::string &fileName,
     add_gltf_model(fileName);
     return;
   } else {
-    LOG("could not add gltf model");
+    ERR("could not add gltf model");
     return;
   }
 }
@@ -360,7 +360,7 @@ void Model::read_from_file() {
   std::string file_name = model_name + ".bin";
   std::ifstream file(file_name, std::ios::in | std::ios::binary);
   if (!file) {
-    LOG("doesn't open");
+    ERR("file: [%s] could not be opened.", file_name);
     return;
   }
 
@@ -551,7 +551,7 @@ bool Model::file_exists(std::string name) {
   file.open(file_name, std::ios::in);
 
   if (file.is_open()) {
-    LOG(("file is open - " + file_name).c_str());
+    INFO("file [%s] exists.", file_name.c_str());
   }
 
   return file.is_open();

@@ -30,6 +30,8 @@
 #include "vulkan_wrapper/surface.hpp"
 #include "vulkan_wrapper/swapchain.hpp"
 
+#include <bedrock/image.hpp>
+
 #include "pipeline.hpp"
 #include "render_pass.hpp"
 
@@ -76,7 +78,7 @@ private:
   std::vector<int> shadow_caster_indices;
 
   // initialize data
-private:
+public:
   v::Instance instance;
   v::Surface surface;
   v::PhysicalDevice physical_device;
@@ -118,7 +120,7 @@ private:
 
   // images
 private:
-  std::vector<mem::Image> output_images;
+  std::vector<br::Image> output_images;
   // vulkan pipelines
 private:
   TucoPipeline shadowmap_pipeline;
@@ -169,7 +171,7 @@ private:
   std::vector<ResourceCollection> light_ubo;
   std::vector<uint32_t> light_offsets;
 
-  mem::Image depth_image;
+  br::Image depth_image;
 
   // this will be the shadowmap atlas that will contain all the shadowmap data
   // for the scene
@@ -193,7 +195,7 @@ private:
       ubo_offsets; // holds the offset data for a objects ubo information within
                    // the uniform buffer
   std::vector<VkDeviceSize> matOffsets;
-  std::vector<std::vector<mem::Image>> texture_images;
+  std::vector<std::vector<br::Image>> texture_images;
 
   size_t current_frame = 0;
   size_t submitted_frame = 0;
@@ -211,8 +213,6 @@ private:
   // shadow map
   // -------------------------------------------------------------------------
 private:
-  mem::Image shadowmap_atlas;
-
   // this is way to large...
   uint32_t shadowmap_atlas_width = SHADOWMAP_SIZE * sqrt(MAX_SHADOW_CASTERS);
   uint32_t shadowmap_atlas_height = SHADOWMAP_SIZE * sqrt(MAX_SHADOW_CASTERS);
@@ -225,27 +225,27 @@ private:
   float depth_bias_constant = 3.5f;
   float depth_bias_slope = 9.5f;
 
-  vk::Sampler shadowmap_sampler;
-  VkDescriptorSetLayout shadowmap_layout;
+  //vk::Sampler shadowmap_sampler;
+  //VkDescriptorSetLayout shadowmap_layout;
 
   vk::Framebuffer shadowpass_buffer;
 
-  mem::Image shadow_pass_texture;
+  //mem::Image shadow_pass_texture;
 
   std::unique_ptr<mem::Pool> shadowmap_pool;
 
 private:
-  void create_shadowpass_buffer();
+  //void create_shadowpass_buffer();
   void create_shadowpass();
-  void create_shadowpass_resources();
+  //void create_shadowpass_resources();
   void create_shadowpass_pipeline();
-  void create_shadowmap_transfer_buffer();
+  //void create_shadowmap_transfer_buffer();
   void create_shadowmap_set();
   void create_shadowmap_layout();
   void create_shadowmap_pool();
   void create_shadowmap_sampler();
   void create_shadowmap_atlas();
-  void write_to_shadowmap_set();
+  //void write_to_shadowmap_set();
   //-------------------------------------------------------------------------------------
   // deferred shading
   // --------------------------------------------------------------------
@@ -253,7 +253,7 @@ private:
   VkFramebuffer g_buffer;
 
 private:
-  void create_geometry_pass();
+  //void create_geometry_pass();
   void create_geometry_buffer();
   void create_deffered_textures();
 
@@ -315,7 +315,7 @@ private:
   void create_texture_image(std::string texturePath, size_t object,
                             size_t texture_set);
   void create_empty_image(size_t object, size_t texture_set);
-  void write_to_texture_set(ResourceCollection texture_set, mem::Image image);
+  void write_to_texture_set(ResourceCollection texture_set, br::Image image);
   void update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo);
   void create_light_set(uint32_t set_count);
   void create_light_layout();

@@ -7,6 +7,7 @@
 #include "surface.hpp"
 
 #include "memory_allocator.hpp"
+#include <bedrock/image.hpp>
 
 namespace v {
 class Swapchain {
@@ -17,7 +18,7 @@ private:
   vk::Extent2D extent;
 
   vk::SwapchainKHR swapchain;
-  std::vector<mem::Image> swapchain_images;
+  std::vector<br::Image> swapchain_images;
 
 public:
   Swapchain(PhysicalDevice &physical_device, Device &device, Surface &surface);
@@ -26,7 +27,7 @@ public:
 
   vk::SwapchainKHR &get() { return swapchain; }
 
-  mem::Image &get_image(int i) {
+  br::Image &get_image(int i) {
     if (i > swapchain_images.size()) {
       throw std::runtime_error("invalid index location");
     }

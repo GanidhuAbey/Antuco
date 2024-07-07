@@ -74,7 +74,7 @@ void TucoPass::add_dependency(std::vector<vk::SubpassDependency> d) {
 
 void TucoPass::create_subpass(VkPipelineBindPoint bind_point, bool colour, bool depth) {
     if (colour != colour_attach || depth != depth_attach) {
-        LOG("[ERROR] - attempted to enable colour or depth with no attachments created");
+        ERR("attempted to enable colour or depth with no attachments created");
         return;
     } 
     
@@ -93,7 +93,7 @@ void TucoPass::create_subpass(VkPipelineBindPoint bind_point, bool colour, bool 
 
 void TucoPass::create_render_pass(VkPipelineBindPoint bind_point) {
     if (subpasses.size() == 0) {
-        LOG("at least one subpass is required to create render pass");
+        ERR("at least one subpass is required to create render pass");
     }
 
     msg::print_line("subpass count: " + std::to_string(subpasses.size()));

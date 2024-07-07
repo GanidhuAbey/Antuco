@@ -1,10 +1,15 @@
 #include "material.hpp"
 
+#include <bedrock/image.hpp>
+
 using namespace tuco;
 
 void Material::setBaseColorTexture(std::string filePath) {
     baseColorTexturePath = filePath;
     hasBaseTexture = true;
+
+    baseColorImage.init();
+    baseColorImage.load_color_image(baseColorTexturePath);
 }
 
 MaterialBufferObject Material::convert() {

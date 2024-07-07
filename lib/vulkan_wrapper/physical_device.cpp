@@ -1,4 +1,5 @@
 #include "vulkan_wrapper/physical_device.hpp"
+#include "vulkan_wrapper/limits.hpp"
 
 using namespace v;
 
@@ -54,6 +55,15 @@ const bool enableValidationLayers = true;
 
 	//make the best physical device the one we'll use for the program
 	physical_device = current_best_device;
+
+	set_device_limits();
+}
+
+void PhysicalDevice::set_device_limits() {
+	VkPhysicalDeviceProperties device_properties;
+	vkGetPhysicalDeviceProperties(physical_device, &device_properties);
+
+	Limits::get().uniformBufferOffsetAlignment = device_properties.limits.minUniformBufferOffsetAlignment;
 }
 
 uint32_t PhysicalDevice::score_physical_device(vk::PhysicalDevice physical_device) {

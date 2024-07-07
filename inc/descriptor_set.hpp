@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bedrock/image.hpp>
 #include "logger/interface.hpp"
 #include "memory_allocator.hpp"
 #include "vulkan/vulkan_core.h"
@@ -57,12 +58,12 @@ public:
   uint32_t addSets(uint32_t setCount, mem::Pool &pool);
 
   void addImage(uint32_t binding, VkDescriptorType type,
-                VkImageLayout image_layout, mem::Image &image,
+                VkImageLayout image_layout, br::Image &image,
                 vk::Sampler &image_sampler);
 
   void addImagePerSet(uint32_t binding, VkDescriptorType type,
                       VkImageLayout imageLayout,
-                      std::vector<mem::Image> &images,
+                      std::vector<br::Image> &images,
                       vk::Sampler &imageSampler);
 
   void addBuffer(uint32_t binding, VkDescriptorType type, VkBuffer buffer,

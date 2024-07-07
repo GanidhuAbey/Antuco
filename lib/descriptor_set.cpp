@@ -22,7 +22,7 @@ uint32_t ResourceCollection::addSets(uint32_t setCount, mem::Pool &pool) {
 
 bool ResourceCollection::check_size(size_t i) {
   if (i >= sets.size()) {
-    LOG("[ERROR] - invalid allocation");
+    ERR("invalid allocation");
     throw std::runtime_error("exection forcefully stopped");
     return false;
   }
@@ -119,7 +119,7 @@ void ResourceCollection::addBufferPerSet(
     std::vector<VkDeviceSize> bufferRanges) {
 
   if (buffers.size() != sets.size()) {
-    LOG("[ERROR] - there should be one buffer for every set when adding "
+    ERR("There should be one buffer for every set when adding "
         "multiple buffers");
     throw std::runtime_error("");
   }
@@ -144,11 +144,11 @@ void ResourceCollection::addBufferPerSet(
 
 void ResourceCollection::addImagePerSet(uint32_t binding, VkDescriptorType type,
                                         VkImageLayout imageLayout,
-                                        std::vector<mem::Image> &images,
+                                        std::vector<br::Image> &images,
                                         vk::Sampler &imageSampler) {
 
   if (images.size() != sets.size()) {
-    LOG("[ERROR] - there should be one image for every set when adding "
+    ERR("There should be one image for every set when adding "
         "multiple images");
     throw std::runtime_error("");
   }
@@ -172,7 +172,7 @@ void ResourceCollection::addImagePerSet(uint32_t binding, VkDescriptorType type,
 }
 
 void ResourceCollection::addImage(uint32_t binding, VkDescriptorType type,
-                                  VkImageLayout imageLayout, mem::Image &image,
+                                  VkImageLayout imageLayout, br::Image &image,
                                   vk::Sampler &imageSampler) {
 
   VkDescriptorImageInfo imageInfo{};

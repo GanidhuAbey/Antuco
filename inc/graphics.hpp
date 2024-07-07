@@ -19,6 +19,7 @@ namespace tuco {
 class GraphicsImpl;
 
 class Graphics {
+	friend class Antuco;
 private:
 	std::unique_ptr<GraphicsImpl> p_graphics;
 public:

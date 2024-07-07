@@ -7,10 +7,7 @@
 
 #include <glm/ext.hpp>
 
-// disable window capabilities of CImg library.
-#define cimg_display 0
-#include <CImg.h>
-using namespace cimg_library;
+#include <stb_image.h>
 
 using namespace tuco;
 
@@ -36,26 +33,26 @@ GraphicsImpl::GraphicsImpl(Window *pWindow)
   // create_shadowmap_atlas();
   // create_shadowmap_transfer_buffer();
   create_depth_resources();
-  create_shadowpass_resources();
+  //create_shadowpass_resources();
   create_output_images();
   create_render_pass();
   // create_geometry_pass();
-  create_shadowpass();
+  //create_shadowpass();
   create_ubo_layout();
   create_light_layout();
   createMaterialLayout();
   createMaterialPool();
   create_texture_layout();
-  create_shadowmap_layout();
-  create_shadowmap_pool();
+  //create_shadowmap_layout();
+  //create_shadowmap_pool();
   create_graphics_pipeline();
-  create_shadowpass_pipeline();
+  //create_shadowpass_pipeline();
   create_texture_sampler();
-  create_shadowmap_sampler();
+  //create_shadowmap_sampler();
   create_output_buffers();
-  create_shadowpass_buffer();
-  create_shadowmap_set();
-  write_to_shadowmap_set();
+  //create_shadowpass_buffer();
+  //create_shadowmap_set();
+  //write_to_shadowmap_set();
   create_semaphores();
   create_fences();
 
@@ -130,7 +127,8 @@ void GraphicsImpl::update_draw(
       // load textures.
       Material &mat = game_objects[i]->material;
       if (mat.hasBaseTexture) {
-          CImg<unsigned char> baseColor(mat.baseColorTexturePath.c_str());
+          int x, y, n;
+          unsigned char* data = stbi_load(mat.baseColorTexturePath.c_str(), &x, &y, &n, 0);
       }
 
       // writeMaterial(game_objects[i]->material);
