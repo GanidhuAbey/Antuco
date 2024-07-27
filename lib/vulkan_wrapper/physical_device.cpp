@@ -3,20 +3,21 @@
 
 using namespace v;
 
-PhysicalDevice::PhysicalDevice(Instance& instance) {
-    pick_physical_device(instance);
+PhysicalDevice::PhysicalDevice(std::shared_ptr<v::Instance> instance) {
+	m_instance = instance;
+    pick_physical_device(instance.get());
 }
 
 PhysicalDevice::~PhysicalDevice() {}
 
-void PhysicalDevice::pick_physical_device(Instance& instance) {
+void PhysicalDevice::pick_physical_device(Instance* instance) {
 #ifdef NDEBUG 
 const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;
 #endif
 	//query all physical devices we have
-    std::vector<vk::PhysicalDevice> phys_devices = instance.get().enumeratePhysicalDevices();
+    std::vector<vk::PhysicalDevice> phys_devices = instance->get().enumeratePhysicalDevices();
 
 	//score each device
 	std::multimap<uint32_t, vk::PhysicalDevice> device_score;

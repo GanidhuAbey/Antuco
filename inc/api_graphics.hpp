@@ -79,10 +79,10 @@ private:
 
   // initialize data
 public:
-  v::Instance instance;
-  v::Surface surface;
-  v::PhysicalDevice physical_device;
-  v::Device device;
+  std::shared_ptr<v::Instance> p_instance;
+  std::shared_ptr<v::Surface> p_surface;
+  std::shared_ptr<v::PhysicalDevice> p_physical_device;
+  std::shared_ptr<v::Device> p_device;
   v::Swapchain swapchain;
   VkDebugUtilsMessengerEXT debug_messenger;
 

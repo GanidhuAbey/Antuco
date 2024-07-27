@@ -13,6 +13,7 @@
 #include <optional>
 #include <utility>
 #include <vector>
+#include <memory>
 
 const VkDeviceSize INTER_BUFFER_SIZE = 1e8;
 const VkDeviceSize MINIMUM_SORT_DISTANCE = 1e5;
@@ -22,6 +23,41 @@ const VkDeviceSize MINIMUM_SORT_DISTANCE = 1e5;
 // manipulate this data VkDeviceSize allocationSize = 5e8;
 
 namespace mem {
+
+
+//class Resource
+//{
+//private:
+//    bool free_resource = false;
+//public:
+//    Resource() = default;
+//    ~Resource() = default;
+//    // every resource must implement a method to clean up it's memory.
+//    virtual void destroy() = 0;
+//
+//    void set_free(bool free) { free_resource = free; }
+//    bool get_free_resource() { return free_resource; }
+//
+//};
+//
+//
+//// A singleton class designed to take ownership of destroying resources when they are no longer needed.
+//// TODO - for now we will only implement functionality to wipe memory at the end of program, other functionality can be added
+////        as needed.
+//class GarbageCollector
+//{
+//private:
+//    static std::unique_ptr<GarbageCollector> instance;
+//    GarbageCollector() = default;
+//
+//    std::vector<std::unique_ptr<Resource>> all_resources;
+//public:
+//    static GarbageCollector* get();
+//
+//    Resource* register_resource(Resource& resource);
+//
+//    ~GarbageCollector();
+//};
 
 struct BufferCreateInfo {
   const void *pNext = nullptr;

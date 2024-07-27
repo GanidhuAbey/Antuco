@@ -8,8 +8,9 @@ void Material::setBaseColorTexture(std::string filePath) {
     baseColorTexturePath = filePath;
     hasBaseTexture = true;
 
-    baseColorImage.init();
+    baseColorImage.init("baseColorTexture");
     baseColorImage.load_color_image(baseColorTexturePath);
+    baseColorImage.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 }
 
 MaterialBufferObject Material::convert() {

@@ -10,6 +10,39 @@
 
 using namespace mem;
 
+//std::unique_ptr<GarbageCollector> GarbageCollector::instance;
+//
+//GarbageCollector* GarbageCollector::get()
+//{
+//    if (!instance) 
+//    {
+//        instance = std::make_unique<GarbageCollector>();
+//    }
+//    return instance.get();
+//}
+//
+//GarbageCollector::~GarbageCollector()
+//{
+//    // on de-initialization clear all resources that have not been freed yet.
+//    for (auto& resource : all_resources)
+//    {
+//        resource->destroy();
+//    }
+//}
+//
+//// TODO: does pointer make sense here, if what provided the pointer disappears, then the garbage collector would lose it's handle
+////       to the resource.
+//
+//// Perhaps the garbage collector should have ownership of the resource, and it should provide pointers to everyone else?
+//// As short term solution, we can just use a copy, since the vulkan objects are all pointers, they will never get copied along with the object.
+//Resource* GarbageCollector::register_resource(Resource& resource)
+//{
+//    uint32_t index = all_resources.size();
+//    all_resources.push_back(std::make_unique<Resource>(resource));
+//    // Perhaps we can have a wrapper around our resource classes to handle registration and hide pointers?
+//    return all_resources[index].get();
+//}
+
 void SearchBuffer::init(v::PhysicalDevice &physical_device, v::Device &device,
                         BufferCreateInfo &buffer_info) 
 {

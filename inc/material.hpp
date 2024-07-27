@@ -52,6 +52,7 @@ public:
 	MaterialBufferObject convert();
 
 	void setBaseColorTexture(std::string filePath);
+	br::Image& getBaseColorImage() { return baseColorImage; }
 };
 
 } // namespace tuco

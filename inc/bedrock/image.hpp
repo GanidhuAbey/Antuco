@@ -70,17 +70,20 @@ struct RawImageData
     uint32_t buffer_size;
 };
 
+
+
 class Image
 {
 private:
-    v::Device* device;
-    v::PhysicalDevice* phys_device;
+    std::shared_ptr<v::Device> device;
+    std::shared_ptr<v::PhysicalDevice> p_physical_device;
 
     ImageData data;
 
     vk::Image image;
     vk::ImageView image_view;
     VkDeviceMemory memory;
+    vk::Sampler sampler;
 
     vk::CommandPool command_pool;
 
@@ -88,15 +91,21 @@ private:
 
     RawImageData raw_image;
 
+    bool handle_destruction = false;
+    bool initialized = false;
+
 public:
-    void init();
+    ~Image();
+
+    void init(std::string name, bool handle_destruction = false);
     //! loads color image from filepath, creating device accessible image. (assumes that Antuco graphics already initialized).
     void load_color_image(std::string file_path);
+    void set_image_sampler(VkFilter filter, VkSamplerMipmapMode mipMapFilter, VkSamplerAddressMode addressMode);
     // [TODO] - remove references to and delete (deprecated)
-    void init(v::PhysicalDevice& physical_device, v::Device& device,
-                ImageData info);
-    void init(v::PhysicalDevice& physical_device, v::Device& device,
-                VkImage image, ImageData info);
+    void init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<v::Device> device,
+                ImageData info, bool handle_destruction = false);
+    void init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<v::Device> device,
+                VkImage image, ImageData info, bool handle_destruction = false);
     // can only be called after init()
     void destroy();
     void destroy_image_view();
@@ -117,6 +126,8 @@ public:
         std::optional<vk::CommandBuffer> command_buffer = std::nullopt);
 
     void set_write(bool write) { Image::write = write; }
+
+    vk::Sampler &get_sampler() { return sampler; }
 
 private:
     void create_image();

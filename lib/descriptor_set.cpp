@@ -192,3 +192,21 @@ void ResourceCollection::addImage(uint32_t binding, VkDescriptorType type,
     setsUpdateInfo[i].push_back(writeInfo);
   }
 }
+
+void ResourceCollection::addImage(ImageDescription info, uint32_t set_index)
+{
+    VkDescriptorImageInfo image_info{};
+    image_info.imageLayout = info.image_layout;
+    image_info.imageView = info.image_view;
+    image_info.sampler = info.sampler;
+
+    descriptorImageInfo.push_back(image_info);
+
+    ResourceWriteInfo write_info{};
+    write_info.binding = info.binding;
+    write_info.type = info.type;
+    write_info.imageInfoIndex = descriptorImageInfo.size() - 1;
+
+    write_info.setIndex = set_index;
+    setsUpdateInfo[set_index].push_back(write_info);
+}

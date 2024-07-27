@@ -41,10 +41,19 @@
   fmt::print("[INFO ( {}() )] - ", __func__); \
   fmt::print(__VA_ARGS__);                    \
   fmt::print("\n")
+
+#define ASSERT(cond, ...)                                                                                    \
+  if (!cond) {                                                                                               \
+    fmt::print(stderr, fg(fmt::color::purple) | fmt::emphasis::bold, "[ASSERT ( {}() )] - ", __func__);      \
+    fmt::print(stderr, fg(fmt::color::purple) | fmt::emphasis::bold, __VA_ARGS__);                           \
+    fmt::print("\n");                                                                                        \
+    throw std::runtime_error("assert failed");                                                               \
+  }
 #else
 #define WARN(...)  // nothing
 #define ERR(...)   // nothing
 #define INFO(...)  // nothing
+#define ASSERT(cond, ...) // nothing
 #endif
 
 

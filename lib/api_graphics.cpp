@@ -12,65 +12,67 @@
 using namespace tuco;
 
 GraphicsImpl::GraphicsImpl(Window *pWindow)
-    : instance(pWindow->get_title(), VK_MAKE_API_VERSION(0, 1, 1, 0)),
-      physical_device(instance), surface(instance, pWindow->pWindow->apiWindow),
-      device(physical_device, surface, false),
-      swapchain(physical_device, device, surface) {
-
-  not_created = true;
-  raytracing = false; // set this as an option in the pre-configuration
-                      // settings.
-  oit_layers = 1;
-  depth_bias_constant = 7.0f;
-  depth_bias_slope = 9.0f;
+{
+    p_instance = std::make_shared<v::Instance>(pWindow->get_title(), VK_MAKE_API_VERSION(0, 1, 1, 0));
+    p_physical_device = std::make_shared<v::PhysicalDevice>(p_instance);
+    p_surface = std::make_shared<v::Surface>(p_instance.get(), pWindow->pWindow->apiWindow);
+    p_device = std::make_shared<v::Device>(p_physical_device, p_surface, false);
+    swapchain.init(p_physical_device, p_device, p_surface.get());
+  
+    not_created = true;
+    raytracing = false; // set this as an option in the pre-configuration
+                        // settings.
+    oit_layers = 1;
+    depth_bias_constant = 7.0f;
+    depth_bias_slope = 9.0f;
 #ifdef APPLE_M1
-  print_debug = false;
-  raytracing = false;
+    print_debug = false;
+    raytracing = false;
 #endif
-  command_pool = create_command_pool(device, device.get_graphics_family());
+    command_pool = create_command_pool(*p_device, p_device->get_graphics_family());
 
-  // graphics draw
-  // create_shadowmap_atlas();
-  // create_shadowmap_transfer_buffer();
-  create_depth_resources();
-  //create_shadowpass_resources();
-  create_output_images();
-  create_render_pass();
-  // create_geometry_pass();
-  //create_shadowpass();
-  create_ubo_layout();
-  create_light_layout();
-  createMaterialLayout();
-  createMaterialPool();
-  create_texture_layout();
-  //create_shadowmap_layout();
-  //create_shadowmap_pool();
-  create_graphics_pipeline();
-  //create_shadowpass_pipeline();
-  create_texture_sampler();
-  //create_shadowmap_sampler();
-  create_output_buffers();
-  //create_shadowpass_buffer();
-  //create_shadowmap_set();
-  //write_to_shadowmap_set();
-  create_semaphores();
-  create_fences();
+    // graphics draw
+    // create_shadowmap_atlas();
+    // create_shadowmap_transfer_buffer();
+    create_depth_resources();
+    //create_shadowpass_resources();
+    create_output_images();
+    create_render_pass();
+    // create_geometry_pass();
+    //create_shadowpass();
+    create_ubo_layout();
+    create_light_layout();
+    createMaterialLayout();
+    createMaterialPool();
+    create_texture_layout();
+    //create_shadowmap_layout();
+    //create_shadowmap_pool();
+    create_graphics_pipeline();
+    //create_shadowpass_pipeline();
+    create_texture_sampler();
+    //create_shadowmap_sampler();
+    create_output_buffers();
+    //create_shadowpass_buffer();
+    //create_shadowmap_set();
+    //write_to_shadowmap_set();
+    create_semaphores();
+    create_fences();
 
-  // create some buffers now
-  create_vertex_buffer();
-  create_index_buffer();
-  create_uniform_buffer();
+    // create some buffers now
+    create_vertex_buffer();
+    create_index_buffer();
+    create_uniform_buffer();
 
-  create_ubo_pool();
-  create_texture_pool();
+    create_ubo_pool();
+    create_texture_pool();
 
-  create_screen_pass();
-  create_screen_buffer();
-  create_screen_pipeline();
-  create_screen_set();
+    create_screen_pass();
+    create_screen_buffer();
+    create_screen_pipeline();
+    create_screen_set();
 
-  createMaterialCollection();
-  // globalMaterialOffsets = setupMaterialBuffers();
+    createMaterialCollection();
+    // globalMaterialOffsets = setupMaterialBuffers();
 }
 
 GraphicsImpl::~GraphicsImpl() {
@@ -126,10 +128,6 @@ void GraphicsImpl::update_draw(
 
       // load textures.
       Material &mat = game_objects[i]->material;
-      if (mat.hasBaseTexture) {
-          int x, y, n;
-          unsigned char* data = stbi_load(mat.baseColorTexturePath.c_str(), &x, &y, &n, 0);
-      }
 
       // writeMaterial(game_objects[i]->material);
       writeMaterial(mat);

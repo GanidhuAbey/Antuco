@@ -7,18 +7,20 @@
 
 using namespace v;
 
-Device::Device(PhysicalDevice& phys_device, Surface& surface, bool print_debug) {
-    create_logical_device(phys_device, surface, print_debug); 
+Device::Device(std::shared_ptr<v::PhysicalDevice> phys_device, std::shared_ptr<v::Surface> surface, bool print_debug) {
+	m_phys_device = phys_device;
+	m_surface = surface;
+    create_logical_device(phys_device.get(), surface.get(), print_debug);
 }
 Device::~Device() {
     device.destroy();
 }
 
-bool Device::check_device_extensions(PhysicalDevice& phys_device, std::vector<const char*> extensions, uint32_t extensions_count) {
+bool Device::check_device_extensions(PhysicalDevice* phys_device, std::vector<const char*> extensions, uint32_t extensions_count) {
 	uint32_t all_extensions_count;
-	vkEnumerateDeviceExtensionProperties(phys_device, nullptr, &all_extensions_count, nullptr);
+	vkEnumerateDeviceExtensionProperties(*phys_device, nullptr, &all_extensions_count, nullptr);
 	std::vector<VkExtensionProperties> all_extensions(all_extensions_count);
-	vkEnumerateDeviceExtensionProperties(phys_device, nullptr, &all_extensions_count, all_extensions.data());
+	vkEnumerateDeviceExtensionProperties(*phys_device, nullptr, &all_extensions_count, all_extensions.data());
 
 	//check if required extensions are supported
 	for (uint32_t i = 0; i < extensions_count; i++) {
@@ -37,14 +39,14 @@ bool Device::check_device_extensions(PhysicalDevice& phys_device, std::vector<co
 
 }
 
-void Device::create_logical_device(PhysicalDevice& physical_device, Surface& surface, bool print_debug) {
+void Device::create_logical_device(PhysicalDevice* physical_device, Surface* surface, bool print_debug) {
 #ifdef NDEBUG 
 const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;
 #endif
 	//first we need to retrieve queue data from the computer
-	auto indices = tuco::QueueData(physical_device, surface);
+	auto indices = tuco::QueueData(*physical_device, *surface);
 
 	graphics_family = indices.graphicsFamily.value();
 	present_family = indices.presentFamily.value();
@@ -95,7 +97,7 @@ const bool enableValidationLayers = true;
             &device_features
         );
 
-    device = physical_device.get().createDevice(device_info);
+    device = physical_device->get().createDevice(device_info);
 
     graphics_queue = device.getQueue(graphics_family, 0);
     present_queue = device.getQueue(present_family, 0);

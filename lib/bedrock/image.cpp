@@ -13,30 +13,83 @@ using namespace br;
 
 void Image::destroy()
 {
-    INFO("image name %s", data.name.c_str());
+    INFO("image name {}", data.name.c_str());
     destroy_image_view();
-    device->get().destroyImage(image, nullptr);
-    device->get().freeMemory(memory, nullptr);
+    if (image != VK_NULL_HANDLE)
+    {
+        device->get().destroyImage(image, nullptr);
+    }
+    if (memory != VK_NULL_HANDLE)
+    {
+        device->get().freeMemory(memory, nullptr);
+    }
+
+    if (sampler != VK_NULL_HANDLE)
+    {
+        device->get().destroySampler(sampler, nullptr);
+    }
+
+    // invalidate handles
+    image = VK_NULL_HANDLE;
+    memory = VK_NULL_HANDLE;
 }
 
 void Image::destroy_image_view()
 {
-    device->get().destroyImageView(image_view, nullptr);
-    device->get().destroyCommandPool(command_pool);
+    if (image_view != VK_NULL_HANDLE)
+    {
+        device->get().destroyImageView(image_view, nullptr);
+    }
+    if (command_pool != VK_NULL_HANDLE)
+    {
+        device->get().destroyCommandPool(command_pool);
+    }
+
+    // invalidate handles
+    image_view = VK_NULL_HANDLE;
+    command_pool = VK_NULL_HANDLE;
 }
 
 vk::Image Image::get_api_image() { return image; }
 
-void Image::init() 
+void Image::init(std::string name, bool handle_destruction) 
 {
+    sampler = VK_NULL_HANDLE;
+    Image::handle_destruction = handle_destruction;
+    data.name = name;
+
     // Get backend.
     tuco::GraphicsImpl* backend = tuco::Antuco::get_engine().get_backend();
 
-    Image::device = &backend->device;
-    Image::phys_device = &backend->physical_device;
+    Image::device = backend->p_device;
+    Image::p_physical_device = backend->p_physical_device;
 
     auto pool_info = vk::CommandPoolCreateInfo({}, device->get_transfer_family());
     command_pool = device->get().createCommandPool(pool_info);
+
+    initialized = true;
+}
+
+void Image::set_image_sampler(VkFilter filter, VkSamplerMipmapMode mipMapFilter, VkSamplerAddressMode addressMode)
+{
+    VkSamplerCreateInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    info.pNext = nullptr;
+    info.flags = {};
+    info.magFilter = filter;
+    info.minFilter = filter;
+    info.mipmapMode = mipMapFilter;
+    info.addressModeU = addressMode;
+    info.addressModeV = addressMode;
+    info.addressModeW = addressMode;
+    info.mipLodBias = 0.f; // IDK
+    info.anisotropyEnable = VK_FALSE; // IDK
+    info.compareEnable = VK_FALSE; // IDK
+    info.unnormalizedCoordinates = VK_FALSE;
+
+    sampler = device->get().createSampler(info);
+
+    ASSERT(sampler, "Failed to create image sampler.");
 }
 
 void Image::load_color_image(std::string file_path)
@@ -55,11 +108,11 @@ void Image::load_color_image(std::string file_path)
     ImageCreateInfo image_info;
 
     // TODO : take format info from user.
-    if (raw_image.channels = 4)
+    if (raw_image.channels == 4)
     {
         image_info.format = vk::Format::eR8G8B8A8Srgb;
     }
-    else if (raw_image.channels = 3)
+    else if (raw_image.channels == 3)
     {
         image_info.format = vk::Format::eR8G8B8Srgb;
     }
@@ -89,6 +142,8 @@ void Image::load_color_image(std::string file_path)
     copy_from_buffer(buffer.get(), vk::Offset3D(), vk::Extent3D(raw_image.width, raw_image.height, 1), device->get_transfer_queue());
 
     transfer(vk::ImageLayout::eShaderReadOnlyOptimal, device->get_transfer_queue(), std::nullopt, vk::ImageLayout::eTransferDstOptimal);
+
+    buffer.destroy();
 }
 
 void Image::copy_to_buffer(RawImageData& data, mem::CPUBuffer* buffer)
@@ -102,42 +157,58 @@ void Image::copy_to_buffer(RawImageData& data, mem::CPUBuffer* buffer)
     texture_buffer_info.p_queue_family_indices = &device->get_transfer_family();
 
     // TODO: make buffer at runtime specifically for transfer commands
-    buffer->init(*phys_device, *device, texture_buffer_info);
+    buffer->init(*p_physical_device, *device, texture_buffer_info);
     buffer->map(data.buffer_size, data.image_data);
 }
 
-void Image::init(v::PhysicalDevice& physical_device, v::Device& device,
-                      VkImage image, ImageData info)
+void Image::init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<v::Device> device,
+                      VkImage image, ImageData info, bool handle_destruction)
 {
+    sampler = VK_NULL_HANDLE;
+    Image::handle_destruction = handle_destruction;
     data = info;
 
-    Image::device = &device;
-    Image::phys_device = &physical_device;
+    Image::device = device;
+    Image::p_physical_device = p_physical_device;
 
     Image::image = image;
     create_image_view();
 
     // create command pool
-    auto pool_info = vk::CommandPoolCreateInfo({}, device.get_transfer_family());
+    auto pool_info = vk::CommandPoolCreateInfo({}, device->get_transfer_family());
 
-    command_pool = device.get().createCommandPool(pool_info);
+    command_pool = device->get().createCommandPool(pool_info);
+    initialized = true;
 }
 
 vk::ImageView Image::get_api_image_view() { return image_view; }
 
-void Image::init(v::PhysicalDevice& physical_device, v::Device& device,
-                 ImageData info)
+void Image::init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<v::Device> device,
+                 ImageData info, bool handle_destruction)
 {
-    Image::device = &device;
-    Image::phys_device = &physical_device;
+    sampler = VK_NULL_HANDLE;
+    Image::handle_destruction = handle_destruction;
+    Image::device = device;
+    Image::p_physical_device = p_physical_device;
     data = info;
 
     create_image();
     create_image_view();
 
-    auto pool_info = vk::CommandPoolCreateInfo({}, device.get_transfer_family());
+    auto pool_info = vk::CommandPoolCreateInfo({}, device->get_transfer_family());
 
-    command_pool = device.get().createCommandPool(pool_info);
+    command_pool = device->get().createCommandPool(pool_info);
+
+    initialized = true;
+}
+
+Image::~Image() {
+    if (handle_destruction || !initialized)
+    {
+        return;
+    }
+
+    destroy();
 }
 
 void Image::create_image()
@@ -153,7 +224,7 @@ void Image::create_image()
 
     // allocate memory
     auto memory_req = device->get().getImageMemoryRequirements(image);
-    auto memory_prop = phys_device->get().getMemoryProperties();
+    auto memory_prop = p_physical_device->get().getMemoryProperties();
 
     auto memory_index = uint32_t(0);
     auto properties = info.memory_properties;
@@ -172,7 +243,7 @@ void Image::create_image()
     auto alloc = vk::MemoryAllocateInfo(memory_req.size, memory_index);
 
     alloc.memoryTypeIndex = mem::findMemoryType(
-        *phys_device, memory_req.memoryTypeBits, info.memory_properties);
+        *p_physical_device, memory_req.memoryTypeBits, info.memory_properties);
 
     memory = device->get().allocateMemory(alloc);
 

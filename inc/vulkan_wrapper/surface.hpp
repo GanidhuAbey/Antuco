@@ -11,9 +11,9 @@ private:
     vk::SurfaceKHR surface;
     void create_vulkan_surface(Instance& instance, GLFWwindow* window);
 public:
-    Surface(Instance& instance, GLFWwindow* window) {
-        Surface::instance = instance.get();
-        create_vulkan_surface(instance, window); 
+    Surface(Instance* instance, GLFWwindow* window) {
+        Surface::instance = instance->get();
+        create_vulkan_surface(*instance, window); 
     }
     ~Surface() {
         instance.destroySurfaceKHR(surface);

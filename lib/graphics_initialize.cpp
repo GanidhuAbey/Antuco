@@ -25,9 +25,9 @@ void GraphicsImpl::enable_raytracing() {
 
 bool GraphicsImpl::check_device_extensions(std::vector<const char*> extensions, uint32_t extensions_count) {
 	uint32_t all_extensions_count;
-	vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &all_extensions_count, nullptr);
+	vkEnumerateDeviceExtensionProperties(p_physical_device->get(), nullptr, &all_extensions_count, nullptr);
 	std::vector<VkExtensionProperties> all_extensions(all_extensions_count);
-	vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &all_extensions_count, all_extensions.data());
+	vkEnumerateDeviceExtensionProperties(p_physical_device->get(), nullptr, &all_extensions_count, all_extensions.data());
 
 	//check if required extensions are supported
 	for (uint32_t i = 0; i < extensions_count; i++) {

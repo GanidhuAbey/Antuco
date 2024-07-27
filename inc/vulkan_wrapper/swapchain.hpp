@@ -12,7 +12,7 @@
 namespace v {
 class Swapchain {
 private:
-  v::Device *device;
+  std::shared_ptr<v::Device> device;
 
   vk::Format format;
   vk::Extent2D extent;
@@ -21,7 +21,8 @@ private:
   std::vector<br::Image> swapchain_images;
 
 public:
-  Swapchain(PhysicalDevice &physical_device, Device &device, Surface &surface);
+  Swapchain(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<Device> device, Surface *p_surface);
+  Swapchain() = default;
 
   ~Swapchain();
 
@@ -34,7 +35,7 @@ public:
     return swapchain_images[i];
   }
 
-  void init(v::PhysicalDevice &physical_device, v::Surface &surface);
+  void init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<Device> device, v::Surface *p_surface);
   void destroy();
 
   vk::Format get_format() { return format; }
@@ -45,8 +46,8 @@ public:
   }
 
 private:
-  void create_swapchain(PhysicalDevice &physical_device, Device *device,
-                        Surface &surface);
+  void create_swapchain(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<Device> device,
+                        Surface *p_surface);
 
   vk::SurfaceFormatKHR
   choose_best_surface_format(std::vector<vk::SurfaceFormatKHR> formats);
