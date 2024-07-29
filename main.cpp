@@ -118,15 +118,16 @@ int main() {
   floor->get_material().metallic = 0.1;
   floor->get_material().roughness = 0.8;
 
-  auto cube = antuco.create_object();
-  cube->add_mesh(root_project + "\\objects\\antuco-files\\windows\\cube.glb");
-  cube->scale(glm::vec3(0.1));
-  cube->translate(glm::vec3(0, 1, 0));
+  auto damagedHelmet = antuco.create_object();
+  damagedHelmet->add_mesh(root_project + "\\objects\\antuco-files\\windows\\helmet\\DamagedHelmet.gltf");
+  damagedHelmet->scale(glm::vec3(0.1));
+  damagedHelmet->translate(glm::vec3(0, 1, 0));
 
-  cube->get_material().albedo = glm::vec3(1.0, 0.0, 0.0);
-  cube->get_material().metallic = 0.7;
-  cube->get_material().roughness = 0.3;
-  cube->get_material().setBaseColorTexture(root_project + "\\objects\\antuco-files\\textures\\brick.jpg");
+  damagedHelmet->get_material().albedo = glm::vec3(1.0, 1.0, 1.0);
+  damagedHelmet->get_material().metallic = 0.7;
+  damagedHelmet->get_material().roughness = 0.3;
+  damagedHelmet->get_material().setBaseColorTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_albedo.jpg");
+  damagedHelmet->get_material().setRoughnessTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_metalRoughness.jpg");
 #endif
 
   // light_mesh->scale(glm::vec3(0.2));

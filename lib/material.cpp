@@ -9,9 +9,19 @@ void Material::setBaseColorTexture(std::string filePath) {
     hasBaseTexture = true;
 
     baseColorImage.init("baseColorTexture");
-    baseColorImage.load_color_image(baseColorTexturePath);
-    baseColorImage.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    baseColorImage.load_image(baseColorTexturePath, br::ImageFormat::RGBA_COLOR);
+    baseColorImage.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 }
+
+void Material::setRoughnessTexture(std::string filePath) {
+    hasRoughnessTexture = true;
+
+    roughnessImage.init("roughnessTexture");
+    roughnessImage.load_image(filePath, br::ImageFormat::RGBA_COLOR);
+    roughnessImage.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+}
+
+void Material::setMetallicTexture(std::string filePath) {}
 
 MaterialBufferObject Material::convert() {
   MaterialBufferObject obj{};

@@ -29,6 +29,8 @@ struct MaterialBufferObject {
 class Material {
 private:
 	br::Image baseColorImage;
+	br::Image roughnessImage;
+	br::Image metallicimage;
 public:
 	// uint32_t image_index;
 	// std::optional<std::string> texturePath;
@@ -53,6 +55,12 @@ public:
 
 	void setBaseColorTexture(std::string filePath);
 	br::Image& getBaseColorImage() { return baseColorImage; }
+
+	void setRoughnessTexture(std::string filePath);
+	br::Image& getRoughnessImage() { return roughnessImage; }
+
+	void setMetallicTexture(std::string filePath);
+	br::Image& getMetallicImage() { return metallicimage; }
 };
 
 } // namespace tuco

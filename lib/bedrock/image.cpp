@@ -92,6 +92,75 @@ void Image::set_image_sampler(VkFilter filter, VkSamplerMipmapMode mipMapFilter,
     ASSERT(sampler, "Failed to create image sampler.");
 }
 
+void Image::load_image(std::string &file_path, ImageFormat image_format) 
+{
+    uint32_t channels;
+    vk::Format format;
+
+    switch (image_format)
+    {
+    case ImageFormat::RGBA_COLOR:
+        channels = 4;
+        format = vk::Format::eR8G8B8A8Srgb;
+        break;
+    case ImageFormat::DEPTH:
+        channels = 1;
+        format = vk::Format::eD32Sfloat;
+        break;
+    case ImageFormat::R_COLOR:
+        channels = 1;
+        format = vk::Format::eR8Srgb;
+        break;
+    case ImageFormat::RG_COLOR:
+        channels = 2;
+        format = vk::Format::eR8G8Srgb;
+        break;
+    default:
+        break;
+    }
+
+
+    raw_image.image_data = stbi_load(file_path.c_str(), &raw_image.width, &raw_image.height, nullptr, channels);
+    raw_image.channels = channels;
+    raw_image.buffer_size = raw_image.width * raw_image.height * raw_image.channels;
+
+    // Load image to CPU buffer.
+    mem::CPUBuffer buffer;
+    copy_to_buffer(raw_image, &buffer);
+
+    // TODO - embed image info into the image itself (should be some library to extract info). simplify image creation and make it more universal.
+    // Initialize device image.
+    ImageCreateInfo image_info;
+
+    image_info.format = format;
+    image_info.extent = vk::Extent3D(raw_image.width, raw_image.height, 1);
+    image_info.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
+    //image_info.initial_layout = vk::ImageLayout::eTransferDstOptimal;
+    image_info.queueFamilyIndexCount = 1;
+    image_info.pQueueFamilyIndices = &device->get_graphics_family();
+    image_info.size = raw_image.buffer_size;
+
+    // Generalize to support other non-color type images.
+    ImageViewCreateInfo view_info;
+    view_info.aspect_mask = vk::ImageAspectFlagBits::eColor;
+
+    // TODO - add support to cleaning up image if user wants to change material texture.
+    data.image_info = image_info;
+    data.image_view_info = view_info;
+    create_image();
+    create_image_view();
+
+    transfer(vk::ImageLayout::eTransferDstOptimal, device->get_transfer_queue());
+
+    copy_from_buffer(buffer.get(), vk::Offset3D(), vk::Extent3D(raw_image.width, raw_image.height, 1), device->get_transfer_queue());
+
+    transfer(vk::ImageLayout::eShaderReadOnlyOptimal, device->get_transfer_queue(), std::nullopt, vk::ImageLayout::eTransferDstOptimal);
+
+    current_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+    buffer.destroy();
+}
+
 void Image::load_color_image(std::string file_path)
 {
     // Load raw image
@@ -143,6 +212,8 @@ void Image::load_color_image(std::string file_path)
 
     transfer(vk::ImageLayout::eShaderReadOnlyOptimal, device->get_transfer_queue(), std::nullopt, vk::ImageLayout::eTransferDstOptimal);
 
+    current_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
     buffer.destroy();
 }
 
@@ -174,6 +245,8 @@ void Image::init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shar
     Image::image = image;
     create_image_view();
 
+    current_layout = data.image_info.initial_layout;
+
     // create command pool
     auto pool_info = vk::CommandPoolCreateInfo({}, device->get_transfer_family());
 
@@ -194,6 +267,8 @@ void Image::init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shar
 
     create_image();
     create_image_view();
+
+    current_layout = data.image_info.initial_layout;
 
     auto pool_info = vk::CommandPoolCreateInfo({}, device->get_transfer_family());
 
@@ -327,6 +402,18 @@ void Image::copy_to_buffer(vk::Buffer buffer, VkDeviceSize dst_offset,
         tuco::end_command_buffer(*device, queue, command_pool,
                                  command_buffer.value());
     }
+}
+
+void Image::change_layout(vk::ImageLayout new_layout, vk::Queue queue, std::optional<vk::CommandBuffer> command_buffer)
+{
+    if (current_layout == new_layout)
+    {
+        //INFO("Image %s already in layout %d", data.name, new_layout);
+        return; // already changed layout.
+    }
+    
+    transfer(new_layout, queue, command_buffer, current_layout);
+    current_layout = new_layout;
 }
 
 // [TODO] - WHY THE FUCK DID I WRITE THIS LIKE THIS?

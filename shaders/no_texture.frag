@@ -23,7 +23,8 @@ layout(set=2, binding=0) uniform Material {
     vec4 padding[2];
 } mat;
 
-layout(set=3, binding=1) uniform sampler2D diffuseTexture;
+layout(set=2, binding=1) uniform sampler2D diffuseTexture;
+layout(set=2, binding=2) uniform sampler2D roughnessTexture;
 
 float bias = 5e-3;
 
@@ -135,9 +136,11 @@ void main(){
     // ---------- Hard coded paramaters
     vec3 lightColor = vec3(1.f, 1.f, 1.f); // colour of the incoming light [LIGHT]
     vec3 materialBaseReflectivity = vec3(mat.pbrParameters.x); // visually good enough for dieletric materials.
-    float roughness = mat.pbrParameters.y;
-    float metallic = mat.pbrParameters.z;
-    vec3 albedo = mat.albedo; // surface color
+
+    // Weird artifacts on the roughness texture...
+    float roughness = mat.hasTexture.z == 1.f ? texture(roughnessTexture, texCoord).y : mat.pbrParameters.y;
+    float metallic = mat.hasTexture.z == 1.f ? texture(roughnessTexture, texCoord).z : mat.pbrParameters.z;
+    vec3 albedo = mat.hasTexture.x == 1.f ? texture(diffuseTexture, texCoord).xyz : mat.albedo; // surface color
 
     materialBaseReflectivity = mix(materialBaseReflectivity, albedo, metallic);
 

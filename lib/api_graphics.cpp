@@ -73,6 +73,8 @@ GraphicsImpl::GraphicsImpl(Window *pWindow)
 
     createMaterialCollection();
     // globalMaterialOffsets = setupMaterialBuffers();
+
+    create_default_images();
 }
 
 GraphicsImpl::~GraphicsImpl() {

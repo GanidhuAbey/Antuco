@@ -433,12 +433,21 @@ void GraphicsImpl::createMaterialLayout() {
   matBaseTexBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
   matBaseTexBinding.pImmutableSamplers = nullptr;
 
+  // Material roughness color texture binding
+  VkDescriptorSetLayoutBinding matRoughnessTexBinding{};
+  matRoughnessTexBinding.binding = 2;
+  matRoughnessTexBinding.descriptorCount = 1;
+  matRoughnessTexBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  matRoughnessTexBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  matRoughnessTexBinding.pImmutableSamplers = nullptr;
+
   VkDescriptorSetLayoutCreateInfo layoutInfo{};
   layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 
-  layoutInfo.bindingCount = 2;
-  VkDescriptorSetLayoutBinding bindings[2] = {matLayoutBinding,
-                                              matBaseTexBinding};
+  layoutInfo.bindingCount = 3;
+  VkDescriptorSetLayoutBinding bindings[3] = {matLayoutBinding,
+                                              matBaseTexBinding,
+                                              matRoughnessTexBinding};
   layoutInfo.pBindings = bindings;
 
   VkResult result = vkCreateDescriptorSetLayout(p_device->get(), &layoutInfo,
@@ -985,41 +994,67 @@ void GraphicsImpl::updateMaterialResources(Material &material) {
   // update_materials(material.gpuInfo.descriptorOffset, material);
 }
 
-void GraphicsImpl::writeMaterial(Material &material) {
-  // material.offsets.descriptorOffset = globalMaterialOffsets.descriptorOffset;
-  material.gpuInfo.bufferOffset =
-      uniform_buffer.allocate(sizeof(MaterialBufferObject), v::Limits::get().uniformBufferOffsetAlignment);
-  // update_materials(material.offsets.bufferOffset, material);
-  MaterialBufferObject matObj = material.convert();
-  updateUniformBuffer(material.gpuInfo.bufferOffset,
-                      sizeof(MaterialBufferObject), &matObj);
+void GraphicsImpl::writeMaterial(Material &material) 
+{
+    // material.offsets.descriptorOffset = globalMaterialOffsets.descriptorOffset;
+    material.gpuInfo.bufferOffset =
+        uniform_buffer.allocate(sizeof(MaterialBufferObject), v::Limits::get().uniformBufferOffsetAlignment);
+    // update_materials(material.offsets.bufferOffset, material);
+    MaterialBufferObject matObj = material.convert();
+    updateUniformBuffer(material.gpuInfo.bufferOffset,
+                        sizeof(MaterialBufferObject), &matObj);
 
-  material.gpuInfo.setIndex = materialCollection.addSets(1, *matPool);
+    material.gpuInfo.setIndex = materialCollection.addSets(1, *matPool);
 
-  BufferDescription info{};
-  info.binding = 0;
-  info.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  info.buffer = uniform_buffer.buffer;
-  info.bufferRange = sizeof(MaterialBufferObject);
-  info.bufferOffset = material.gpuInfo.bufferOffset;
+    BufferDescription info{};
+    info.binding = 0;
+    info.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    info.buffer = uniform_buffer.buffer;
+    info.bufferRange = sizeof(MaterialBufferObject);
+    info.bufferOffset = material.gpuInfo.bufferOffset;
 
-  materialCollection.addBuffer(info, material.gpuInfo.setIndex);
+    materialCollection.addBuffer(info, material.gpuInfo.setIndex);
 
-  if (material.hasBaseTexture)
-  {
-      ImageDescription image_info{};
-      image_info.binding = 1;
-      image_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-      image_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-      image_info.image = material.getBaseColorImage().get_api_image();
-      image_info.image_view = material.getBaseColorImage().get_api_image_view();
-      image_info.sampler = material.getBaseColorImage().get_sampler();
+    // TODO : will cause pipeline warning (errors?) if we do not bind an image even for materials that do not access it.
+    ImageDescription image_info{};
+    image_info.binding = 1;
+    image_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    image_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    if (material.hasBaseTexture)
+    {
+        image_info.image = material.getBaseColorImage().get_api_image();
+        image_info.image_view = material.getBaseColorImage().get_api_image_view();
+        image_info.sampler = material.getBaseColorImage().get_sampler();
+    }
+    else
+    {
+        uninitalized_image.change_layout(vk::ImageLayout::eShaderReadOnlyOptimal, p_device->get_transfer_queue());
+        image_info.image = uninitalized_image.get_api_image();
+        image_info.image_view = uninitalized_image.get_api_image_view();
+        image_info.sampler = uninitalized_image.get_sampler();
+    }
+    materialCollection.addImage(image_info, material.gpuInfo.setIndex);
 
-      materialCollection.addImage(image_info, material.gpuInfo.setIndex);
-  }
+    image_info.binding = 2;
+    image_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    image_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+    if (material.hasRoughnessTexture)
+    {
+        image_info.image = material.getRoughnessImage().get_api_image();
+        image_info.image_view = material.getRoughnessImage().get_api_image_view();
+        image_info.sampler = material.getRoughnessImage().get_sampler();
+    }
+    else
+    {
+        uninitalized_image.change_layout(vk::ImageLayout::eShaderReadOnlyOptimal, p_device->get_transfer_queue());
+        image_info.image = uninitalized_image.get_api_image();
+        image_info.image_view = uninitalized_image.get_api_image_view();
+        image_info.sampler = uninitalized_image.get_sampler();
+    }
+    materialCollection.addImage(image_info, material.gpuInfo.setIndex);
 
-  materialCollection.updateSet(material.gpuInfo.setIndex);
+    materialCollection.updateSet(material.gpuInfo.setIndex);
 }
 
 void GraphicsImpl::create_command_buffers(
@@ -1550,56 +1585,33 @@ void GraphicsImpl::write_to_texture_set(ResourceCollection texture_set,
   texture_set.updateSets();
 }
 
-void GraphicsImpl::create_empty_image(size_t object, size_t texture_set) {
-  // CREATE A WHITE IMAGE TO SEND TO THE SHADER THIS WAY WE CAN ALSO ELIMINATE
-  // THE IF STATEMENTS
+void GraphicsImpl::create_default_images() 
+{
+    // CREATE A WHITE IMAGE TO SEND TO THE SHADER THIS WAY WE CAN ALSO ELIMINATE
+    // THE IF STATEMENTS
+    br::ImageCreateInfo imageInfo{};
+    imageInfo.format = vk::Format::eR8G8B8A8Srgb;
+    VkExtent3D extent{};
+    extent.width = 1;
+    extent.height = 1;
+    extent.depth = 1; // this depth might be key to blending the textures...
+    imageInfo.extent = extent;
+    imageInfo.usage =
+        vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
+    imageInfo.queueFamilyIndexCount = 1;
+    imageInfo.pQueueFamilyIndices = &p_device->get_graphics_family();
+    imageInfo.memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 
-  // create vector of white pixels... and then map that to image?
-  texture_images.resize(texture_images.size() + 1);
-  texture_images[texture_images.size() - 1].resize(1);
+    br::ImageViewCreateInfo viewInfo{};
+    viewInfo.aspect_mask = vk::ImageAspectFlagBits::eColor;
 
-  br::ImageCreateInfo imageInfo{};
-  imageInfo.format = vk::Format::eR8G8B8A8Srgb;
-  VkExtent3D extent{};
-  extent.width = 1;
-  extent.height = 1;
-  extent.depth = 1; // this depth might be key to blending the textures...
-  imageInfo.extent = extent;
-  imageInfo.usage =
-      vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
-  imageInfo.queueFamilyIndexCount = 1;
-  imageInfo.pQueueFamilyIndices = &p_device->get_graphics_family();
-  imageInfo.memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
+    br::ImageData data{};
+    data.name = "Uninitialized Texture";
+    data.image_info = imageInfo;
+    data.image_view_info = viewInfo;
 
-  br::ImageViewCreateInfo viewInfo{};
-  viewInfo.aspect_mask = vk::ImageAspectFlagBits::eColor;
-
-  br::ImageData data{};
-  data.name = "Empty Texture";
-  data.image_info = imageInfo;
-  data.image_view_info = viewInfo;
-
-  texture_images[texture_images.size() - 1][0].init(p_physical_device, p_device,
-                                                    data);
-
-  // transfer the image again to a more optimal layout for texture sampling?
-  texture_images[texture_images.size() - 1][0].transfer(
-      vk::ImageLayout::eShaderReadOnlyOptimal, p_device->get_graphics_queue());
-  // create image view for image
-
-  // save texture image to mesh
-
-  // write to texture set
-  // write_to_texture_set(texture_sets[object],
-  // texture_images[texture_images.size() - 1][0].get_api_image_view());
-
-  br::Image &image = texture_images[texture_images.size() - 1][0];
-
-  texture_sets[object].addImage(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image,
-                                texture_sampler);
-
-  texture_sets[object].updateSet(texture_set);
+    uninitalized_image.init(p_physical_device, p_device, data);
+    uninitalized_image.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 }
 
 /*

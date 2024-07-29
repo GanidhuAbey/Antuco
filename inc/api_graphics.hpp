@@ -197,6 +197,8 @@ private:
   std::vector<VkDeviceSize> matOffsets;
   std::vector<std::vector<br::Image>> texture_images;
 
+  br::Image uninitalized_image;
+
   size_t current_frame = 0;
   size_t submitted_frame = 0;
 
@@ -314,7 +316,7 @@ private:
   void create_vulkan_image(const ImageBuffer &image, size_t i, size_t j);
   void create_texture_image(std::string texturePath, size_t object,
                             size_t texture_set);
-  void create_empty_image(size_t object, size_t texture_set);
+  void create_default_images();
   void write_to_texture_set(ResourceCollection texture_set, br::Image image);
   void update_light_buffer(VkDeviceSize memory_offset, LightBufferObject lbo);
   void create_light_set(uint32_t set_count);

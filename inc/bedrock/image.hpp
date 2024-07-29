@@ -70,7 +70,13 @@ struct RawImageData
     uint32_t buffer_size;
 };
 
-
+enum class ImageFormat
+{
+    RGBA_COLOR,
+    DEPTH,
+    R_COLOR,
+    RG_COLOR
+};
 
 class Image
 {
@@ -94,12 +100,15 @@ private:
     bool handle_destruction = false;
     bool initialized = false;
 
+    vk::ImageLayout current_layout;
+
 public:
     ~Image();
 
     void init(std::string name, bool handle_destruction = false);
     //! loads color image from filepath, creating device accessible image. (assumes that Antuco graphics already initialized).
     void load_color_image(std::string file_path);
+    void load_image(std::string &file_path, ImageFormat image_format);
     void set_image_sampler(VkFilter filter, VkSamplerMipmapMode mipMapFilter, VkSamplerAddressMode addressMode);
     // [TODO] - remove references to and delete (deprecated)
     void init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<v::Device> device,
@@ -115,6 +124,8 @@ public:
     void transfer(vk::ImageLayout output_layout, vk::Queue queue,
                     std::optional<vk::CommandBuffer> command_buffer = std::nullopt,
                     vk::ImageLayout current_layout = vk::ImageLayout::eUndefined);
+
+    void change_layout(vk::ImageLayout new_layout, vk::Queue queue, std::optional<vk::CommandBuffer> command_buffer = std::nullopt);
 
     void copy_to_buffer(
         vk::Buffer buffer, VkDeviceSize dst_offset, vk::Queue queue,
