@@ -2,6 +2,7 @@
 #extension GL_EXT_debug_printf : enable
 
 #define PI 3.1415926535897932384626433832795
+#define EPSILON 0.001
 
 layout(location=0) out vec4 outColor;
 layout(location=3) in vec3 surfaceNormal;
@@ -24,7 +25,7 @@ layout(set=2, binding=0) uniform Material {
 } mat;
 
 layout(set=2, binding=1) uniform sampler2D diffuseTexture;
-layout(set=2, binding=2) uniform sampler2D roughnessTexture;
+layout(set=2, binding=2) uniform sampler2D roughnessMetallicTexture;
 
 float bias = 5e-3;
 
@@ -107,7 +108,7 @@ float GGX_G(vec3 v, vec3 n, float alphaSquared) {
     float numerator = 2.0*NdotV;
 
     float denomTerm = alphaSquared + (1.0 - alphaSquared)*pow(NdotV, 2.0);
-    float denominator = NdotV + sqrt(denomTerm);
+    float denominator = max(EPSILON, NdotV + sqrt(denomTerm));
 
     return numerator / denominator;
 }
@@ -117,7 +118,7 @@ float Smith_G(vec3 l, vec3 v, vec3 n, float alphaSquared) {
 }
 
 float GGX_D(vec3 n, vec3 h, float alphaSquared) {
-    float denominator = PI*pow(pow(dot(n, h), 2)*(alphaSquared - 1) + 1, 2);
+    float denominator = max(EPSILON, PI*pow(pow(dot(n, h), 2)*(alphaSquared - 1) + 1, 2));
     return alphaSquared / denominator;
 }
 
@@ -138,8 +139,8 @@ void main(){
     vec3 materialBaseReflectivity = vec3(mat.pbrParameters.x); // visually good enough for dieletric materials.
 
     // Weird artifacts on the roughness texture...
-    float roughness = mat.hasTexture.z == 1.f ? texture(roughnessTexture, texCoord).y : mat.pbrParameters.y;
-    float metallic = mat.hasTexture.z == 1.f ? texture(roughnessTexture, texCoord).z : mat.pbrParameters.z;
+    float roughness = mat.hasTexture.z == 1.f ? texture(roughnessMetallicTexture, texCoord).y : mat.pbrParameters.y;
+    float metallic = mat.hasTexture.z == 1.f ? texture(roughnessMetallicTexture, texCoord).z : mat.pbrParameters.z;
     vec3 albedo = mat.hasTexture.x == 1.f ? texture(diffuseTexture, texCoord).xyz : mat.albedo; // surface color
 
     materialBaseReflectivity = mix(materialBaseReflectivity, albedo, metallic);

@@ -1016,6 +1016,7 @@ void GraphicsImpl::writeMaterial(Material &material)
     materialCollection.addBuffer(info, material.gpuInfo.setIndex);
 
     // TODO : will cause pipeline warning (errors?) if we do not bind an image even for materials that do not access it.
+    //        use specialization constants to prevent compilation of shaders with unbound textures?
     ImageDescription image_info{};
     image_info.binding = 1;
     image_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1039,11 +1040,11 @@ void GraphicsImpl::writeMaterial(Material &material)
     image_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     image_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-    if (material.hasRoughnessTexture)
+    if (material.hasRoughnessTexture || material.hasMetallicTexture)
     {
-        image_info.image = material.getRoughnessImage().get_api_image();
-        image_info.image_view = material.getRoughnessImage().get_api_image_view();
-        image_info.sampler = material.getRoughnessImage().get_sampler();
+        image_info.image = material.getRoughnessMetallicImage().get_api_image();
+        image_info.image_view = material.getRoughnessMetallicImage().get_api_image_view();
+        image_info.sampler = material.getRoughnessMetallicImage().get_sampler();
     }
     else
     {

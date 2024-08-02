@@ -127,7 +127,7 @@ int main() {
   damagedHelmet->get_material().metallic = 0.7;
   damagedHelmet->get_material().roughness = 0.3;
   damagedHelmet->get_material().setBaseColorTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_albedo.jpg");
-  damagedHelmet->get_material().setRoughnessTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_metalRoughness.jpg");
+  damagedHelmet->get_material().setRoughnessMetallicTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_metalRoughness.jpg");
 #endif
 
   // light_mesh->scale(glm::vec3(0.2));

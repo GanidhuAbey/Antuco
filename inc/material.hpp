@@ -29,8 +29,7 @@ struct MaterialBufferObject {
 class Material {
 private:
 	br::Image baseColorImage;
-	br::Image roughnessImage;
-	br::Image metallicimage;
+	br::Image roughnessMetallicTexture;
 public:
 	// uint32_t image_index;
 	// std::optional<std::string> texturePath;
@@ -55,12 +54,17 @@ public:
 
 	void setBaseColorTexture(std::string filePath);
 	br::Image& getBaseColorImage() { return baseColorImage; }
+	
+	// [TODO] - If roughness and metallic textures are provided separately, then they will need to be
+	// combined into a single texture before passing to shader.
+	//void setRoughnessTexture(std::string filePath);
+	//br::Image& getRoughnessImage() { return roughnessImage; }
 
-	void setRoughnessTexture(std::string filePath);
-	br::Image& getRoughnessImage() { return roughnessImage; }
+	//void setMetallicTexture(std::string filePath);
+	//br::Image& getMetallicImage() { return metallicimage; }
 
-	void setMetallicTexture(std::string filePath);
-	br::Image& getMetallicImage() { return metallicimage; }
+	void setRoughnessMetallicTexture(std::string filePath);
+	br::Image& getRoughnessMetallicImage() { return roughnessMetallicTexture; }
 };
 
 } // namespace tuco

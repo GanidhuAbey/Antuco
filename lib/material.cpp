@@ -13,15 +13,26 @@ void Material::setBaseColorTexture(std::string filePath) {
     baseColorImage.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 }
 
-void Material::setRoughnessTexture(std::string filePath) {
-    hasRoughnessTexture = true;
+//void Material::setRoughnessTexture(std::string filePath) {
+//    hasRoughnessTexture = true;
+//
+//    roughnessImage.init("roughnessTexture");
+//    roughnessImage.load_image(filePath, br::ImageFormat::RGBA_COLOR);
+//    roughnessImage.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+//}
+//
 
-    roughnessImage.init("roughnessTexture");
-    roughnessImage.load_image(filePath, br::ImageFormat::RGBA_COLOR);
-    roughnessImage.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+void Material::setRoughnessMetallicTexture(std::string filePath)
+{
+	hasRoughnessTexture = true;
+	hasMetallicTexture = true;
+
+	roughnessMetallicTexture.init("roughnessMetallicTexture");
+	roughnessMetallicTexture.load_image(filePath, br::ImageFormat::RGBA_COLOR);
+	roughnessMetallicTexture.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 }
 
-void Material::setMetallicTexture(std::string filePath) {}
+//void Material::setMetallicTexture(std::string filePath) {}
 
 MaterialBufferObject Material::convert() {
   MaterialBufferObject obj{};
