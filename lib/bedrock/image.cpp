@@ -92,33 +92,40 @@ void Image::set_image_sampler(VkFilter filter, VkSamplerMipmapMode mipMapFilter,
     ASSERT(sampler, "Failed to create image sampler.");
 }
 
-void Image::load_image(std::string &file_path, ImageFormat image_format) 
+bool Image::is_3d_image(ImageType type)
 {
-    uint32_t channels;
-    vk::Format format;
+    return type == ImageType::Image_3D;
+}
 
+vk::Format Image::get_vk_format(ImageFormat image_format, uint32_t &channels)
+{
     switch (image_format)
     {
     case ImageFormat::RGBA_COLOR:
         channels = 4;
-        format = vk::Format::eR8G8B8A8Srgb;
-        break;
+        return vk::Format::eR8G8B8A8Srgb;
     case ImageFormat::DEPTH:
         channels = 1;
-        format = vk::Format::eD32Sfloat;
-        break;
+        return vk::Format::eD32Sfloat;
     case ImageFormat::R_COLOR:
         channels = 1;
-        format = vk::Format::eR8Srgb;
-        break;
+        return vk::Format::eR8Srgb;
     case ImageFormat::RG_COLOR:
         channels = 2;
-        format = vk::Format::eR8G8Srgb;
-        break;
+        return vk::Format::eR8G8Srgb;
     default:
         break;
     }
 
+    ERR("Failed to map format {} to vk type.", static_cast<uint32_t>(image_format));
+    channels = 0;
+    return vk::Format::eUndefined;
+}
+
+void Image::load_image(std::string &file_path, ImageFormat image_format, ImageType type) 
+{
+    uint32_t channels;
+    vk::Format format = get_vk_format(image_format, channels);
 
     raw_image.image_data = stbi_load(file_path.c_str(), &raw_image.width, &raw_image.height, nullptr, channels);
     raw_image.channels = channels;
@@ -132,6 +139,7 @@ void Image::load_image(std::string &file_path, ImageFormat image_format)
     // Initialize device image.
     ImageCreateInfo image_info;
 
+    // [TODO - 08/2024] - Image Array Support.
     image_info.format = format;
     image_info.extent = vk::Extent3D(raw_image.width, raw_image.height, 1);
     image_info.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
@@ -139,10 +147,12 @@ void Image::load_image(std::string &file_path, ImageFormat image_format)
     image_info.queueFamilyIndexCount = 1;
     image_info.pQueueFamilyIndices = &device->get_graphics_family();
     image_info.size = raw_image.buffer_size;
+    image_info.image_type = is_3d_image(type) ? vk::ImageType::e3D : vk::ImageType::e2D;
 
     // Generalize to support other non-color type images.
     ImageViewCreateInfo view_info;
     view_info.aspect_mask = vk::ImageAspectFlagBits::eColor;
+    view_info.view_type = is_3d_image(type) ? vk::ImageViewType::e3D : vk::ImageViewType::e2D;
 
     // TODO - add support to cleaning up image if user wants to change material texture.
     data.image_info = image_info;

@@ -376,7 +376,6 @@ void StackBuffer::free(VkDeviceSize delete_offset) {
   // this is fine for a free call, we won't actually delete the data, but by
   // deleting the pointer to that data, when we sort the data later this "freed"
   // data will be overwritten and disappear
-  VkDeviceSize current_offset = 0;
   for (auto it = allocations.begin(); it != allocations.end(); it++) {
     if (delete_offset == it->first) {
       // delete at location
@@ -386,16 +385,22 @@ void StackBuffer::free(VkDeviceSize delete_offset) {
   }
 }
 
-Pool::Pool(v::Device &device, std::vector<PoolCreateInfo> info) {
-  api_device = &device;
+Pool::Pool(std::shared_ptr<v::Device> device, std::vector<PoolCreateInfo> info) {
+  api_device = device;
   poolInfo = info;
   createPool();
+}
+
+Pool::~Pool()
+{
+    destroyPool();
 }
 
 void Pool::destroyPool() {
   for (size_t i = 0; i < pools.size(); i++) {
     api_device->get().destroyDescriptorPool(pools[i]);
   }
+  pools.clear();
 }
 
 void Pool::createPool() {

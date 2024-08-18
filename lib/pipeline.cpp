@@ -269,8 +269,5 @@ const std::vector<VkPushConstantRange>& push_ranges) {
 
     layout_ = vk::PipelineLayout(old_layout);
 
-    if (result != VK_SUCCESS) {
-        msg::print_line("could not create layout, error code: " + std::to_string(result));
-        throw std::runtime_error("");
-    }
+    ASSERT(result == VK_SUCCESS, "could not ceate pipeline layout, error code: {}", static_cast<uint32_t>(result))
 }

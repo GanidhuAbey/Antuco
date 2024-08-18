@@ -42,9 +42,6 @@ class ResourceCollection {
 private:
     v::Device *device;
 
-    bool buffer_add = false;
-    bool image_add = false;
-
     std::vector<VkDescriptorSet> sets;
     std::vector<std::vector<ResourceWriteInfo>> setsUpdateInfo;
     std::vector<VkDescriptorImageInfo> descriptorImageInfo;
@@ -54,14 +51,14 @@ private:
     // layout)
     VkDescriptorSetLayout m_layout;
 
-    bool built = false;
-
 public:
     void init(const v::Device &device, VkDescriptorSetLayout layout);
 
     uint32_t getSetCount() { return sets.size(); }
 
     ~ResourceCollection() { destroy(); }
+    ResourceCollection(v::Device* p_device, VkDescriptorSetLayout layout) { init(*p_device, layout); }
+    ResourceCollection() = default;
 
     void updateSets();
     void updateSet(size_t i);

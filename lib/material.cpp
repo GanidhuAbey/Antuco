@@ -9,7 +9,7 @@ void Material::setBaseColorTexture(std::string filePath) {
     hasBaseTexture = true;
 
     baseColorImage.init("baseColorTexture");
-    baseColorImage.load_image(baseColorTexturePath, br::ImageFormat::RGBA_COLOR);
+    baseColorImage.load_image(baseColorTexturePath, br::ImageFormat::RGBA_COLOR, br::ImageType::Image_2D);
     baseColorImage.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 }
 
@@ -28,7 +28,7 @@ void Material::setRoughnessMetallicTexture(std::string filePath)
 	hasMetallicTexture = true;
 
 	roughnessMetallicTexture.init("roughnessMetallicTexture");
-	roughnessMetallicTexture.load_image(filePath, br::ImageFormat::RGBA_COLOR);
+	roughnessMetallicTexture.load_image(filePath, br::ImageFormat::RGBA_COLOR, br::ImageType::Image_2D);
 	roughnessMetallicTexture.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 }
 

@@ -78,6 +78,12 @@ enum class ImageFormat
     RG_COLOR
 };
 
+enum class ImageType
+{
+    Image_3D,
+    Image_2D
+};
+
 class Image
 {
 private:
@@ -108,13 +114,14 @@ public:
     void init(std::string name, bool handle_destruction = false);
     //! loads color image from filepath, creating device accessible image. (assumes that Antuco graphics already initialized).
     void load_color_image(std::string file_path);
-    void load_image(std::string &file_path, ImageFormat image_format);
+    void load_image(std::string &file_path, ImageFormat image_format, ImageType type);
     void set_image_sampler(VkFilter filter, VkSamplerMipmapMode mipMapFilter, VkSamplerAddressMode addressMode);
     // [TODO] - remove references to and delete (deprecated)
     void init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<v::Device> device,
                 ImageData info, bool handle_destruction = false);
     void init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<v::Device> device,
                 VkImage image, ImageData info, bool handle_destruction = false);
+
     // can only be called after init()
     void destroy();
     void destroy_image_view();
@@ -141,8 +148,13 @@ public:
     vk::Sampler &get_sampler() { return sampler; }
 
 private:
+    bool is_3d_image(ImageType type);
+    vk::ImageViewType find_image_view_type(ImageType type);
     void create_image();
     void create_image_view();
+
+    vk::Format get_vk_format(ImageFormat image_format, uint32_t &channels);
+    bool is_3d_image(ImageFormat image_format);
 
     void copy_to_buffer(RawImageData &data, mem::CPUBuffer* buffer);
 };

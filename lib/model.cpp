@@ -164,7 +164,6 @@ void Model::process_gltf_textures(tinygltf::Model model,
     tinygltf::Image &image = model.images[i];
     uint32_t index = model.textures[i].source;
     if (image.component == 3) {
-      msg::print_line("probably doesnt work");
       images[index].buffer_size = image.width * image.height * 4;
       unsigned char *rgba = new unsigned char[images[index].buffer_size];
       unsigned char *rgb = &image.image[0];
@@ -364,12 +363,11 @@ void Model::read_from_file() {
     return;
   }
 
-  uint32_t read_state = 0;
-  uint32_t index;
-  glm::vec3 texture_opacity;
-  glm::vec3 ambient;
-  glm::vec3 diffuse;
-  glm::vec3 specular;
+  //uint32_t index;
+  //glm::vec3 texture_opacity;
+  //glm::vec3 ambient;
+  //glm::vec3 diffuse;
+  //glm::vec3 specular;
 
   while (file.peek() != EOF) {
     // read current byte as float
@@ -395,7 +393,7 @@ std::vector<ImageBuffer> Model::read_images(std::ifstream *file) {
   while (file->peek() != EOF) {
     ImageBuffer ib;
     // get buffer size
-    uint32_t buffer_size;
+    //uint32_t buffer_size;
     file->read(reinterpret_cast<char *>(&ib.buffer_size), sizeof(uint32_t));
 
     // if at end of image data, then buffer size will be uint32_t::max
@@ -444,8 +442,8 @@ std::vector<uint32_t> Model::read_indices(std::ifstream *file) {
 }
 
 std::vector<Material> Model::read_materials(std::ifstream *file) {
-  size_t read_state = 0;
-  glm::vec4 t;
+  //size_t read_state = 0;
+  //glm::vec4 t;
   glm::vec4 ambience;
   glm::vec4 diffuse;
   glm::vec4 specular;
@@ -568,6 +566,7 @@ std::vector<uint32_t> Model::linearlize_primitive(Primitive primitive) {
   return lin;
 }
 
+// [TODO 08/2024] - Proper asset loading/saving.
 void Model::write_to_file() {
   std::ofstream file;
   file.open(model_name + ".bin", std::ios::out | std::ios::binary);

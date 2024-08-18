@@ -38,7 +38,11 @@ VkDescriptorSet ResourceCollection::get_api_set(size_t i) {
   return sets[i];
 }
 
-void ResourceCollection::destroy() {}
+void ResourceCollection::destroy() {
+    //INFO("DESTROY COLLECTION");
+    //vkDestroyDescriptorSetLayout(device->get(), m_layout, nullptr);
+    //m_layout = VK_NULL_HANDLE;
+}
 
 void ResourceCollection::createSets(VkDescriptorSetLayout layout,
                                     mem::Pool &pool) {

@@ -54,10 +54,7 @@ void Swapchain::create_swapchain(
         nullptr
     );
 
-    if (result != vk::Result::eSuccess) {
-      msg::print_line("[ERROR] - create_swapchain : could not get format count");
-      throw std::runtime_error("");
-    }
+    ASSERT(result == vk::Result::eSuccess, "could not get swapchain format count");
 
     auto formats = std::vector<vk::SurfaceFormatKHR>(format_count);
     result = p_physical_device->get().getSurfaceFormatsKHR(
@@ -65,10 +62,8 @@ void Swapchain::create_swapchain(
         &format_count, 
         formats.data()
     );
-    if (result != vk::Result::eSuccess) {
-      msg::print_line("[ERROR] - create_swapchain : could not get formats");
-      throw std::runtime_error("");
-    }
+
+    ASSERT(result == vk::Result::eSuccess, "could not retrieve swapchain");
 
     auto surface_format = choose_best_surface_format(formats);
     auto image_num = capabilities.minImageCount;

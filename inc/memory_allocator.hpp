@@ -176,10 +176,11 @@ private:
   std::vector<uint32_t> allocations;
   std::vector<PoolCreateInfo> poolInfo;
 
-  v::Device *api_device;
+  std::shared_ptr<v::Device> api_device;
 
 public:
-  Pool(v::Device &device, std::vector<PoolCreateInfo> info);
+  Pool(std::shared_ptr<v::Device> device, std::vector<PoolCreateInfo> info);
+  ~Pool();
 
   void allocateDescriptorSets(v::Device &device, uint32_t setCount,
                               VkDescriptorSetLayout layout,

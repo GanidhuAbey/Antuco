@@ -77,10 +77,15 @@ Camera* Antuco::create_camera(glm::vec3 eye, glm::vec3 facing, glm::vec3 up, flo
 }
 
 GameObject* Antuco::create_object() {
-	objects.push_back(std::move(std::make_unique<GameObject>()));
+	objects.push_back(std::make_unique<GameObject>());
 	return objects[objects.size() - 1].get();
 }
 
+SceneData* Antuco::create_scene()
+{
+	scene = std::make_unique<SceneData>();
+	return scene.get();
+}
 
 
 void Antuco::render() {	

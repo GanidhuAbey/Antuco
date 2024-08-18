@@ -4,6 +4,7 @@
 #include "config.hpp"
 #include "logger/interface.hpp"
 #include "window.hpp"
+#include <antuco.hpp>
 
 #include <glm/ext.hpp>
 
@@ -29,7 +30,6 @@ GraphicsImpl::GraphicsImpl(Window *pWindow)
     print_debug = false;
     raytracing = false;
 #endif
-    command_pool = create_command_pool(*p_device, p_device->get_graphics_family());
 
     // graphics draw
     // create_shadowmap_atlas();
@@ -42,8 +42,10 @@ GraphicsImpl::GraphicsImpl(Window *pWindow)
     //create_shadowpass();
     create_ubo_layout();
     create_light_layout();
+    create_scene_layout();
     createMaterialLayout();
-    createMaterialPool();
+    create_set_pool();
+    create_pools();
     create_texture_layout();
     //create_shadowmap_layout();
     //create_shadowmap_pool();
@@ -63,18 +65,25 @@ GraphicsImpl::GraphicsImpl(Window *pWindow)
     create_index_buffer();
     create_uniform_buffer();
 
-    create_ubo_pool();
-    create_texture_pool();
-
     create_screen_pass();
     create_screen_buffer();
     create_screen_pipeline();
     create_screen_set();
 
     createMaterialCollection();
+    create_scene_collection();
     // globalMaterialOffsets = setupMaterialBuffers();
 
     create_default_images();
+}
+
+void GraphicsImpl::create_pools()
+{
+    command_pool = create_command_pool(*p_device, p_device->get_graphics_family());
+    createMaterialPool();
+    create_set_pool();
+    create_ubo_pool();
+    create_texture_pool();
 }
 
 GraphicsImpl::~GraphicsImpl() {
@@ -104,6 +113,8 @@ void GraphicsImpl::update_draw(
   // we need to create some command buffers
   // update vertex and index buffers
 
+  write_scene(Antuco::get_engine().get_scene());
+
   auto offset = 0;
   for (size_t i = 0; i < game_objects.size(); i++) {
     const auto &model = game_objects[i]->object_model;
@@ -111,8 +122,8 @@ void GraphicsImpl::update_draw(
     // TODO: move this outside of per-frame loop, call only when user wants to update scene.
     if (game_objects[i]->update) {
       // update the buffer data of game objects
-      uint32_t index_mem = update_index_buffer(model.model_indices);
-      uint32_t vertex_mem = update_vertex_buffer(model.model_vertices);
+      [[maybe_unused]] uint32_t index_mem = update_index_buffer(model.model_indices);
+      [[maybe_unused]] uint32_t vertex_mem = update_vertex_buffer(model.model_vertices);
 
       update_command_buffers = true;
       game_objects[i]->update = false;
@@ -134,17 +145,6 @@ void GraphicsImpl::update_draw(
       // writeMaterial(game_objects[i]->material);
       writeMaterial(mat);
 
-      for (auto &prim : primitives) {
-        /*
-        // create vulkan image
-        // why is textures even a vector???
-        if (-1 < prim.image_index &&
-            prim.image_index < model.model_images.size()) {
-          create_vulkan_image(model.model_images[prim.image_index], i,
-                              prim.image_index);
-        }
-        */
-      }
     }
 
     // update buffer data (for representing object information in shader)

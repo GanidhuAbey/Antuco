@@ -27,6 +27,10 @@ layout(set=2, binding=0) uniform Material {
 layout(set=2, binding=1) uniform sampler2D diffuseTexture;
 layout(set=2, binding=2) uniform sampler2D roughnessMetallicTexture;
 
+// set 1 = draw, set = 2 material, set = 3 pass, set = 4 scene
+
+layout(set=3, binding=0) uniform sampler3D iblTexture;
+
 float bias = 5e-3;
 
 int LIGHT_FACTOR = 1;
@@ -132,6 +136,11 @@ vec3 getSpecular(vec3 l, vec3 v, vec3 n, vec3 F, float roughness) {
     return (D*G*F) / (4 * dot(l, n) * dot(v, n));
 }
 
+vec3 get_ibl(vec3 in_dir) {
+    vec3 ibl_color = texture(iblTexture, in_dir).rgb;
+    return ibl_color;
+}
+
 void main(){
     // TODO : introduce hard coded parameters as attributes that are controllable within the engine.
     // ---------- Hard coded paramaters
@@ -165,6 +174,7 @@ void main(){
     // reflectance equation : L_o = integral(f_r*L_o*cos(theta) dw_i)
 
     vec3 result = lightColor * (refractAmt*diffuseResult + reflectAmt*specularResult)*dot(surfaceNormal, lightDirection);
+    //result = get_ibl(surfaceNormal);
     //result = surfaceNormal;
     vec3 testColor = vec3(1, 0, 0);
     outColor = vec4(result, 1.0f);

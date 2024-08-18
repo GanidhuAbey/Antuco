@@ -25,7 +25,6 @@ class TucoPass {
         v::Device* api_device;
 
         VkRenderPass render_pass;
-        bool built = false;
 
         bool depth_attach = false;
         VkAttachmentDescription depth_attachment{};
