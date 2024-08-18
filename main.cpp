@@ -122,7 +122,7 @@ int main() {
     floor->get_material().roughness = 0.8;
 
     auto damagedHelmet = antuco.create_object();
-    damagedHelmet->add_mesh(root_project + "\\objects\\antuco-files\\windows\\cube.glb");
+    damagedHelmet->add_mesh(root_project + "\\objects\\antuco-files\\windows\\helmet\\DamagedHelmet.gltf");
     damagedHelmet->scale(glm::vec3(0.1));
     damagedHelmet->translate(glm::vec3(0, 1, 0));
 

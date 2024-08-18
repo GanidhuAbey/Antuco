@@ -26,3 +26,6 @@
 [submodule "external/include/fmt"]
 	path = external/include/fmt
 	url = https://github.com/fmtlib/fmt
+[submodule "external/include/SPIRV-Reflect"]
+	path = external/include/SPIRV-Reflect
+	url = https://github.com/KhronosGroup/SPIRV-Reflect
