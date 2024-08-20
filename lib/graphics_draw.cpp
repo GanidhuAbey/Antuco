@@ -16,7 +16,7 @@
 #include "logger/interface.hpp"
 #include "vulkan/vulkan_core.h"
 
-#include "shader_text.hpp"
+#include <bedrock/shader_text.hpp>
 
 #include <stb_image.h>
 

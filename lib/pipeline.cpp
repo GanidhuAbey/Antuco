@@ -1,5 +1,5 @@
 #include "pipeline.hpp"
-#include "shader_text.hpp"
+#include <bedrock/shader_text.hpp>
 
 #include "logger/interface.hpp"
 
@@ -70,8 +70,8 @@ void TucoPipeline::create_compute_pipeline(const PipelineConfig& config) {
     vk::ShaderModule compute_shader;
     vk::PipelineShaderStageCreateInfo shader_info;
 
-    ShaderText compute_code(config.compute_shader_path.value(), ShaderKind::COMPUTE_SHADER); 
-    compute_shader = create_shader_module(compute_code.get_code());
+    br::ShaderText compute_code(config.compute_shader_path.value(), br::ShaderKind::ComputeShader); 
+    compute_shader = create_shader_module(compute_code.get_code(br::ShaderKind::ComputeShader));
     shader_info = fill_shader_stage_struct(vk::ShaderStageFlagBits::eCompute, compute_shader);
 
     create_pipeline_layout(config.descriptor_layouts, config.push_ranges);
@@ -110,14 +110,14 @@ void TucoPipeline::create_render_pipeline(const PipelineConfig& config) {
     std::vector<vk::PipelineShaderStageCreateInfo> shader_stages;
 
     if (config.vert_shader_path.has_value()) {
-        ShaderText vert_code(config.vert_shader_path.value(), ShaderKind::VERTEX_SHADER);
-        vert_shader = create_shader_module(vert_code.get_code());
+        br::ShaderText vert_code(config.vert_shader_path.value(), br::ShaderKind::VertexShader);
+        vert_shader = create_shader_module(vert_code.get_code(br::ShaderKind::VertexShader));
         vert_shader_info = fill_shader_stage_struct(vk::ShaderStageFlagBits::eVertex, vert_shader);
         shader_stages.push_back(vert_shader_info);
     }
     if (config.frag_shader_path.has_value()) {
-        ShaderText frag_code(config.frag_shader_path.value(), ShaderKind::FRAGMENT_SHADER);
-        frag_shader = create_shader_module(frag_code.get_code());
+        br::ShaderText frag_code(config.frag_shader_path.value(), br::ShaderKind::FragmentShader);
+        frag_shader = create_shader_module(frag_code.get_code(br::ShaderKind::FragmentShader));
         frag_shader_info = fill_shader_stage_struct(vk::ShaderStageFlagBits::eFragment, frag_shader);
         shader_stages.push_back(frag_shader_info);
     }
