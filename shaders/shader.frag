@@ -5,16 +5,16 @@ layout(location=0) out vec4 outColor;
 layout(location=3) in vec3 surfaceNormal;
 layout(location=4) in vec4 vPos;
 layout(location=5) in vec2 texCoord;
-layout(location=6) in vec4 light_perspective;
+//layout(location=6) in vec4 light_perspective;
 
 layout(location=7) in vec3 light_position;
 layout(location=8) in vec3 light_color;
 layout(location=9) in vec3 camera_pos;
 
-layout(set=2, binding=0) uniform sampler2D texture1;
+layout(set=1, binding=0) uniform sampler2D texture1;
 //layout(set=3, binding=1) uniform sampler2D shadowmap;
 
-layout(set=3, binding=0) uniform Materials {
+layout(set=2, binding=0) uniform Materials {
     vec3 has_texture;
     vec3 ambient; //Ka
     vec3 diffuse; //Kd
@@ -95,7 +95,7 @@ void main() {
     //analyze depth at the given coordinate of the object
     float light_dist = length(light_position - vec3(vPos));
 
-    vec4 sample_value = light_perspective;
+    //vec4 sample_value = light_perspective;
 
     float shadow_factor = 0.f; //pcf_shadow(sample_value);
 

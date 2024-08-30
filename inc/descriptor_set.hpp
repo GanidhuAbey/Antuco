@@ -11,6 +11,14 @@
 
 namespace tuco {
 
+enum class ResourceGroup
+{
+    Draw = 0,
+    Material = 1,
+    Pass = 2,
+    Scene = 3
+};
+
 struct ResourceWriteInfo {
     uint32_t binding;
     uint32_t setIndex;

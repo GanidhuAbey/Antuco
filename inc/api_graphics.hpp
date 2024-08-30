@@ -32,6 +32,7 @@
 #include "vulkan_wrapper/swapchain.hpp"
 
 #include <bedrock/image.hpp>
+#include <bedrock/draw_item.hpp>
 
 #include "pipeline.hpp"
 #include "render_pass.hpp"
@@ -148,6 +149,18 @@ private:
     void create_screen_pass();
 
     // draw
+public:
+    std::vector<br::DrawItem> draw_items;
+    std::vector<Material> materials;
+
+    // what we really want is a unique pointer that safe for vectors
+    std::vector<std::unique_ptr<br::GPUResource>> draw_data;
+
+    // creating draw packet from object data is fine, but it needs to be within pass?
+    void update_draw_item(uint32_t object_index, tuco::GameObject& object);
+
+    uint32_t add_material();
+    uint32_t add_draw_data(br::GPUResource* resource);
 
 private:
     VkDescriptorSetLayout ubo_layout;
@@ -184,7 +197,7 @@ private:
     std::unique_ptr<mem::Pool> matPool;
 
     // pool for all sets.
-    std::unique_ptr<mem::Pool> set_pool;
+    std::shared_ptr<mem::Pool> set_pool;
 
     std::vector<std::vector<VkDescriptorSet>> uboSets;
     std::vector<std::vector<VkDescriptorSet>> matSets; // model -> mesh
@@ -338,22 +351,22 @@ private:
     void free_command_buffers();
 
 private:
-  void destroy_draw();
+    void destroy_draw();
 
   // helper functions
 private:
-  VkDescriptorBufferInfo allocateDescriptorBuffer(uint32_t size);
-  void update_descriptor_set(VkDescriptorBufferInfo buffer_info,
-                             uint32_t dst_binding, VkDescriptorSet set);
-  vk::Framebuffer create_frame_buffer(vk::RenderPass pass,
-                                      uint32_t attachment_count,
-                                      vk::ImageView *p_attachments,
-                                      uint32_t width, uint32_t height);
-  void memory_dependency(
-      size_t i, VkAccessFlags src_a = VK_ACCESS_MEMORY_WRITE_BIT,
-      VkAccessFlags dst_a = VK_ACCESS_MEMORY_READ_BIT,
-      VkPipelineStageFlags src_p = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-      VkPipelineStageFlags dst_p = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+    VkDescriptorBufferInfo allocateDescriptorBuffer(uint32_t size);
+    void update_descriptor_set(VkDescriptorBufferInfo buffer_info,
+                                uint32_t dst_binding, VkDescriptorSet set);
+    vk::Framebuffer create_frame_buffer(vk::RenderPass pass,
+                                        uint32_t attachment_count,
+                                        vk::ImageView *p_attachments,
+                                        uint32_t width, uint32_t height);
+    void memory_dependency(
+        size_t i, VkAccessFlags src_a = VK_ACCESS_MEMORY_WRITE_BIT,
+        VkAccessFlags dst_a = VK_ACCESS_MEMORY_READ_BIT,
+        VkPipelineStageFlags src_p = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+        VkPipelineStageFlags dst_p = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
 
   // vulkan initialization
 
@@ -361,23 +374,24 @@ private:
 
   // buffer setup
 private:
-  mem::StackBuffer vertex_buffer;
-  mem::StackBuffer index_buffer;
-  mem::SearchBuffer uniform_buffer;
+    // [TODO 08/24] - Should obscure the underlying implementation of buffer by adding interface on top (allow extending to more buffer types)
+    mem::StackBuffer vertex_buffer;
+    mem::StackBuffer index_buffer;
+    mem::SearchBuffer uniform_buffer;
 
 private:
-  void create_uniform_buffer();
-  void create_vertex_buffer();
-  void create_index_buffer();
+    void create_uniform_buffer();
+    void create_vertex_buffer();
+    void create_index_buffer();
 
-  bool check_data(size_t data_size);
+    bool check_data(size_t data_size);
 
-  void copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer,
-                   VkDeviceSize dst_offset, VkDeviceSize data_size);
+    void copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer,
+                    VkDeviceSize dst_offset, VkDeviceSize data_size);
 
 public:
-  int32_t update_vertex_buffer(std::vector<Vertex> vertex_data);
-  int32_t update_index_buffer(std::vector<uint32_t> indices_data);
+    int32_t update_vertex_buffer(std::vector<Vertex> vertex_data);
+    int32_t update_index_buffer(std::vector<uint32_t> indices_data);
 
   // draw commands
 };

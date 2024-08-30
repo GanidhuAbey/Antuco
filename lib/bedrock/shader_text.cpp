@@ -170,7 +170,10 @@ std::vector<v::DescriptorLayout> ShaderText::collect_layouts(std::vector<uint32_
 
             // do we need shader name?
             //layout.shader_names.push_back(refl_binding.name);
-            descriptor_layout[set_index].add_binding(binding);
+            v::Binding shader_binding{};
+            shader_binding.name = refl_binding.name;
+            shader_binding.info = binding;
+            descriptor_layout[set_index].add_binding(shader_binding);
         }
         descriptor_layout[set_index].set_index(refl_set.set);
     }

@@ -3,6 +3,8 @@
 //an api wrapper for vulkan pipeline
 //
 #include "data_structures.hpp"
+#include <bedrock/shader_text.hpp>
+#include <descriptor_set.hpp>
 
 #include <memory>
 #include <vulkan/vulkan.hpp>
@@ -94,19 +96,30 @@ class TucoPipeline {
         vk::Pipeline pipeline_;
         vk::PipelineLayout layout_;
 
-        v::Device* api_device;
+        br::ShaderText shader_compiler;
+
+        std::shared_ptr<v::Device> api_device;
+
+        std::unordered_map<uint32_t, ResourceCollection> resource_collections;
+
+        std::shared_ptr<mem::Pool> set_pool;
+
     public:
-        void init(v::Device& device, const PipelineConfig& config);
+        void init(std::shared_ptr<v::Device> device, std::shared_ptr<mem::Pool> pool, const PipelineConfig& config);
 
         VkPipeline get_api_pipeline();
         VkPipelineLayout get_api_layout();
 
         void destroy();
 
+        // Get specific resource type (eventually once shaders restructured, 0 = draw, 1 = material, 2 = pass, 3 = scene)
+        ResourceCollection* get_resource_collection(uint32_t type);
+
     private:
         void create_render_pipeline(const PipelineConfig& config);
         void create_compute_pipeline(const PipelineConfig& config);
 
+        void create_resource_collections();
 
     //helper functions
     private:

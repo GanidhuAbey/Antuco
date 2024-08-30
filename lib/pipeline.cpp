@@ -1,5 +1,4 @@
 #include "pipeline.hpp"
-#include <bedrock/shader_text.hpp>
 
 #include "logger/interface.hpp"
 
@@ -8,11 +7,36 @@
 
 using namespace tuco;
 
+ResourceCollection* TucoPipeline::get_resource_collection(uint32_t type)
+{
+    if (auto search = resource_collections.find(type); search != resource_collections.end())
+    {
+        return &search->second;
+    }
+
+    ASSERT(false, "could not find resource group of type {}", type);
+}
+
+void TucoPipeline::create_resource_collections()
+{
+    std::vector<v::DescriptorLayout>& layouts = shader_compiler.get_layouts();
+    
+    for (auto& layout : layouts)
+    {
+        ResourceCollection collection(api_device.get(), layout.get_api_layout());
+
+        // TODO : in some cases we may want to have multiple sets per layout, need to consider whether we'll need to optionally pass set number.
+        //collection.addSets(1, *set_pool);
+        resource_collections[layout.get_index()] = std::move(collection);
+    }
+}
+
 //PURPOSE: create a vulkan pipeline with desired configuration
 //PARAMETERS:
 //<PipelineConfig config> - configuration settings for pipeline
-void TucoPipeline::init(v::Device& device, const PipelineConfig& config) {
-    api_device = &device;
+void TucoPipeline::init(std::shared_ptr<v::Device> device, std::shared_ptr<mem::Pool> pool, const PipelineConfig& config) {
+    api_device = device;
+    set_pool = pool;
 
     //distinguish render/compute pipeline
     if (config.compute_shader_path.has_value()) {
@@ -21,6 +45,8 @@ void TucoPipeline::init(v::Device& device, const PipelineConfig& config) {
     } else {
         create_render_pipeline(config);
     }
+
+    create_resource_collections();
 }
 
 void TucoPipeline::destroy() {
@@ -110,17 +136,21 @@ void TucoPipeline::create_render_pipeline(const PipelineConfig& config) {
     std::vector<vk::PipelineShaderStageCreateInfo> shader_stages;
 
     if (config.vert_shader_path.has_value()) {
-        br::ShaderText vert_code(config.vert_shader_path.value(), br::ShaderKind::VertexShader);
-        vert_shader = create_shader_module(vert_code.get_code(br::ShaderKind::VertexShader));
+        shader_compiler.compile(config.vert_shader_path.value(), br::ShaderKind::VertexShader);
+        //br::ShaderText vert_code(config.vert_shader_path.value(), br::ShaderKind::VertexShader);
+        vert_shader = create_shader_module(shader_compiler.get_code(br::ShaderKind::VertexShader));
         vert_shader_info = fill_shader_stage_struct(vk::ShaderStageFlagBits::eVertex, vert_shader);
         shader_stages.push_back(vert_shader_info);
     }
     if (config.frag_shader_path.has_value()) {
-        br::ShaderText frag_code(config.frag_shader_path.value(), br::ShaderKind::FragmentShader);
-        frag_shader = create_shader_module(frag_code.get_code(br::ShaderKind::FragmentShader));
+        shader_compiler.compile(config.frag_shader_path.value(), br::ShaderKind::FragmentShader);
+        //br::ShaderText frag_code(config.frag_shader_path.value(), br::ShaderKind::FragmentShader);
+        frag_shader = create_shader_module(shader_compiler.get_code(br::ShaderKind::FragmentShader));
         frag_shader_info = fill_shader_stage_struct(vk::ShaderStageFlagBits::eFragment, frag_shader);
         shader_stages.push_back(frag_shader_info);
     }
+
+    shader_compiler.create_layouts(api_device);
 
     auto viewport = vk::Viewport(
             0,
@@ -256,13 +286,21 @@ void TucoPipeline::create_render_pipeline(const PipelineConfig& config) {
 void TucoPipeline::create_pipeline_layout(const std::vector<VkDescriptorSetLayout>& set_layouts,
 const std::vector<VkPushConstantRange>& push_ranges) {
     auto info = VkPipelineLayoutCreateInfo{};
+    info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     info.flags = 0;
     info.pNext = nullptr;
-    info.setLayoutCount = static_cast<uint32_t>(set_layouts.size());
+    info.setLayoutCount = shader_compiler.get_layout_count();//static_cast<uint32_t>(set_layouts.size());
+
+    std::vector<VkDescriptorSetLayout> descriptor_layouts;
+
+    for (auto& layout : shader_compiler.get_layouts())
+    {
+        descriptor_layouts.push_back(layout.get_api_layout());
+    }
+
+    info.pSetLayouts = descriptor_layouts.data();//set_layouts.data();
     info.pushConstantRangeCount = static_cast<uint32_t>(push_ranges.size());
     info.pPushConstantRanges = push_ranges.data();
-    info.pSetLayouts = set_layouts.data();
-    info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
     VkPipelineLayout old_layout;
     auto result = vkCreatePipelineLayout(api_device->get(), &info, nullptr, &old_layout);

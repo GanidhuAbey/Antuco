@@ -2,6 +2,8 @@
 
 #include <bedrock/image.hpp>
 
+#include <logger/interface.hpp>
+
 using namespace tuco;
 
 void Material::setBaseColorTexture(std::string filePath) {
@@ -30,6 +32,11 @@ void Material::setRoughnessMetallicTexture(std::string filePath)
 	roughnessMetallicTexture.init("roughnessMetallicTexture");
 	roughnessMetallicTexture.load_image(filePath, br::ImageFormat::RGBA_COLOR, br::ImageType::Image_2D);
 	roughnessMetallicTexture.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+}
+
+void Material::UpdateGPU()
+{
+	WARN("Update GPU data");
 }
 
 //void Material::setMetallicTexture(std::string filePath) {}

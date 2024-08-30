@@ -1,8 +1,11 @@
 #include "antuco.hpp"
 
 #include "logger/interface.hpp"
+#include "api_graphics.hpp"
 
 #include <iostream>
+
+#include <bedrock/mesh_draw.hpp>
 
 using namespace tuco;
 
@@ -78,6 +81,13 @@ Camera* Antuco::create_camera(glm::vec3 eye, glm::vec3 facing, glm::vec3 up, flo
 
 GameObject* Antuco::create_object() {
 	objects.push_back(std::make_unique<GameObject>());
+	// create material
+	GameObject* object = objects[objects.size() - 1].get();
+	object->material_index = p_graphics->p_graphics->add_material();
+
+	br::MeshDrawData* draw_data = new br::MeshDrawData();
+	//object->draw_index = p_graphics->p_graphics->add_draw_data(reinterpret_cast<br::GPUResource*>(draw_data));
+
 	return objects[objects.size() - 1].get();
 }
 

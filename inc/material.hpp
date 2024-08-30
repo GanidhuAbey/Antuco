@@ -7,6 +7,7 @@
 #include <vulkan/vulkan.h>
 
 #include <bedrock/image.hpp>
+#include <bedrock/gpu_resource.hpp>
 
 namespace tuco {
 
@@ -26,7 +27,7 @@ struct MaterialBufferObject {
   std::vector<float> linearize();
 };
 
-class Material {
+class Material : public br::GPUResource {
 private:
 	br::Image baseColorImage;
 	br::Image roughnessMetallicTexture;
@@ -65,6 +66,9 @@ public:
 
 	void setRoughnessMetallicTexture(std::string filePath);
 	br::Image& getRoughnessMetallicImage() { return roughnessMetallicTexture; }
+
+protected:
+	void UpdateGPU() override;
 };
 
 } // namespace tuco

@@ -3,6 +3,9 @@
 
 #include "glm/gtc/matrix_transform.hpp"
 
+#include <antuco.hpp>
+#include <api_graphics.hpp>
+
 using namespace tuco;
 
 GameObject::GameObject() : object_model() {
@@ -39,6 +42,12 @@ void GameObject::set_position(glm::vec3 t) {
 		0, 0, 1, t.z,
 		0, 0, 0, 1
 	};
+}
+
+Material& GameObject::get_material()
+{
+	GraphicsImpl* backend = Antuco::get_engine().get_backend();
+	return backend->materials[material_index];
 }
 
 void GameObject::scale(glm::vec3 scale_vector) {

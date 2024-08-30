@@ -8,7 +8,7 @@ layout(location=0) out vec4 outColor;
 layout(location=3) in vec3 surfaceNormal;
 layout(location=4) in vec4 vPos;
 layout(location=5) in vec2 texCoord;
-layout(location=6) in vec4 light_perspective;
+//layout(location=6) in vec4 light_perspective;
 
 layout(location=7) in vec3 light_position;
 layout(location=8) in vec3 light_color;
@@ -16,7 +16,7 @@ layout(location=9) in vec3 camera_pos;
 
 //layout(set=2, binding=1) uniform sampler2D shadowmap;
 
-layout(set=2, binding=0) uniform Material {
+layout(set=1, binding=0) uniform Material {
     vec3 pbrParameters; // baseReflectivity, roughness, metallic
     vec3 hasTexture; // hasDiffuse, hasMetallic, hasRoughness
     vec3 albedo;
@@ -24,12 +24,12 @@ layout(set=2, binding=0) uniform Material {
     vec4 padding[2];
 } mat;
 
-layout(set=2, binding=1) uniform sampler2D diffuseTexture;
-layout(set=2, binding=2) uniform sampler2D roughnessMetallicTexture;
+layout(set=1, binding=1) uniform sampler2D diffuseTexture;
+layout(set=1, binding=2) uniform sampler2D roughnessMetallicTexture;
 
 // set 1 = draw, set = 2 material, set = 3 pass, set = 4 scene
 
-layout(set=3, binding=0) uniform sampler3D iblTexture;
+layout(set=2, binding=0) uniform sampler3D iblTexture;
 
 float bias = 5e-3;
 

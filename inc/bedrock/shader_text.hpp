@@ -41,6 +41,8 @@ public:
     //returns compiled code as string
     std::vector<uint32_t>& get_code(ShaderKind kind);
 
+    uint32_t get_layout_count() { return layouts.size(); }
+    std::vector<v::DescriptorLayout>& get_layouts() { return layouts; }
     v::DescriptorLayout& get_layout(uint32_t i) { return layouts[i]; }
 
     // ShaderText supports the ability to compile multiple shaders, but the expectation is that the given shaders

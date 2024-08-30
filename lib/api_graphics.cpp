@@ -126,10 +126,10 @@ void GraphicsImpl::update_draw(
       [[maybe_unused]] uint32_t vertex_mem = update_vertex_buffer(model.model_vertices);
 
       update_command_buffers = true;
-      game_objects[i]->update = false;
+      game_objects[i]->update = false; 
       createUboSets(static_cast<uint32_t>(model.transforms.size()));
       write_to_ubo();
-      create_light_set(static_cast<uint32_t>(model.transforms.size()));
+      //create_light_set(static_cast<uint32_t>(model.transforms.size()));
 
       auto primitives = model.primitives;
       // WARNING: texture sets only created for objects with textures. this
@@ -140,7 +140,7 @@ void GraphicsImpl::update_draw(
       }
 
       // load textures.
-      Material &mat = game_objects[i]->material;
+      Material &mat = game_objects[i]->get_material();
 
       // writeMaterial(game_objects[i]->material);
       writeMaterial(mat);
@@ -152,15 +152,15 @@ void GraphicsImpl::update_draw(
     ubo.worldToCamera = camera_view;
     ubo.projection = camera_projection;
 
-    auto lbo = UniformBufferObject{};
-    lbo.worldToCamera = light_data[0].world_to_light;
-    lbo.projection = light_data[0].perspective;
+    //auto lbo = UniformBufferObject{};
+    //lbo.worldToCamera = light_data[0].world_to_light;
+    //lbo.projection = light_data[0].perspective;
     for (size_t j = 0; j < model.transforms.size(); j++) {
       ubo.modelToWorld = game_objects[i]->transform * model.transforms[j];
-      lbo.modelToWorld = game_objects[i]->transform * model.transforms[j];
+      //lbo.modelToWorld = game_objects[i]->transform * model.transforms[j];
       update_uniform_buffer(ubo_offsets[offset + j], ubo);
       // update light data (used for generating shadow map)
-      update_uniform_buffer(light_offsets[offset + j], lbo);
+      //update_uniform_buffer(light_offsets[offset + j], lbo);
     }
     offset += model.transforms.size();
   }

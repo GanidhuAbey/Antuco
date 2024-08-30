@@ -6,17 +6,17 @@ struct UniformBufferTemplate {
     mat4 projection;
 };
 
-layout(set=1, binding = 0) uniform UniformBufferObject  {
+layout(set=0, binding = 0) uniform UniformBufferObject  {
     mat4 modelToWorld;
     mat4 worldToCamera;
     mat4 projection;
 } ubo;
 
-layout(set=0, binding = 1) uniform LightBufferObject {
-	mat4 model_to_world;
-    mat4 world_to_light;
-    mat4 projection;
-} lbo;
+//layout(set=0, binding = 1) uniform LightBufferObject {
+//	mat4 model_to_world;
+//    mat4 world_to_light;
+//    mat4 projection;
+//} lbo;
 
 layout(push_constant) uniform PushFragConstant {
   vec3 lightColor;
@@ -36,7 +36,7 @@ layout(location = 2) in vec2 inTexCoord;
 layout(location = 3) out vec3 surfaceNormal;
 layout(location = 4) out vec4 vPos;
 layout(location = 5) out vec2 texCoord;
-layout(location = 6) out vec4 light_perspective;
+//layout(location = 6) out vec4 light_perspective;
 
 //light data into fragment shader
 layout(location = 7) out vec3 light_position;
@@ -64,10 +64,10 @@ void main() {
     surfaceNormal = normalize(vec3(transpose(inverse(ubo.modelToWorld)) * vec4(inNormal, 0.0)));
 
     vPos = ubo.modelToWorld * vec4(inPosition, 1.0);
-    light_perspective = (/*biasMat */ lbo.projection * lbo.world_to_light * lbo.model_to_world) * vec4(inPosition, 1.0);
+    //light_perspective = (/*biasMat */ lbo.projection * lbo.world_to_light * lbo.model_to_world) * vec4(inPosition, 1.0);
     texCoord = inTexCoord;
-    light_perspective.xyz = light_perspective.xyz / light_perspective.w;
-    light_perspective.xy = (light_perspective.xy + 1) / 2;
+    //light_perspective.xyz = light_perspective.xyz / light_perspective.w;
+    //light_perspective.xy = (light_perspective.xy + 1) / 2;
 
     light_position = pfc.lightPosition;
     light_color = pfc.lightColor;

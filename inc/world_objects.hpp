@@ -84,6 +84,7 @@ private:
 };
 
 // TODO: separate transform data from object container.
+// [TODO 08/24] - GameObject is actually a mesh component, but is named generically...
 class GameObject {
   friend class Antuco;
   friend class GraphicsImpl;
@@ -95,7 +96,8 @@ private:
   // TODO: generalize the components within our container.
   // reduce coupling.
   Model object_model;
-  Material material;
+  uint32_t material_index;
+  uint32_t draw_index;
 
   size_t back_end_data = 0;
   uint32_t changed = 0;
@@ -109,7 +111,7 @@ public:
   void translate(glm::vec3 t);
   void set_position(glm::vec3 t);
 
-  Material &get_material() { return material; }
+  Material& get_material();
 };
 
 class SkyBox {

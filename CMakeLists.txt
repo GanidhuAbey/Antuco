@@ -13,14 +13,16 @@ find_package(PythonInterp 3.9 REQUIRED)
 
 set(_change_MSVC_flags FALSE)
 if(WIN32)
-  set(MSVC TRUE)
-  if(CMAKE_VERSION VERSION_LESS 3.15.0)
-    set(_change_MSVC_flags TRUE)
-  else()
-    # Set MSVC runtime to MultiThreaded (/MT)
-    cmake_policy(SET CMP0091 NEW)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  endif()
+    set(CMAKE_CXX_FLAGS "/utf-8 /EHsc")
+    set(CMAKE_C_FLAGS "/utf-8 /EHsc")
+    set(MSVC TRUE)
+    if(CMAKE_VERSION VERSION_LESS 3.15.0)
+        set(_change_MSVC_flags TRUE)
+    else()
+        # Set MSVC runtime to MultiThreaded (/MT)
+        cmake_policy(SET CMP0091 NEW)
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    endif()
 endif()
 
 project(Antuco VERSION 1.0.0)
@@ -31,8 +33,9 @@ file(GLOB SOURCES lib/*.cpp lib/vulkan_wrapper/*.cpp lib/bedrock/*.cpp)
 
 file(GLOB HEADERS inc/*.hpp inc/vulkan_wrapper/*.hpp inc/bedrock/*.hpp)
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HEADERS} ${SOURCES})
+file(GLOB SHADERS shaders/*.frag shaders/*.vert)
 
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HEADERS} ${SOURCES} ${SHADERS})
 
 set(HEADER_FILES ${HEADERS})
 
@@ -59,6 +62,7 @@ add_library(
     AntucoEngine
     ${SOURCES}
     ${HEADERS}
+    ${SHADERS}   
 )
 
 target_include_directories(AntucoEngine PUBLIC "inc/")

@@ -14,7 +14,7 @@ void MaterialType::buildPipeline(v::Device& device) {
     config.screen_extent = screenExtent;
     config.blend_colours = blend;
 
-    pso.init(device, config);
+    //pso.init(device, config);
 
     psoInitialized = true;
 }

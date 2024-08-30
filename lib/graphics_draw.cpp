@@ -224,8 +224,7 @@ void GraphicsImpl::create_graphics_pipeline() {
   };
 
   // TEX
-  std::vector<VkDescriptorSetLayout> descriptor_layouts = {
-      light_layout, ubo_layout, texture_layout, matLayout, scene_layout};
+  std::vector<VkDescriptorSetLayout> descriptor_layouts = {ubo_layout, texture_layout, matLayout, scene_layout};
 
   std::vector<VkPushConstantRange> push_ranges;
 
@@ -247,13 +246,13 @@ void GraphicsImpl::create_graphics_pipeline() {
   config.screen_extent = swapchain.get_extent();
   config.blend_colours = true;
 
-  graphics_pipelines[0].init(*p_device, config);
+  graphics_pipelines[0].init(p_device, set_pool, config);
 
-  auto it = config.descriptor_layouts.begin() + 2;
+  auto it = config.descriptor_layouts.begin() + 1;
   config.descriptor_layouts.erase(it);
   config.frag_shader_path = SHADER_PATH + "no_texture.frag";
 
-  graphics_pipelines[1].init(*p_device, config);
+  graphics_pipelines[1].init(p_device, set_pool, config);
 }
 
 void GraphicsImpl::create_oit_pass() {
@@ -501,7 +500,7 @@ void GraphicsImpl::create_set_pool()
         info.push_back(pool_info);
     }
 
-    set_pool = std::make_unique<mem::Pool>(p_device, info);
+    set_pool = std::make_shared<mem::Pool>(p_device, info);
 }
 
 void GraphicsImpl::createMaterialCollection() 
@@ -544,7 +543,7 @@ void GraphicsImpl::create_screen_pipeline() {
   config.cull_mode = VK_CULL_MODE_FRONT_BIT;
   config.front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
-  screen_pipeline.init(*p_device, config);
+  screen_pipeline.init(p_device, set_pool, config);
 }
 
 void GraphicsImpl::create_screen_pass() {
@@ -786,7 +785,7 @@ void GraphicsImpl::create_shadowpass_pipeline() {
   config.depth_bias_enable = VK_TRUE;
   config.push_ranges = push_ranges;
 
-  shadowmap_pipeline.init(*p_device, config);
+  shadowmap_pipeline.init(p_device, set_pool, config);
 }
 
 VkDescriptorBufferInfo GraphicsImpl::allocateDescriptorBuffer(uint32_t size) {
@@ -1067,8 +1066,12 @@ void GraphicsImpl::writeMaterial(Material &material)
     MaterialBufferObject matObj = material.convert();
     updateUniformBuffer(material.gpuInfo.bufferOffset,
                         sizeof(MaterialBufferObject), &matObj);
+    
 
-    material.gpuInfo.setIndex = materialCollection.addSets(1, *matPool);
+    // [TODO 08/2024] - by having addSets here, we basically create a new descriptor set every frame per every object... this is memory leak.
+    //material.gpuInfo.setIndex = materialCollection.addSets(1, *matPool);
+    ResourceCollection* collection = graphics_pipelines[1].get_resource_collection(1);
+    material.gpuInfo.setIndex = collection->addSets(1, *matPool);
 
     BufferDescription info{};
     info.binding = 0;
@@ -1077,7 +1080,7 @@ void GraphicsImpl::writeMaterial(Material &material)
     info.bufferRange = sizeof(MaterialBufferObject);
     info.bufferOffset = material.gpuInfo.bufferOffset;
 
-    materialCollection.addBuffer(info, material.gpuInfo.setIndex);
+    collection->addBuffer(info, material.gpuInfo.setIndex);
 
     // TODO : will cause pipeline warning (errors?) if we do not bind an image even for materials that do not access it.
     //        use specialization constants to prevent compilation of shaders with unbound textures?
@@ -1098,7 +1101,7 @@ void GraphicsImpl::writeMaterial(Material &material)
         image_info.image_view = uninitalized_image.get_api_image_view();
         image_info.sampler = uninitalized_image.get_sampler();
     }
-    materialCollection.addImage(image_info, material.gpuInfo.setIndex);
+    collection->addImage(image_info, material.gpuInfo.setIndex);
 
     image_info.binding = 2;
     image_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1117,10 +1120,52 @@ void GraphicsImpl::writeMaterial(Material &material)
         image_info.image_view = uninitalized_image.get_api_image_view();
         image_info.sampler = uninitalized_image.get_sampler();
     }
-    materialCollection.addImage(image_info, material.gpuInfo.setIndex);
+    collection->addImage(image_info, material.gpuInfo.setIndex);
 
-    materialCollection.updateSet(material.gpuInfo.setIndex);
+    collection->updateSet(material.gpuInfo.setIndex);
 }
+
+uint32_t GraphicsImpl::add_material()
+{
+    materials.push_back(Material{});
+    return materials.size() - 1;
+}
+
+uint32_t GraphicsImpl::add_draw_data(br::GPUResource* resource)
+{
+    std::unique_ptr<br::GPUResource> gpu_resource(resource);
+    draw_data.push_back(std::move(gpu_resource));
+    return draw_data.size() - 1;
+}
+
+void GraphicsImpl::update_draw_item(uint32_t object_index, GameObject& object)
+{
+    // check if object has associated draw item
+    if (draw_items.size() >= object_index)
+    {
+        draw_items.resize(object_index + 1);
+
+        draw_items[object_index].set_vertex_buffer(&vertex_buffer);
+        draw_items[object_index].set_index_buffer(&index_buffer);
+
+        draw_items[object_index].set_pso(&graphics_pipelines[1]);
+    }
+
+    br::DrawItem& item = draw_items[object_index];
+    uint32_t index_mem = update_index_buffer(object.object_model.model_indices);
+    uint32_t vertex_mem = update_vertex_buffer(object.object_model.model_vertices);
+
+    item.set_draw_offsets(index_mem, vertex_mem);
+
+    // set material and draw index
+    item.set_material_index(object.material_index);
+    item.set_draw_index(object.draw_index);
+}
+
+// Left to do
+//   - fix any bugs
+//   - figure out some way to update MeshDrawData with correct mvp data.
+//   - then call item.U
 
 void GraphicsImpl::create_command_buffers(
     const std::vector<std::unique_ptr<GameObject>> &game_objects) {
@@ -1224,7 +1269,7 @@ void GraphicsImpl::create_command_buffers(
 
         Material &mat = game_objects[j]->get_material();
         VkDescriptorSet materialSet =
-            materialCollection.get_api_set(mat.gpuInfo.setIndex);
+            graphics_pipelines[1].get_resource_collection(1)->get_api_set(mat.gpuInfo.setIndex);
 
         for (size_t k = 0; k < model_primitive_count; k++) {
 
@@ -1235,9 +1280,9 @@ void GraphicsImpl::create_command_buffers(
           auto descriptors = std::vector<std::vector<VkDescriptorSet>>();
 
           descriptor_1.resize(4);
-          descriptor_2.resize(4);
+          descriptor_2.resize(3);
 
-          descriptor_1[0] = light_ubo[j].get_api_set(prim.transform_index);
+          //descriptor_1[0] = light_ubo[j].get_api_set(prim.transform_index);
           descriptor_1[1] = uboSets[j][prim.transform_index];
           //descriptor_1[3] = shadowmap_set;
           // TODO: currently we update all our descriptor sets once at the
@@ -1246,10 +1291,9 @@ void GraphicsImpl::create_command_buffers(
           // material changes).
           descriptor_1[3] = materialSet;
 
-          descriptor_2[0] = descriptor_1[0];
-          descriptor_2[1] = descriptor_1[1];
-          descriptor_2[2] = descriptor_1[3];
-          descriptor_2[3] = scene_collection.get_api_set(Antuco::get_engine().get_scene()->get_index());
+          descriptor_2[0] = descriptor_1[1];
+          descriptor_2[1] = descriptor_1[3];
+          descriptor_2[2] = scene_collection.get_api_set(Antuco::get_engine().get_scene()->get_index());
 
           auto layout = graphics_pipelines[index].get_api_layout();
 
