@@ -7,7 +7,7 @@ void MaterialType::buildPipeline(v::Device& device) {
     PipelineConfig config{};
     config.vert_shader_path = vertexShaderPath;
     config.frag_shader_path = fragmentShaderPath;
-    config.descriptor_layouts = setLayouts;
+    //config.descriptor_layouts = setLayouts;
     config.push_ranges = pushRanges;
     config.pass = renderPass.get_api_pass();
     config.subpass_index = 0; // TODO: wtf does this do again lmao

@@ -51,6 +51,7 @@ class TucoPass {
         void add_dependency(std::vector<vk::SubpassDependency> d);
         void create_subpass(VkPipelineBindPoint bind_point, bool colour, bool depth);
 
+        void init(std::shared_ptr<v::Device> p_device, bool has_color, bool has_depth);
 
         void destroy();
 
