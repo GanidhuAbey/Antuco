@@ -13,6 +13,8 @@ struct Binding
 {
 	std::string name;
 	VkDescriptorSetLayoutBinding info;
+
+	uint32_t set_index;
 };
 
 class DescriptorLayout
@@ -30,6 +32,7 @@ private:
 public:
 	void add_binding(Binding binding) { bindings.push_back(binding); }
 	Binding& get_binding(uint32_t index) { return bindings[index]; }
+	uint32_t get_binding_count() { return bindings.size(); }
 
 	void set_index(uint32_t index) { DescriptorLayout::index = index; }
 	uint32_t get_index() { return index; }

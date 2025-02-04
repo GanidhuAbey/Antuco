@@ -70,6 +70,8 @@ public:
                     std::vector<int> shadow_casters);
     void update_draw(std::vector<std::unique_ptr<GameObject>> &game_objects);
 
+    void initialize_scene(SceneData *scene);
+
 private:
     glm::mat4 camera_view;
     glm::mat4 camera_projection;
@@ -297,7 +299,7 @@ private:
     void create_texture_pool();
     void create_texture_set(size_t mesh_count);
     void create_command_buffers(
-        const std::vector<std::unique_ptr<GameObject>> &game_objects);
+        const std::vector<std::unique_ptr<GameObject>> &game_objects, SceneData* scene);
 
     void create_shadow_map(
         const std::vector<std::unique_ptr<GameObject>> &game_objects,
@@ -332,6 +334,7 @@ private:
     MaterialGpuInfo setupMaterialBuffers();
     void updateMaterialResources(Material &material);
     void write_scene(SceneData* scene);
+    void create_scene(SceneData* scene);
     void writeMaterial(Material &material);
     void writeSceneCollection(SceneData &scene);
 

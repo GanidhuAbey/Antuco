@@ -62,12 +62,14 @@ struct ImageData
 
 struct RawImageData
 {
-    unsigned char* image_data;
+    uint32_t image_count;
+    std::vector<unsigned char*> images;
     int width;
     int height;
     int channels; // how many 8 bit components each pixel has (e.g RGB texture has 3*4 = 12 8 bit components)
 
     uint32_t buffer_size;
+    uint32_t image_size; // in the case of multiple images, the image_size refers to the size of a single image.
 };
 
 enum class ImageFormat
@@ -114,6 +116,7 @@ public:
     void init(std::string name, bool handle_destruction = false);
     //! loads color image from filepath, creating device accessible image. (assumes that Antuco graphics already initialized).
     void load_color_image(std::string file_path);
+    void load_cubemap(std::vector<std::string>& file_path, ImageFormat image_format);
     void load_image(std::string &file_path, ImageFormat image_format, ImageType type);
     void set_image_sampler(VkFilter filter, VkSamplerMipmapMode mipMapFilter, VkSamplerAddressMode addressMode);
     // [TODO] - remove references to and delete (deprecated)
@@ -134,12 +137,8 @@ public:
 
     void change_layout(vk::ImageLayout new_layout, vk::Queue queue, std::optional<vk::CommandBuffer> command_buffer = std::nullopt);
 
-    void copy_to_buffer(
-        vk::Buffer buffer, VkDeviceSize dst_offset, vk::Queue queue,
-        std::optional<vk::CommandBuffer> command_buffer = std::nullopt);
-
     void copy_from_buffer(
-        vk::Buffer buffer, vk::Offset3D image_offset,
+        vk::Buffer buffer, vk::Offset3D image_offset, uint32_t image_count, uint32_t image_size,
         std::optional<vk::Extent3D> map_size, vk::Queue queue,
         std::optional<vk::CommandBuffer> command_buffer = std::nullopt);
 
@@ -156,7 +155,9 @@ private:
     vk::Format get_vk_format(ImageFormat image_format, uint32_t &channels);
     bool is_3d_image(ImageFormat image_format);
 
-    void copy_to_buffer(RawImageData &data, mem::CPUBuffer* buffer);
+    void init_buffer(uint32_t buffer_size, mem::CPUBuffer* buffer);
+    // adds data to buffer, returns offset to end of where last data was allocated.
+    uint32_t add_to_buffer(RawImageData& data, uint32_t image_index, uint32_t offset, mem::CPUBuffer* buffer);
 };
 
 

@@ -37,6 +37,7 @@ public:
 	SceneData* create_scene();
 	SceneData* get_scene() { return scene.get(); }
 
+
 /* Rendering */
 public:
 	void render();

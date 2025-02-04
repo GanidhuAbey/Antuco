@@ -96,24 +96,45 @@ std::vector<uint32_t> ShaderText::compile_file_to_spirv(const std::string& sourc
 
 void ShaderText::create_layouts(std::shared_ptr<v::Device> device) {
     // vertex shader
+    std::vector<v::Binding> shader_bindings;
     if (auto search = compiled_code.find(ShaderKind::VertexShader); search != compiled_code.end())
     {
-        std::vector<v::DescriptorLayout> vertex_layouts = collect_layouts(search->second);
-        layouts.insert(layouts.end(), vertex_layouts.begin(), vertex_layouts.end());
+        std::vector<v::Binding> vertex_bindings = collect_layouts(search->second);
+        shader_bindings.insert(shader_bindings.end(), vertex_bindings.begin(), vertex_bindings.end());
     }
 
     // fragment shader
     if (auto search = compiled_code.find(ShaderKind::FragmentShader); search != compiled_code.end())
     {
-        std::vector<v::DescriptorLayout> fragment_layouts = collect_layouts(search->second);
-        layouts.insert(layouts.end(), fragment_layouts.begin(), fragment_layouts.end());
+        std::vector<v::Binding> fragment_bindings = collect_layouts(search->second);
+        shader_bindings.insert(shader_bindings.end(), fragment_bindings.begin(), fragment_bindings.end());
     }
 
     // compute shader (should only have it set if vertex & fragment not set)
     if (auto search = compiled_code.find(ShaderKind::ComputeShader); search != compiled_code.end())
     {
-        std::vector<v::DescriptorLayout> compute_layouts = collect_layouts(search->second);
-        layouts.insert(layouts.end(), compute_layouts.begin(), compute_layouts.end());
+        std::vector<v::Binding> compute_bindings = collect_layouts(search->second);
+        shader_bindings.insert(shader_bindings.end(), compute_bindings.begin(), compute_bindings.end());
+    }
+
+    layouts.resize(4);
+    for (auto& binding : shader_bindings)
+    {
+        layouts[binding.set_index].add_binding(binding);
+        layouts[binding.set_index].set_index(binding.set_index);
+    }
+
+    uint32_t i = 0;
+    while (i < layouts.size())
+    {
+        if (layouts[i].get_binding_count() == 0)
+        {
+            layouts.erase(layouts.begin() + i);
+        }
+        else
+        {
+            i++;
+        }
     }
 
     for (auto& layout : layouts)
@@ -123,7 +144,7 @@ void ShaderText::create_layouts(std::shared_ptr<v::Device> device) {
 }
 
 // Shamelessly copied from SPIRV-Reflect sample :)
-std::vector<v::DescriptorLayout> ShaderText::collect_layouts(std::vector<uint32_t> &code)
+std::vector<v::Binding> ShaderText::collect_layouts(std::vector<uint32_t> &code)
 {
     SpvReflectShaderModule module = {};
     SpvReflectResult result = spvReflectCreateShaderModule(
@@ -150,7 +171,7 @@ std::vector<v::DescriptorLayout> ShaderText::collect_layouts(std::vector<uint32_
     //    v::DescriptorLayout{}
     //);
 
-    std::vector<v::DescriptorLayout> descriptor_layout(sets.size());
+    std::vector<v::Binding> shader_bindings;
     for (size_t set_index = 0; set_index < sets.size(); ++set_index)
     {
         const SpvReflectDescriptorSet& refl_set = *(sets[set_index]);
@@ -173,14 +194,14 @@ std::vector<v::DescriptorLayout> ShaderText::collect_layouts(std::vector<uint32_
             v::Binding shader_binding{};
             shader_binding.name = refl_binding.name;
             shader_binding.info = binding;
-            descriptor_layout[set_index].add_binding(shader_binding);
+            shader_binding.set_index = refl_set.set;
+            shader_bindings.push_back(shader_binding);
         }
-        descriptor_layout[set_index].set_index(refl_set.set);
     }
 
     spvReflectDestroyShaderModule(&module);
 
-    return descriptor_layout;
+    return shader_bindings;
 
     /*
     // Log the descriptor set contents to stdout

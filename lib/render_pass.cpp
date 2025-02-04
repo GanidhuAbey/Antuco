@@ -26,12 +26,8 @@ VkRenderPass TucoPass::get_api_pass()
 	return render_pass;
 }
 
-void TucoPass::init(std::shared_ptr<v::Device> p_device, bool has_color, bool has_depth)
+void TucoPass::init(std::shared_ptr<v::Device> p_device, bool has_color, bool has_depth, ColourConfig config)
 {
-	ColourConfig config{};
-	config.format = vk::Format::eR32G32B32A32Sfloat;
-	config.final_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
-
 	std::vector<vk::SubpassDependency> dependencies(2);
 
 	dependencies[0] = vk::SubpassDependency(
@@ -91,11 +87,11 @@ void TucoPass::add_colour(uint32_t attachment, ColourConfig config)
 		{},
 		config.format,
 		vk::SampleCountFlagBits::e1,
-		vk::AttachmentLoadOp::eClear,
+		config.load_op,
 		vk::AttachmentStoreOp::eStore,
 		vk::AttachmentLoadOp::eDontCare,
 		vk::AttachmentStoreOp::eDontCare,
-		vk::ImageLayout::eUndefined,
+		config.initial_layout,
 		config.final_layout
 	);
 

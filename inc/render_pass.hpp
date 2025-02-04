@@ -16,8 +16,10 @@ struct DepthConfig {
 
 struct ColourConfig {
     vk::Format format;
-    VkImageLayout initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+    vk::ImageLayout initial_layout = vk::ImageLayout::eUndefined;
     vk::ImageLayout final_layout = vk::ImageLayout::ePresentSrcKHR;
+    vk::AttachmentLoadOp load_op = vk::AttachmentLoadOp::eClear;
+
 };
 
 class TucoPass {
@@ -51,7 +53,7 @@ class TucoPass {
         void add_dependency(std::vector<vk::SubpassDependency> d);
         void create_subpass(VkPipelineBindPoint bind_point, bool colour, bool depth);
 
-        void init(std::shared_ptr<v::Device> p_device, bool has_color, bool has_depth);
+        void init(std::shared_ptr<v::Device> p_device, bool has_color, bool has_depth, ColourConfig config);
 
         void destroy();
 

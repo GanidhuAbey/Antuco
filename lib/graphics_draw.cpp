@@ -234,18 +234,26 @@ void GraphicsImpl::create_skybox_pipeline()
 		VK_DYNAMIC_STATE_DEPTH_BIAS,
 	};
 
+	std::vector<VkPushConstantRange> push_ranges;
+
+	VkPushConstantRange pushRange{};
+	pushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	pushRange.offset = 0;
+	pushRange.size = sizeof(glm::vec4);
+
+	push_ranges.push_back(pushRange);
+
 	PipelineConfig config{};
-	config.vert_shader_path = SHADER("quad.vert");
+	config.vert_shader_path = SHADER("skybox.vert");
 	config.frag_shader_path = SHADER("skybox.frag");
 	config.dynamic_states = dynamic_states;
 	config.pass = skybox_pass.get_api_pass();
 	config.subpass_index = 0;
 	config.screen_extent = swapchain.get_extent();
+	config.push_ranges = push_ranges;
 	config.blend_colours = true;
-	config.attribute_descriptions = {};
-	config.binding_descriptions = {};
 	config.cull_mode = VK_CULL_MODE_FRONT_BIT;
-	config.front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	config.front_face = VK_FRONT_FACE_CLOCKWISE;
 
 	skybox_pipeline.init(p_device, set_pool, config);
 
@@ -298,7 +306,6 @@ void GraphicsImpl::create_oit_pass()
 {
 	ColourConfig config{};
 	config.format = swapchain.get_format();
-	config.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	config.final_layout = vk::ImageLayout::eColorAttachmentOptimal;
 
 	oit_pass.add_colour(0, config);
@@ -403,12 +410,22 @@ void GraphicsImpl::create_output_images()
 // ---- TucoPass ----
 void GraphicsImpl::create_render_pass()
 {
-	render_pass.init(p_device, true, true);
+	ColourConfig config{};
+	config.format = vk::Format::eR32G32B32A32Sfloat;
+	config.initial_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+	config.final_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+	config.load_op = vk::AttachmentLoadOp::eLoad;
+
+	render_pass.init(p_device, true, true, config);
 }
 
 void GraphicsImpl::create_skybox_pass()
 {
-	skybox_pass.init(p_device, true, true);
+	ColourConfig config{};
+	config.format = vk::Format::eR32G32B32A32Sfloat;
+	config.final_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+	config.load_op = vk::AttachmentLoadOp::eClear;
+	skybox_pass.init(p_device, true, true, config);
 }
 // ---- TucoPass ----
 
@@ -1103,25 +1120,63 @@ void GraphicsImpl::writeSceneCollection(SceneData& scene)
 
 }
 
+void GraphicsImpl::create_scene(SceneData* scene) {
+	ResourceCollection* skybox_collection = skybox_pipeline.get_resource_collection(0);
+	uint32_t index = skybox_collection->addSets(1, *set_pool);
+	scene->set_index(skybox_collection, index);
+
+	//ResourceCollection* forward_collection = graphics_pipelines[0].get_resource_collection(3);
+	//scene->set_index(forward_collection, forward_collection->addSets(1, *set_pool));
+}
+
 void GraphicsImpl::write_scene(SceneData* scene)
 {
-	uint32_t index = scene_collection.addSets(1, *set_pool);
-	scene->set_index(index);
+	GameObject& skybox_model = scene->get_skybox_model();
+	
+	scene->ubo_offset = uniform_buffer.allocate(sizeof(UniformBufferObject), v::Limits::get().uniformBufferOffsetAlignment);
 
-	// IBL texture
+	BufferDescription info{};
+	info.binding = 1;
+	info.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	info.buffer = uniform_buffer.buffer;
+	info.bufferRange = sizeof(UniformBufferObject);
+	info.bufferOffset = scene->ubo_offset;
+
+	ResourceCollection* skybox_collection = skybox_pipeline.get_resource_collection(0);
+	skybox_collection->addBuffer(info, scene->get_index(skybox_collection));
+
+	// Skybox texture
 	ImageDescription image_info{};
 	image_info.binding = 0;
 	image_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	image_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	if (scene->has_ibl)
-	{
-		image_info.image = scene->get_ibl().get_api_image();
-		image_info.image_view = scene->get_ibl().get_api_image_view();
-		image_info.sampler = scene->get_ibl().get_sampler();
-	}
-	scene_collection.addImage(image_info, scene->get_index());
 
-	scene_collection.updateSet(scene->get_index());
+	// TODO: if scene does not have skybox, disable pass.
+	if (scene->has_skybox)
+	{
+		image_info.image = scene->get_skybox().get_image().get_api_image();
+		image_info.image_view = scene->get_skybox().get_image().get_api_image_view();
+		image_info.sampler = scene->get_skybox().get_image().get_sampler();
+	}
+
+	skybox_collection->addImage(image_info, scene->get_index(skybox_collection));
+
+	//ResourceCollection* forward_collection = graphics_pipelines[0].get_resource_collection(3);
+	//// IBL texture
+	//ImageDescription image_info{};
+	//image_info.binding = 0;
+	//image_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	//image_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	//if (scene->has_ibl)
+	//{
+	//	image_info.image = scene->get_ibl().get_api_image();
+	//	image_info.image_view = scene->get_ibl().get_api_image_view();
+	//	image_info.sampler = scene->get_ibl().get_sampler();
+	//}
+	//forward_collection->addImage(image_info, scene->get_index(forward_collection));
+
+	//forward_collection->updateSet(scene->get_index(forward_collection));
+	skybox_collection->updateSet(scene->get_index(skybox_collection));
 }
 
 void GraphicsImpl::writeMaterial(Material& material)
@@ -1235,7 +1290,7 @@ void GraphicsImpl::update_draw_item(uint32_t object_index, GameObject& object)
 //   - then call item.U
 
 void GraphicsImpl::create_command_buffers(
-	const std::vector<std::unique_ptr<GameObject>>& game_objects)
+	const std::vector<std::unique_ptr<GameObject>>& game_objects, SceneData* scene)
 {
 // allocate memory for command buffer, you have to create a draw command for
 // each image
@@ -1308,9 +1363,39 @@ void GraphicsImpl::create_command_buffers(
 
 		command_buffers[i].setScissor(0, 1, &scissor);
 
+		const VkDeviceSize offset[] = { 0, offsetof(Vertex, normal),
+									   offsetof(Vertex, tex_coord) };
+
+		command_buffers[i].bindVertexBuffers(0, 1, &vertex_buffer.buffer, offset);
+
+		vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0,
+			VK_INDEX_TYPE_UINT32);
+
 		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, skybox_pipeline.get_api_pipeline());
 
-		vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
+		GameObject& skybox = scene->get_skybox_model();
+		ResourceCollection* skybox_scene_collection = skybox_pipeline.get_resource_collection(0);
+		VkDescriptorSet skybox_scene_set = skybox_scene_collection->get_api_set(Antuco::get_engine().get_scene()->get_index(skybox_scene_collection));
+
+		vkCmdPushConstants(command_buffers[i],
+						   skybox_pipeline.get_api_layout(),
+						   VK_SHADER_STAGE_VERTEX_BIT, 0,
+						   sizeof(glm::vec4), &camera_pos);
+
+		for (size_t k = 0; k < skybox.object_model.primitives.size(); k++)
+		{
+
+			Primitive prim = skybox.object_model.primitives[k];
+
+			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, skybox_pipeline.get_api_layout(), 0, 1, &skybox_scene_set, 0, nullptr);
+
+			vkCmdDrawIndexed(
+				command_buffers[i], prim.index_count, 1,
+				prim.index_start + skybox.buffer_index_offset,
+				skybox.buffer_vertex_offset, // indices refer to all vertices in model, then no
+							   // vertex offsets are required.
+				static_cast<uint32_t>(0));
+		}
 
 		vkCmdEndRenderPass(command_buffers[i]);
 
@@ -1331,9 +1416,6 @@ void GraphicsImpl::create_command_buffers(
 		command_buffers[i].setScissor(0, 1, &scissor);
 
 		// time for the draw calls
-		const VkDeviceSize offset[] = { 0, offsetof(Vertex, normal),
-									   offsetof(Vertex, tex_coord) };
-
 		command_buffers[i].bindVertexBuffers(0, 1, &vertex_buffer.buffer, offset);
 
 		vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0,
@@ -1383,8 +1465,8 @@ void GraphicsImpl::create_command_buffers(
 					auto descriptor_2 = std::vector<VkDescriptorSet>();
 					auto descriptors = std::vector<std::vector<VkDescriptorSet>>();
 
-					descriptor_1.resize(4);
-					descriptor_2.resize(3);
+					descriptor_1.resize(3);
+					descriptor_2.resize(2);
 
 					//descriptor_1[0] = light_ubo[j].get_api_set(prim.transform_index);
 					descriptor_1[1] = uboSets[j][prim.transform_index];
@@ -1393,11 +1475,11 @@ void GraphicsImpl::create_command_buffers(
 					// beginning of the frame. however, if we want to have per-material
 					// descriptors, then we need to update more frequently (whenever the
 					// material changes).
-					descriptor_1[3] = materialSet;
+					descriptor_1[2] = materialSet;
 
 					descriptor_2[0] = descriptor_1[1];
-					descriptor_2[1] = descriptor_1[3];
-					descriptor_2[2] = scene_collection.get_api_set(Antuco::get_engine().get_scene()->get_index());
+					descriptor_2[1] = descriptor_1[2];
+					//descriptor_2[2] = scene_collection->get_api_set(Antuco::get_engine().get_scene()->get_index(scene_collection));
 
 					auto layout = graphics_pipelines[index].get_api_layout();
 
@@ -1410,8 +1492,8 @@ void GraphicsImpl::create_command_buffers(
 
 					vkCmdDrawIndexed(
 						command_buffers[i], prim.index_count, 1,
-						prim.index_start + index_offset,
-						vertex_offset, // indices refer to all vertices in model, then no
+						prim.index_start + game_objects[j]->buffer_index_offset,
+						game_objects[j]->buffer_vertex_offset, // indices refer to all vertices in model, then no
 									   // vertex offsets are required.
 						static_cast<uint32_t>(0));
 				}
@@ -1934,7 +2016,7 @@ void GraphicsImpl::create_texture_image(std::string texturePath, size_t object,
 	// TODO: make buffer at runtime specifically for transfer commands
 	auto buffer = mem::CPUBuffer();
 	buffer.init(*p_physical_device, *p_device, texture_buffer_info);
-	buffer.map(dataSize, pixels);
+	buffer.map(dataSize, 0, pixels);
 
 	// use size of loaded image to create VkImage
 	texture_images.resize(texture_images.size() + 1);
@@ -1974,7 +2056,7 @@ void GraphicsImpl::create_texture_image(std::string texturePath, size_t object,
 
 	VkOffset3D image_offset = { 0, 0, 0 };
 	texture_images[texture_images.size() - 1][0].copy_from_buffer(
-		buffer.get(), image_offset, std::nullopt, p_device->get_transfer_queue());
+		buffer.get(), image_offset, 1, dataSize, std::nullopt, p_device->get_transfer_queue());
 
 	texture_images[texture_images.size() - 1][0].transfer(
 		vk::ImageLayout::eShaderReadOnlyOptimal, p_device->get_graphics_queue());

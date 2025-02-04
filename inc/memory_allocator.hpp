@@ -83,7 +83,7 @@ private:
 public:
   void init(v::PhysicalDevice &physical_device, v::Device &device,
             BufferCreateInfo &buffer_info);
-  void map(vk::DeviceSize size, const void *data);
+  void map(vk::DeviceSize size, vk::DeviceSize offset, const void *data);
   void destroy();
 
   vk::Buffer &get() { return buffer; }

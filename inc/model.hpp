@@ -26,18 +26,21 @@ class Model {
   friend class Antuco;
   friend class GraphicsImpl;
 
-private:
-  Model();
-
 public:
+  Model();
   ~Model();
   Model(const Model &) = delete;
   Model &operator=(const Model &) = delete;
 
+  void add_mesh(const std::string& fileName,
+                std::optional<std::string> name = std::nullopt);
+
+  // TODO - move to separate class (DrawItem)
+  std::vector<Vertex> model_vertices;
+  std::vector<uint32_t> model_indices;
+
 private:
   // if name is left null, then model will not be saved/loaded from file
-  void add_mesh(const std::string &fileName,
-                std::optional<std::string> name = std::nullopt);
   bool check_gltf(const std::string &filepath);
   void add_gltf_model(const std::string &filepath);
 
@@ -81,9 +84,6 @@ private:
   std::vector<uint32_t> linearlize_primitive(Primitive primitive);
 
 private:
-  // TODO - move to separate class (DrawItem)
-  std::vector<Vertex> model_vertices;
-  std::vector<uint32_t> model_indices;
 
   std::vector<ImageBuffer> model_images;
   std::vector<Primitive> primitives;

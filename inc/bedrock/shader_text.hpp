@@ -29,7 +29,6 @@ private:
     // since we have multiple sets per shader (e.g draw, material, scene, etc) we need multiple layouts.
     std::vector<v::DescriptorLayout> layouts;
 
-
 public:
     //requires: shader_code_path must refer to valid file within project directory
     // % deprecated %
@@ -60,7 +59,7 @@ private:
 
     shaderc_shader_kind get_shaderc_kind(ShaderKind kind);
 
-    std::vector<v::DescriptorLayout> collect_layouts(std::vector<uint32_t> &code);
+    std::vector<v::Binding> collect_layouts(std::vector<uint32_t> &code);
 
 };
 };

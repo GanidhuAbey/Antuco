@@ -146,9 +146,9 @@ void CPUBuffer::init(v::PhysicalDevice &physical_device, v::Device &device,
     device.get().bindBufferMemory(buffer, memory, 0);
 }
 
-void CPUBuffer::map(vk::DeviceSize size, const void *data) 
+void CPUBuffer::map(vk::DeviceSize size, vk::DeviceSize offset, const void *data) 
 {
-    auto p_data = device->get().mapMemory(memory, 0, size);
+    auto p_data = device->get().mapMemory(memory, offset, size);
     memcpy(p_data, data, size);
     device->get().unmapMemory(memory);
 }

@@ -113,13 +113,13 @@ int main() {
     object->get_material().roughness = 0.9;
 
 #elif defined(_WIN32) || defined(_WIN64)
-    auto floor = antuco.create_object();
-    floor->add_mesh(root_project + "\\objects\\antuco-files\\windows\\cube.glb");
-    floor->scale(glm::vec3(1, 0.01, 1));
+    //auto floor = antuco.create_object();
+    //floor->add_mesh(root_project + "\\objects\\antuco-files\\windows\\cube.glb");
+    //floor->scale(glm::vec3(1, 0.01, 1));
 
-    floor->get_material().albedo = glm::vec3(0.0, 0.0, 1.0);
-    floor->get_material().metallic = 0.1;
-    floor->get_material().roughness = 0.8;
+    //floor->get_material().albedo = glm::vec3(0.0, 0.0, 1.0);
+    //floor->get_material().metallic = 0.1;
+    //floor->get_material().roughness = 0.8;
 
     auto damagedHelmet = antuco.create_object();
     damagedHelmet->add_mesh(root_project + "\\objects\\antuco-files\\windows\\helmet\\DamagedHelmet.gltf");
@@ -133,6 +133,10 @@ int main() {
     damagedHelmet->get_material().setRoughnessMetallicTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_metalRoughness.jpg");
 
     scene->set_ibl(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_4k.hdr");
+    
+    //antuco.add_skybox(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_skybox");
+    scene->set_skybox(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_skybox");
+
 #endif
 
     // light_mesh->scale(glm::vec3(0.2));

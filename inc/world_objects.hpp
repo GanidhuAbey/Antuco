@@ -95,7 +95,6 @@ private:
 
   // TODO: generalize the components within our container.
   // reduce coupling.
-  Model object_model;
   uint32_t material_index;
   uint32_t draw_index;
 
@@ -112,6 +111,10 @@ public:
   void set_position(glm::vec3 t);
 
   Material& get_material();
+
+  uint32_t buffer_index_offset = 0;
+  uint32_t buffer_vertex_offset = 0;
+  Model object_model;
 };
 
 class SkyBox {

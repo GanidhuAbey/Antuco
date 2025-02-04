@@ -94,9 +94,11 @@ GameObject* Antuco::create_object() {
 SceneData* Antuco::create_scene()
 {
 	scene = std::make_unique<SceneData>();
+
+	p_graphics->initialize_scene(scene.get());
+
 	return scene.get();
 }
-
 
 void Antuco::render() {	
 	//check and update the camera information
