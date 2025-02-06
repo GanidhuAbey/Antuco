@@ -75,6 +75,7 @@ struct RawImageData
 enum class ImageFormat
 {
     RGBA_COLOR,
+    FLOAT_RGBA_COLOR,
     DEPTH,
     R_COLOR,
     RG_COLOR

@@ -7,8 +7,8 @@
 #include <chrono>
 #include <iostream>
 
-const int WIDTH = 800;
-const int HEIGHT = 600;
+const int WIDTH = 1600;
+const int HEIGHT = 900;
 
 const float PLAYER_SPEED = 10.0f;
 const double MOUSE_SENSITIVITY = 0.1f;

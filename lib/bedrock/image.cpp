@@ -106,6 +106,9 @@ vk::Format Image::get_vk_format(ImageFormat image_format, uint32_t& channels)
 	case ImageFormat::RGBA_COLOR:
 		channels = 4;
 		return vk::Format::eR8G8B8A8Srgb;
+	case ImageFormat::FLOAT_RGBA_COLOR:
+		channels = 16;
+		return vk::Format::eR32G32B32A32Sfloat;
 	case ImageFormat::DEPTH:
 		channels = 1;
 		return vk::Format::eD32Sfloat;
