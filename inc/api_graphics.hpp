@@ -72,6 +72,12 @@ public:
 
     void initialize_scene(SceneData *scene);
 
+    std::shared_ptr<mem::Pool> get_set_pool() { return set_pool; }
+    vk::CommandPool& get_command_pool() { return command_pool; }
+    mem::StackBuffer& get_vertex_buffer() { return vertex_buffer; }
+    mem::StackBuffer& get_index_buffer() { return index_buffer; }
+
+
 private:
     glm::mat4 camera_view;
     glm::mat4 camera_projection;

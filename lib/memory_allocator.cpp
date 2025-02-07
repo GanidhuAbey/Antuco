@@ -488,3 +488,35 @@ uint32_t mem::findMemoryType(v::PhysicalDevice &physical_device,
 
   throw std::runtime_error("could not find appropriate memory type");
 }
+
+void CommandPool::init(std::shared_ptr<v::Device> device, uint32_t queue_family_index) {
+    p_device = device;
+    
+    VkCommandPoolCreateInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    info.pNext = nullptr;
+    info.queueFamilyIndex = queue_family_index;
+
+    ASSERT(vkCreateCommandPool(p_device->get(), &info, nullptr, &command_pool_) == VK_SUCCESS, "failed to create command pool");
+}
+
+void CommandPool::allocate_command_buffers(uint32_t count, VkCommandBuffer* p_buffers) {
+    VkCommandBufferAllocateInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    info.pNext = nullptr;
+    info.commandPool = command_pool_;
+    info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // TODO: don't have a use case yet so we will occlude this parameter.
+    info.commandBufferCount = count;
+    
+    ASSERT(vkAllocateCommandBuffers(p_device->get(), &info, p_buffers) == VK_SUCCESS, "failed to allocate command buffers");
+}
+
+
+
+CommandPool::~CommandPool()
+{
+    if (command_pool_)
+    {
+        vkDestroyCommandPool(p_device->get(), command_pool_, nullptr);
+    }
+}

@@ -35,6 +35,8 @@ public:
   void add_mesh(const std::string& fileName,
                 std::optional<std::string> name = std::nullopt);
 
+  std::vector<Primitive>& get_prims() { return primitives; }
+
   // TODO - move to separate class (DrawItem)
   std::vector<Vertex> model_vertices;
   std::vector<uint32_t> model_indices;

@@ -18,10 +18,6 @@ void SceneData::set_ibl(std::string file_path)
 
 void SceneData::set_skybox(std::string file_path)
 {
-	update_gpu = true;
-	has_skybox = true;
-	skybox.init(file_path);
-
 	std::string project_path = get_project_root(__FILE__);
 	skybox_model.add_mesh(project_path + "/objects/antuco-files/windows/cube.glb", "skybox");
 	skybox_model.scale(glm::vec3(5.0, 5.0, 5.0));
@@ -29,6 +25,10 @@ void SceneData::set_skybox(std::string file_path)
 	// Skybox model
 	skybox_model.buffer_index_offset = Antuco::get_engine().get_backend()->update_index_buffer(skybox_model.object_model.model_indices) / sizeof(uint32_t);
 	skybox_model.buffer_vertex_offset = Antuco::get_engine().get_backend()->update_vertex_buffer(skybox_model.object_model.model_vertices) / sizeof(Vertex);
+
+	update_gpu = true;
+	has_skybox = true;
+	skybox.init(file_path, &skybox_model);
 }
 
 uint32_t SceneData::get_index(ResourceCollection* collection)

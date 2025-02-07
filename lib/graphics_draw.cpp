@@ -34,14 +34,6 @@
 
 #define TIME_IT std::chrono::high_resolution_clock::now();
 
-// TODO: this isn't a great method considering if we move around our files
-//       the whole thing will break...
-const std::string SHADER_PATH = get_project_root(__FILE__) + "/shaders/";
-
-#define SHADER(file) SHADER_PATH + file
-
-const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
-
 using namespace tuco;
 
 void GraphicsImpl::create_depth_pipeline()
@@ -1158,7 +1150,13 @@ void GraphicsImpl::write_scene(SceneData* scene)
 		image_info.image_view = scene->get_skybox().get_image().get_api_image_view();
 		image_info.sampler = scene->get_skybox().get_image().get_sampler();
 	}
-
+	else
+	{
+		uninitalized_image.change_layout(vk::ImageLayout::eShaderReadOnlyOptimal, p_device->get_transfer_queue());
+		image_info.image = uninitalized_image.get_api_image();
+		image_info.image_view = uninitalized_image.get_api_image_view();
+		image_info.sampler = uninitalized_image.get_sampler();
+	}
 	skybox_collection->addImage(image_info, scene->get_index(skybox_collection));
 
 	//ResourceCollection* forward_collection = graphics_pipelines[0].get_resource_collection(3);

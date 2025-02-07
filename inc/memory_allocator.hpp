@@ -202,6 +202,18 @@ private:
                              VkDescriptorSet *sets);
 };
 
+class CommandPool
+{
+private:
+    VkCommandPool command_pool_;
+    std::shared_ptr<v::Device> p_device;
+public:
+    void init(std::shared_ptr<v::Device> device, uint32_t queue_family_index);
+    void allocate_command_buffers(uint32_t count, VkCommandBuffer* p_buffers);
+
+    ~CommandPool();
+};
+
 struct MemoryInfo {
   VkDeviceSize bufferSize;
   VkDeviceSize allocationSize;

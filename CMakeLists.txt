@@ -99,5 +99,4 @@ target_link_libraries(main PRIVATE AntucoEngine
                                    fmt::fmt
                                    shaderc
                                    spirv-reflect-static 
-                                   spirv-cross-core
-                                   "${CMAKE_CURRENT_SOURCE_DIR}/external/libraries/jpeg.lib")
+                                   spirv-cross-core)

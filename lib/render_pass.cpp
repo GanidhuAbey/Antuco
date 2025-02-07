@@ -48,7 +48,7 @@ void TucoPass::init(std::shared_ptr<v::Device> p_device, bool has_color, bool ha
 		add_depth(1);
 
 	add_dependency(dependencies);
-	create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, true, true);
+	create_subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, has_color, has_depth);
 	build(*p_device, VK_PIPELINE_BIND_POINT_GRAPHICS);
 }
 
@@ -116,11 +116,15 @@ void TucoPass::create_subpass(VkPipelineBindPoint bind_point, bool colour, bool 
 	subpass.flags = 0;
 	subpass.pipelineBindPoint = bind_point;
 	subpass.colorAttachmentCount = 0;
+	subpass.pInputAttachments = nullptr;
+	subpass.pResolveAttachments = nullptr;
+	subpass.pDepthStencilAttachment = nullptr;
 	if (colour)
 	{
 		subpass.colorAttachmentCount = 1;
 		subpass.pColorAttachments = &colour_ref;
-	} if (depth)
+	} 
+	if (depth)
 	{
 		subpass.pDepthStencilAttachment = &depth_ref;
 	}
