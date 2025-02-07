@@ -20,6 +20,7 @@ private:
 	std::vector<br::Image> cubemap_faces;
 
 	br::Image cubemap;
+	br::Image hdr_image;
 
 	std::shared_ptr<v::Device> device_;
 	std::shared_ptr<v::PhysicalDevice> physical_device_;
@@ -49,6 +50,7 @@ private:
 	void create_skybox_pass();
 	void create_cubemap_faces();
 	void create_skybox_framebuffers();
+	void write_descriptors();
 
 	void record_command_buffers();
 	void render_to_image();

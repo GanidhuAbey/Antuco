@@ -19,6 +19,11 @@ void Cubemap::init(std::string file_path, GameObject* model)
 	physical_device_ = Antuco::get_engine().get_backend()->p_physical_device;
 	set_pool_ = Antuco::get_engine().get_backend()->get_set_pool();
 
+	// create input hdr image
+	hdr_image.init("environment map");
+	hdr_image.load_float_image(file_path, br::ImageFormat::HDR_COLOR, br::ImageType::Image_2D);
+	hdr_image.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
 	// create render pass
 	create_skybox_pass();
 
@@ -30,6 +35,9 @@ void Cubemap::init(std::string file_path, GameObject* model)
 
 	// create frame buffer
 	create_skybox_framebuffers();
+
+	// update descriptors
+	write_descriptors();
 
 	// record command buffers
 	command_pool_.init(device_, device_->get_graphics_family());
@@ -44,6 +52,27 @@ void Cubemap::init(std::string file_path, GameObject* model)
 
 	// collect into final cubemap image
 	cubemap_faces[0].set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+}
+
+void Cubemap::write_descriptors()
+{
+	ResourceCollection* collection = skybox_pipeline.get_resource_collection(0);
+	
+	// create descriptor set
+	collection->addSets(1, *set_pool_);
+
+	//hdr_image.transfer(vk::ImageLayout::eShaderReadOnlyOptimal, device_->get_graphics_queue());
+
+	ImageDescription image_info{};
+	image_info.binding = 1;
+	image_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	image_info.sampler = hdr_image.get_sampler();
+	image_info.image = hdr_image.get_api_image();
+	image_info.image_view = hdr_image.get_api_image_view();
+	image_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	collection->addImage(image_info, 0);
+	collection->updateSet(0);
 }
 
 void Cubemap::render_to_image()
@@ -157,6 +186,11 @@ void Cubemap::record_command_buffers()
 		//vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
 		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, skybox_pipeline.get_api_pipeline());
+
+		ResourceCollection* collection = skybox_pipeline.get_resource_collection(0);
+		VkDescriptorSet set = collection->get_api_set(0);
+
+		vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, skybox_pipeline.get_api_layout(), 0, 1, &set, 0, nullptr);
 
 		vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
 

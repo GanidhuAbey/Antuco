@@ -99,24 +99,29 @@ bool Image::is_3d_image(ImageType type)
 	return type == ImageType::Image_3D;
 }
 
-vk::Format Image::get_vk_format(ImageFormat image_format, uint32_t& channels)
+vk::Format Image::get_vk_format(ImageFormat image_format, uint32_t& channels, uint32_t& size)
 {
 	switch (image_format)
 	{
 	case ImageFormat::RGBA_COLOR:
 		channels = 4;
+		size = 1;
 		return vk::Format::eR8G8B8A8Srgb;
-	case ImageFormat::FLOAT_RGBA_COLOR:
-		channels = 16;
+	case ImageFormat::HDR_COLOR:
+		channels = 4;
+		size = 4;
 		return vk::Format::eR32G32B32A32Sfloat;
 	case ImageFormat::DEPTH:
 		channels = 1;
+		size = 4;
 		return vk::Format::eD32Sfloat;
 	case ImageFormat::R_COLOR:
 		channels = 1;
+		size = 1;
 		return vk::Format::eR8Srgb;
 	case ImageFormat::RG_COLOR:
 		channels = 2;
+		size = 1;
 		return vk::Format::eR8G8Srgb;
 	default:
 		break;
@@ -131,7 +136,8 @@ vk::Format Image::get_vk_format(ImageFormat image_format, uint32_t& channels)
 void Image::load_cubemap(std::vector<std::string>& cube_images, ImageFormat image_format)
 {
 	uint32_t channels;
-	vk::Format format = get_vk_format(image_format, channels);
+	uint32_t size;
+	vk::Format format = get_vk_format(image_format, channels, size);
 
 	// load images
 	raw_image.image_count = CUBEMAP_IMAGE_COUNT;
@@ -191,14 +197,40 @@ void Image::load_cubemap(std::vector<std::string>& cube_images, ImageFormat imag
 void Image::load_image(std::string& file_path, ImageFormat image_format, ImageType type)
 {
 	uint32_t channels;
-	vk::Format format = get_vk_format(image_format, channels);
+	uint32_t size;
+	vk::Format format = get_vk_format(image_format, channels, size);
 
 	raw_image.image_count = 1;
 	raw_image.images.resize(raw_image.image_count);
 	raw_image.images[0] = stbi_load(file_path.c_str(), &raw_image.width, &raw_image.height, nullptr, channels);
 	raw_image.channels = channels;
-	raw_image.buffer_size = raw_image.width * raw_image.height * raw_image.channels;
-	raw_image.image_size = raw_image.width * raw_image.height * raw_image.channels;
+	raw_image.size = size;
+	raw_image.buffer_size = raw_image.width * raw_image.height * raw_image.channels * raw_image.size;
+	raw_image.image_size = raw_image.width * raw_image.height * raw_image.channels * raw_image.size;
+
+	load_to_gpu(format, type);
+}
+
+void Image::load_float_image(std::string& file_path, ImageFormat image_format, ImageType type)
+{
+	uint32_t channels;
+	uint32_t size;
+	vk::Format format = get_vk_format(image_format, channels, size);
+
+	raw_image.image_count = 1;
+	raw_image.images.resize(raw_image.image_count);
+	raw_image.images[0] = reinterpret_cast<unsigned char*>(stbi_loadf(file_path.c_str(), &raw_image.width, &raw_image.height, nullptr, channels));
+	raw_image.channels = channels;
+	raw_image.size = size;
+	raw_image.buffer_size = raw_image.width * raw_image.height * raw_image.channels * raw_image.size;
+	raw_image.image_size = raw_image.width * raw_image.height * raw_image.channels * raw_image.size;
+
+	load_to_gpu(format, type);
+}
+
+// REQUIRES: Raw image should have already been loaded in.
+void Image::load_to_gpu(vk::Format format, ImageType type)
+{
 
 	// Load image to CPU buffer.
 	mem::CPUBuffer buffer;

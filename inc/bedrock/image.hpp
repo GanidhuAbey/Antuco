@@ -67,6 +67,7 @@ struct RawImageData
     int width;
     int height;
     int channels; // how many 8 bit components each pixel has (e.g RGB texture has 3*4 = 12 8 bit components)
+    int size;
 
     uint32_t buffer_size;
     uint32_t image_size; // in the case of multiple images, the image_size refers to the size of a single image.
@@ -75,7 +76,7 @@ struct RawImageData
 enum class ImageFormat
 {
     RGBA_COLOR,
-    FLOAT_RGBA_COLOR,
+    HDR_COLOR,
     DEPTH,
     R_COLOR,
     RG_COLOR
@@ -119,6 +120,7 @@ public:
     void load_color_image(std::string file_path);
     void load_cubemap(std::vector<std::string>& file_path, ImageFormat image_format);
     void load_image(std::string &file_path, ImageFormat image_format, ImageType type);
+    void load_float_image(std::string& file_path, ImageFormat image_format, ImageType type);
     void set_image_sampler(VkFilter filter, VkSamplerMipmapMode mipMapFilter, VkSamplerAddressMode addressMode);
     // [TODO] - remove references to and delete (deprecated)
     void init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<v::Device> device,
@@ -153,12 +155,14 @@ private:
     void create_image();
     void create_image_view();
 
-    vk::Format get_vk_format(ImageFormat image_format, uint32_t &channels);
+    vk::Format get_vk_format(ImageFormat image_format, uint32_t &channels, uint32_t& size);
     bool is_3d_image(ImageFormat image_format);
 
     void init_buffer(uint32_t buffer_size, mem::CPUBuffer* buffer);
     // adds data to buffer, returns offset to end of where last data was allocated.
     uint32_t add_to_buffer(RawImageData& data, uint32_t image_index, uint32_t offset, mem::CPUBuffer* buffer);
+
+    void load_to_gpu(vk::Format format, ImageType type);
 };
 
 
