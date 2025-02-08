@@ -13,6 +13,7 @@ using namespace br;
 
 #define CUBEMAP_IMAGE_COUNT 6
 
+
 void Image::destroy()
 {
 	INFO("image name {}", data.name.c_str());
@@ -38,9 +39,13 @@ void Image::destroy()
 
 void Image::destroy_image_view()
 {
-	if (image_view != VK_NULL_HANDLE)
+	for (auto& image_view : image_views)
 	{
-		device->get().destroyImageView(image_view, nullptr);
+		if (image_view != VK_NULL_HANDLE)
+		{
+			device->get().destroyImageView(image_view, nullptr);
+		}
+		image_view = VK_NULL_HANDLE;
 	}
 	if (command_pool != VK_NULL_HANDLE)
 	{
@@ -48,7 +53,6 @@ void Image::destroy_image_view()
 	}
 
 	// invalidate handles
-	image_view = VK_NULL_HANDLE;
 	command_pool = VK_NULL_HANDLE;
 }
 
@@ -56,6 +60,8 @@ vk::Image Image::get_api_image() { return image; }
 
 void Image::init(std::string name, bool handle_destruction)
 {
+	image_views.reserve(MAX_VIEWS);
+	view_index = 0;
 	sampler = VK_NULL_HANDLE;
 	Image::handle_destruction = handle_destruction;
 	data.name = name;
@@ -70,6 +76,50 @@ void Image::init(std::string name, bool handle_destruction)
 	command_pool = device->get().createCommandPool(pool_info);
 
 	initialized = true;
+}
+
+void Image::load_blank(ImageDetails info, uint32_t width, uint32_t height, uint32_t layers)
+{
+	uint32_t channels;
+	uint32_t size;
+	vk::Format v_format = get_vk_format(info.format, channels, size);
+
+	ImageCreateInfo image_info;
+	image_info.format = v_format;
+	image_info.extent = vk::Extent3D(width, height, 1);
+	image_info.usage = get_vk_usage(info.format, info.usage);
+	//image_info.initial_layout = vk::ImageLayout::eTransferDstOptimal;
+	image_info.queueFamilyIndexCount = 1;
+	image_info.pQueueFamilyIndices = &device->get_graphics_family();
+	image_info.size = width * height * channels * size;
+	image_info.image_type = vk::ImageType::e2D;
+	image_info.arrayLayers = layers;
+	if (info.type == ImageType::Cube) image_info.flags = vk::ImageCreateFlagBits::eCubeCompatible;
+
+	data.image_info = image_info;
+
+	create_image();
+}
+
+void Image::create_view(uint32_t layer_count, uint32_t base_layer, ImageType type)
+{
+	ImageViewCreateInfo info{};
+	info.base_array_layer = base_layer;
+	info.layer_count = layer_count;
+	if ((data.image_info.usage & vk::ImageUsageFlagBits::eColorAttachment) == vk::ImageUsageFlagBits::eColorAttachment)
+	{
+		info.aspect_mask = vk::ImageAspectFlagBits::eColor;
+	}
+	if ((data.image_info.usage & vk::ImageUsageFlagBits::eDepthStencilAttachment) == vk::ImageUsageFlagBits::eDepthStencilAttachment)
+	{
+		info.aspect_mask = vk::ImageAspectFlagBits::eDepth;
+	}
+
+	info.view_type = type == ImageType::Cube ? vk::ImageViewType::eCube : vk::ImageViewType::e2D;
+
+	data.image_view_info = info;
+
+	create_image_view();
 }
 
 void Image::set_image_sampler(VkFilter filter, VkSamplerMipmapMode mipMapFilter, VkSamplerAddressMode addressMode)
@@ -99,6 +149,25 @@ bool Image::is_3d_image(ImageType type)
 	return type == ImageType::Image_3D;
 }
 
+vk::ImageUsageFlags Image::get_vk_usage(ImageFormat format, ImageUsage usage)
+{
+	if (format == ImageFormat::DEPTH && usage == ImageUsage::RENDER_OUTPUT)
+	{
+		return vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
+	}
+	else if (usage == ImageUsage::RENDER_OUTPUT)
+	{
+		return vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+	}
+	else if (usage == ImageUsage::SHADER_INPUT)
+	{
+		return vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
+	}
+
+	ASSERT(false, "could not find VkUsage for described image");
+	return vk::ImageUsageFlagBits::eSampled;
+}
+
 vk::Format Image::get_vk_format(ImageFormat image_format, uint32_t& channels, uint32_t& size)
 {
 	switch (image_format)
@@ -114,7 +183,7 @@ vk::Format Image::get_vk_format(ImageFormat image_format, uint32_t& channels, ui
 	case ImageFormat::DEPTH:
 		channels = 1;
 		size = 4;
-		return vk::Format::eD32Sfloat;
+		return vk::Format::eD16Unorm;
 	case ImageFormat::R_COLOR:
 		channels = 1;
 		size = 1;
@@ -357,6 +426,8 @@ uint32_t Image::add_to_buffer(RawImageData& data, uint32_t image_index, uint32_t
 void Image::init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<v::Device> device,
 				 VkImage image, ImageData info, bool handle_destruction)
 {
+	image_views.reserve(MAX_VIEWS);
+	view_index = 0;
 	sampler = VK_NULL_HANDLE;
 	Image::handle_destruction = handle_destruction;
 	data = info;
@@ -376,11 +447,13 @@ void Image::init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shar
 	initialized = true;
 }
 
-vk::ImageView Image::get_api_image_view() { return image_view; }
+vk::ImageView Image::get_api_image_view(uint32_t index) { return image_views[index]; }
 
 void Image::init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<v::Device> device,
 				 ImageData info, bool handle_destruction)
 {
+	image_views.reserve(MAX_VIEWS);
+	view_index = 0;
 	sampler = VK_NULL_HANDLE;
 	Image::handle_destruction = handle_destruction;
 	Image::device = device;
@@ -729,7 +802,7 @@ void Image::transfer(vk::ImageLayout output_layout, vk::Queue queue,
 }
 
 void Image::create_image_view()
-{
+{	
 	auto info = data.image_view_info;
 	auto format = data.image_info.format;
 	if (info.format.has_value())
@@ -744,5 +817,8 @@ void Image::create_image_view()
 	auto create_info = vk::ImageViewCreateInfo({}, image, info.view_type, format,
 											   components, resource_range);
 
-	image_view = device->get().createImageView(create_info);
+	
+	ASSERT(image_views.size() < MAX_VIEWS, "Attempting to allocate image index: {} which is more than the allowed images. Please increase the MAX_VIEWS value.", image_views.size());
+	image_views.push_back(device->get().createImageView(create_info));
+	view_index++;
 }

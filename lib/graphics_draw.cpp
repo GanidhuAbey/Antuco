@@ -1243,6 +1243,7 @@ void GraphicsImpl::writeMaterial(Material& material)
 	collection->addImage(image_info, material.gpuInfo.setIndex);
 
 	collection->updateSet(material.gpuInfo.setIndex);
+
 }
 
 uint32_t GraphicsImpl::add_material()
@@ -1505,7 +1506,7 @@ void GraphicsImpl::create_command_buffers(
 		vkCmdEndRenderPass(command_buffers[i]);
 
 		// copy_to_swapchain(i);
-		render_to_screen(i);
+		render_to_screen(i, command_buffers[i]);
 
 		// switch image back to depth stencil layout for the next render pa
 		// end commands to go to execute stage
@@ -1597,37 +1598,58 @@ void GraphicsImpl::create_screen_set()
 	screen_resource.updateSets();
 }
 
-void GraphicsImpl::render_to_screen(size_t i)
+void GraphicsImpl::write_screen_set()
 {
+	SceneData* scene = Antuco::get_engine().get_scene();
+	for (int i = 0; i < swapchain.getSwapchainSize(); i++)
+	{
+		ImageDescription desc{};
+		desc.binding = 0;
+		desc.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		desc.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		desc.image = scene->get_skybox().get_image().get_api_image();
+		desc.image_view = scene->get_skybox().get_image().get_api_image_view(1);
+		desc.sampler = scene->get_skybox().get_image().get_sampler();
+
+		screen_resource.addImage(desc, i);
+	}
+
+	screen_resource.updateSets();
+
+}
+
+void GraphicsImpl::render_to_screen(size_t i, vk::CommandBuffer command_buffer)
+{
+
 	auto render_area = vk::Rect2D(vk::Offset2D(0, 0), swapchain.get_extent());
 
-	std::vector<vk::ClearValue> clear_values;
+	//std::vector<vk::ClearValue> clear_values;
 	auto color_clear = vk::ClearValue(
 		vk::ClearColorValue(std::array<float, 4>({ 0.f, 0.f, 0.f, 1.f })));
-	clear_values.push_back(color_clear);
+	//clear_values.push_back(color_clear);
 
 	auto render_info = vk::RenderPassBeginInfo(
 		screen_pass.get_api_pass(), screen_buffers[i], render_area,
-		static_cast<uint32_t>(clear_values.size()), clear_values.data());
+		static_cast<uint32_t>(1), &color_clear);
 
-	command_buffers[i].beginRenderPass(render_info, vk::SubpassContents::eInline);
+	command_buffer.beginRenderPass(render_info, vk::SubpassContents::eInline);
 
 	// bind pipeline
-	vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
+	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 					  screen_pipeline.get_api_pipeline());
 
 	VkDescriptorSet descriptors[1] = {
 		screen_resource.get_api_set(0),
 	};
 	// bind descriptor set
-	vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
+	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 							screen_pipeline.get_api_layout(), 0, 1, descriptors,
 							0, nullptr);
 
 	// render 3 vertices to vertex shader
-	vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
+	vkCmdDraw(command_buffer, 3, 1, 0, 0);
 
-	vkCmdEndRenderPass(command_buffers[i]);
+	vkCmdEndRenderPass(command_buffer);
 }
 
 void GraphicsImpl::create_uniform_buffer()
@@ -1840,6 +1862,7 @@ void GraphicsImpl::draw_frame()
 	auto signal_semaphores =
 		std::array<vk::Semaphore, 1>({ render_finished_semaphores[current_frame] });
 
+	//vk::CommandBuffer& command_buffer = vk::CommandBuffer(Antuco::get_engine().get_scene()->get_command_buffer(nextImage));
 	auto submit_info =
 		vk::SubmitInfo(1, wait_semaphores.data(), wait_stages.data(), 1,
 					   &command_buffers[nextImage], 1, signal_semaphores.data());

@@ -17,15 +17,14 @@ public:
 	bool has_skybox = false;
 private:
 	br::Image ibl_image;
-	uint32_t index;
 
 	Cubemap skybox;
 	GameObject skybox_model;
 
-	std::unordered_map<ResourceCollection*, uint32_t> index_map;
+	std::unordered_map<ResourceCollection*, uint32_t> index_map = {};
 
 public:
-	SceneData() {}
+	SceneData();
 	//SceneData(SceneData&) = delete; // delete copy function (should only have 1 scene anyways?)
 
 	br::Image& get_ibl() { return ibl_image; }
@@ -39,7 +38,9 @@ public:
 	Cubemap& get_skybox() { return skybox; };
 	GameObject& get_skybox_model() { return skybox_model; }
 
-	void set_index(ResourceCollection* collection, uint32_t index) { index_map[collection] = index; }
+	VkCommandBuffer& get_command_buffer(uint32_t i) { return skybox.command_buffers[i]; }
+
+	void set_index(ResourceCollection* collection, uint32_t index);
 	uint32_t get_index(ResourceCollection* collection);
 
 	bool update_gpu = false;

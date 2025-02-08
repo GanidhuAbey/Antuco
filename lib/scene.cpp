@@ -7,6 +7,15 @@
 
 using namespace tuco;
 
+SceneData::SceneData()
+{
+	index_map.clear();
+}
+
+void SceneData::set_index(ResourceCollection* collection, uint32_t index)
+{
+	index_map[collection] = index;
+}
 
 void SceneData::set_ibl(std::string file_path)
 {

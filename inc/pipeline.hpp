@@ -54,6 +54,7 @@ struct PipelineConfig
 	};
 	VkCompareOp depth_compare_op = VK_COMPARE_OP_LESS;
 	VkBool32 depth_bias_enable = VK_FALSE;
+	VkBool32 depth_test_enable = VK_TRUE;
 	VkRenderPass pass;
 	uint32_t subpass_index;
 	bool blend_colours = VK_FALSE;

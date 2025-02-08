@@ -214,8 +214,8 @@ void TucoPipeline::create_render_pipeline(const PipelineConfig& config)
 	depth_stencil_info_old.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	depth_stencil_info_old.pNext = nullptr;
 	depth_stencil_info_old.flags = 0;
-	depth_stencil_info_old.depthTestEnable = VK_TRUE;
-	depth_stencil_info_old.depthWriteEnable = VK_TRUE;
+	depth_stencil_info_old.depthTestEnable = config.depth_test_enable;
+	depth_stencil_info_old.depthWriteEnable = config.depth_test_enable;
 	depth_stencil_info_old.depthCompareOp = config.depth_compare_op;
 	depth_stencil_info_old.depthBoundsTestEnable = VK_FALSE;
 	depth_stencil_info_old.stencilTestEnable = VK_FALSE;

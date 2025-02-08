@@ -5,14 +5,19 @@
 #include <antuco.hpp>
 #include <api_graphics.hpp>
 
+#include <vulkan_wrapper/limits.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 using namespace tuco;
 
 #define SKYBOX_NAMES {"px.png", "nx.png", "py.png", "ny.png", "pz.png", "nz.png"}
 #define CUBEMAP_FACES 6
 #define SKYBOX_SIZE 1024
 
-void Cubemap::init(std::string file_path, GameObject* model)
+void Environment::init(std::string file_path, GameObject* model)
 {
+	ubo_buffer_offsets.clear();
 	cubemap_model = model;
 
 	device_ = Antuco::get_engine().get_backend()->p_device;
@@ -51,17 +56,12 @@ void Cubemap::init(std::string file_path, GameObject* model)
 	// render 6 times to each image
 
 	// collect into final cubemap image
-	cubemap_faces[0].set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 }
 
-void Cubemap::write_descriptors()
+void Environment::write_descriptors()
 {
 	ResourceCollection* collection = skybox_pipeline.get_resource_collection(0);
-	
-	// create descriptor set
-	collection->addSets(1, *set_pool_);
-
-	//hdr_image.transfer(vk::ImageLayout::eShaderReadOnlyOptimal, device_->get_graphics_queue());
+	ubo_buffer_offsets.resize(CUBEMAP_FACES);
 
 	ImageDescription image_info{};
 	image_info.binding = 1;
@@ -71,11 +71,56 @@ void Cubemap::write_descriptors()
 	image_info.image_view = hdr_image.get_api_image_view();
 	image_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-	collection->addImage(image_info, 0);
-	collection->updateSet(0);
+	mem::SearchBuffer& buffer = Antuco::get_engine().get_backend()->get_model_buffer();
+
+	// create descriptor set
+	collection->addSets(CUBEMAP_FACES, *set_pool_);
+
+	for (int i = 0; i < CUBEMAP_FACES; i++)
+	{
+		//hdr_image.transfer(vk::ImageLayout::eShaderReadOnlyOptimal, device_->get_graphics_queue());
+		ubo_buffer_offsets[i] = buffer.allocate(sizeof(UniformBufferObject), v::Limits::get().uniformBufferOffsetAlignment);
+
+		BufferDescription b_info{};
+		b_info.binding = 0;
+		b_info.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		b_info.buffer = buffer.buffer;
+		b_info.bufferRange = sizeof(UniformBufferObject);
+		b_info.bufferOffset = ubo_buffer_offsets[i];
+
+		collection->addBuffer(b_info, i);
+		collection->addImage(image_info, i);
+
+		collection->updateSet(i);
+	}
+
+	// update UBO data.
+	glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+	glm::mat4 captureViews[] =
+	{
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
+	};
+
+
+	for (int i = 0; i < CUBEMAP_FACES; i++)
+	{
+		UniformBufferObject ubo{};
+		//ubo.modelToWorld = glm::mat4(glm::vec4(5.f, 0.f, 0.f, 0.f), glm::vec4(0.f, 5.f, 0.f, 0.f), glm::vec4(0.f, 0.f, 5.f, 0.f), glm::vec4(0.f, 0.f, 0.f, 1.f));
+		ubo.worldToCamera = captureViews[i];
+		ubo.projection = captureProjection;
+
+		buffer.writeLocal(device_->get(), ubo_buffer_offsets[i], sizeof(UniformBufferObject), &ubo);
+	}
+
+	//Antuco::get_engine().get_backend()->write_screen_set();
 }
 
-void Cubemap::render_to_image()
+void Environment::render_to_image()
 {
 	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
@@ -121,7 +166,7 @@ void Cubemap::render_to_image()
 	vkWaitForFences(device_->get(), MAX_FRAMES_IN_FLIGHT, cpu_sync.data(), VK_TRUE, UINT64_MAX);
 }
 
-void Cubemap::record_command_buffers()
+void Environment::record_command_buffers()
 {
 	command_buffers.resize(CUBEMAP_FACES);
 	command_pool_.allocate_command_buffers(CUBEMAP_FACES, command_buffers.data());
@@ -138,12 +183,16 @@ void Cubemap::record_command_buffers()
 		begin_info.pInheritanceInfo = nullptr; // Optional
 
 		vkBeginCommandBuffer(command_buffers[i], &begin_info);
+		
+		std::vector<VkClearValue> clear_values;
 
 		VkClearValue color_clear{};
 		color_clear.color.float32[0] = 0.f;
 		color_clear.color.float32[1] = 0.f;
 		color_clear.color.float32[2] = 0.f;
 		color_clear.color.float32[3] = 0.f;
+
+		clear_values.push_back(color_clear);
 
 		VkRect2D render_area{};
 		render_area.offset.x = 0;
@@ -156,8 +205,8 @@ void Cubemap::record_command_buffers()
 		skybox_info.framebuffer = skybox_outputs[i].get_api_buffer();
 		skybox_info.renderArea = render_area;
 		skybox_info.renderPass = skybox_pass.get_api_pass();
-		skybox_info.clearValueCount = 1;
-		skybox_info.pClearValues = &color_clear;
+		skybox_info.clearValueCount = clear_values.size();
+		skybox_info.pClearValues = clear_values.data();
 
 		vkCmdBeginRenderPass(command_buffers[i], &skybox_info, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -181,35 +230,36 @@ void Cubemap::record_command_buffers()
 
 		const VkDeviceSize offsets[] = { 0, offsetof(Vertex, normal), offsetof(Vertex, tex_coord) };
 		VkBuffer v_buffer = vertex_buffer.buffer;
-		//vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &v_buffer, offsets);
+		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &v_buffer, offsets);
 
-		//vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
 		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, skybox_pipeline.get_api_pipeline());
 
 		ResourceCollection* collection = skybox_pipeline.get_resource_collection(0);
-		VkDescriptorSet set = collection->get_api_set(0);
+		VkDescriptorSet set = collection->get_api_set(i);
 
-		vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, skybox_pipeline.get_api_layout(), 0, 1, &set, 0, nullptr);
-
-		vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
+		//vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
 
 		std::vector<Primitive>& prims = cubemap_model->object_model.get_prims();
 		for (int j = 0; j < prims.size(); j++)
 		{
+			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, skybox_pipeline.get_api_layout(), 0, 1, &set, 0, nullptr);
 
-			//vkCmdDrawIndexed(command_buffers[i], prims[j].index_count, 1, prims[j].index_start + cubemap_model->buffer_index_offset, cubemap_model->buffer_vertex_offset, 0);
+			vkCmdDrawIndexed(command_buffers[i], prims[j].index_count, 1, prims[j].index_start + cubemap_model->buffer_index_offset, cubemap_model->buffer_vertex_offset, 0);
 		}
 
 		// end render pass
 		vkCmdEndRenderPass(command_buffers[i]);
+
+		//Antuco::get_engine().get_backend()->render_to_screen(0, command_buffers[i]);
 
 		// end command buffer recording
 		ASSERT(vkEndCommandBuffer(command_buffers[i]) == VK_SUCCESS, "could not successfully record command buffer");
 	}
 }
 
-void Cubemap::create_skybox_pass()
+void Environment::create_skybox_pass()
 {
 	ColourConfig config{};
 	config.format = vk::Format::eR32G32B32A32Sfloat;
@@ -218,7 +268,7 @@ void Cubemap::create_skybox_pass()
 	skybox_pass.init(device_, true, false, config);
 }
 
-void Cubemap::create_skybox_pipeline()
+void Environment::create_skybox_pipeline()
 {
 	std::vector<VkDynamicState> dynamic_states = {
 	VK_DYNAMIC_STATE_VIEWPORT,
@@ -241,55 +291,50 @@ void Cubemap::create_skybox_pipeline()
 	config.dynamic_states = dynamic_states;
 	config.pass = skybox_pass.get_api_pass();
 	config.subpass_index = 0;
+	config.depth_test_enable = VK_FALSE;
 	config.screen_extent = vk::Extent2D(SKYBOX_SIZE, SKYBOX_SIZE); // TODO: hardcoding skybox size, we'll see if it matters.
 	//config.push_ranges = push_ranges;
 	config.blend_colours = true;
-	config.attribute_descriptions = {};
-	config.binding_descriptions = {};
-	//config.cull_mode = VK_CULL_MODE_FRONT_BIT;
-	//config.front_face = VK_FRONT_FACE_CLOCKWISE;
+	//config.attribute_descriptions = {};
+	//config.binding_descriptions = {};
+	config.cull_mode = VK_CULL_MODE_FRONT_BIT;
+	config.front_face = VK_FRONT_FACE_CLOCKWISE;
 
 	skybox_pipeline.init(device_, set_pool_, config);
 }
 
-void Cubemap::create_cubemap_faces()
-{
-	br::ImageData data{};
-	data.image_info.extent.width = SKYBOX_SIZE;
-	data.image_info.extent.height = SKYBOX_SIZE;
-	data.image_info.extent.depth = 1.0;
+void Environment::create_cubemap_faces()
+{	
+	br::ImageDetails info{};
+	info.format = br::ImageFormat::HDR_COLOR;
+	info.type = br::ImageType::Cube;
+	info.usage = br::ImageUsage::RENDER_OUTPUT;
 
-	data.image_info.format = vk::Format::eR32G32B32A32Sfloat;
+	cubemap.init("Skybox");
 
-	data.image_info.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+	cubemap.load_blank(info, SKYBOX_SIZE, SKYBOX_SIZE, 6);
+	cubemap.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+	cubemap.create_view(6, 0, br::ImageType::Cube);
 
-	data.image_info.memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
-
-	data.image_info.queueFamilyIndexCount = 1;
-	data.image_info.pQueueFamilyIndices = &device_->get_graphics_family();
-	data.image_view_info.aspect_mask = vk::ImageAspectFlagBits::eColor;
-
-	cubemap_faces.resize(CUBEMAP_FACES);
 	for (int i = 0; i < CUBEMAP_FACES; i++)
 	{
-		data.name = "Skybox face: " + std::to_string(i);
-		cubemap_faces[i].init(physical_device_, device_, data);
+		cubemap.create_view(1, i, br::ImageType::Image_2D);
 	}
 }
 
-void Cubemap::create_skybox_framebuffers()
+void Environment::create_skybox_framebuffers()
 {
 	skybox_outputs.resize(CUBEMAP_FACES);
 	for (int i = 0; i < CUBEMAP_FACES; i++)
 	{
-		skybox_outputs[i].add_attachment(cubemap_faces[i].get_api_image_view(), v::AttachmentType::COLOR);
+		skybox_outputs[i].add_attachment(cubemap.get_api_image_view(i + 1), v::AttachmentType::COLOR);
 		skybox_outputs[i].set_render_pass(skybox_pass.get_api_pass());
 		skybox_outputs[i].set_size(SKYBOX_SIZE, SKYBOX_SIZE, 1);
 		skybox_outputs[i].build(device_);
 	}
 }
 
-Cubemap::~Cubemap()
+Environment::~Environment()
 {
 	skybox_pipeline.destroy();
 	skybox_pass.destroy();

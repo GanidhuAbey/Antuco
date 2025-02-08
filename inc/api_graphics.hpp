@@ -76,6 +76,7 @@ public:
     vk::CommandPool& get_command_pool() { return command_pool; }
     mem::StackBuffer& get_vertex_buffer() { return vertex_buffer; }
     mem::StackBuffer& get_index_buffer() { return index_buffer; }
+    mem::SearchBuffer& get_model_buffer() { return uniform_buffer; }
 
 
 private:
@@ -288,6 +289,10 @@ private:
     void create_geometry_buffer();
     void create_deffered_textures();
     
+public:
+    void render_to_screen(size_t i, vk::CommandBuffer command_buffer);
+    void write_screen_set();
+
 private:
     void create_skybox_pipeline();
     void create_graphics_pipeline();
@@ -311,7 +316,7 @@ private:
         const std::vector<std::unique_ptr<GameObject>> &game_objects,
         size_t command_index, LightObject light);
 
-    void render_to_screen(size_t i);
+
     void copy_to_swapchain(size_t i);
 
     std::vector<VkDescriptorSet> create_set(VkDescriptorSetLayout layout,

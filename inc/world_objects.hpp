@@ -60,7 +60,7 @@ class Camera {
   friend class Antuco;
   friend class GraphicsImpl;
 
-private:
+public:
   glm::mat4 modelToCamera;
   glm::mat4 cameraToScreen;
 
@@ -69,11 +69,10 @@ private:
 
   glm::vec3 orientation;
 
-private:
-  Camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up, float yfov,
-         float aspect_ratio, float near, float far);
-
 public:
+    Camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up, float yfov,
+           float aspect_ratio, float near, float far);
+
   ~Camera();
   void update(glm::vec3 camera_pos, glm::vec3 camera_face);
 

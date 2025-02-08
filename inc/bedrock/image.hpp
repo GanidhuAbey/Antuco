@@ -10,6 +10,8 @@
 
 #include <memory_allocator.hpp>
 
+#define MAX_VIEWS 10
+
 namespace br
 {
 
@@ -82,10 +84,24 @@ enum class ImageFormat
     RG_COLOR
 };
 
+enum class ImageUsage
+{
+    RENDER_OUTPUT,
+    SHADER_INPUT
+};
+
 enum class ImageType
 {
     Image_3D,
-    Image_2D
+    Image_2D,
+    Cube
+};
+
+struct ImageDetails
+{
+    ImageFormat format;
+    ImageUsage usage;
+    ImageType type;
 };
 
 class Image
@@ -97,7 +113,9 @@ private:
     ImageData data;
 
     vk::Image image;
-    vk::ImageView image_view;
+    std::vector<vk::ImageView> image_views;
+    uint32_t view_index = 0;
+
     VkDeviceMemory memory;
     vk::Sampler sampler;
 
@@ -111,7 +129,6 @@ private:
     bool initialized = false;
 
     vk::ImageLayout current_layout;
-
 public:
     ~Image();
 
@@ -122,6 +139,8 @@ public:
     void load_image(std::string &file_path, ImageFormat image_format, ImageType type);
     void load_float_image(std::string& file_path, ImageFormat image_format, ImageType type);
     void set_image_sampler(VkFilter filter, VkSamplerMipmapMode mipMapFilter, VkSamplerAddressMode addressMode);
+    void load_blank(ImageDetails info, uint32_t width, uint32_t height, uint32_t layers);
+    void create_view(uint32_t layer_count, uint32_t base_layer, ImageType type);
     // [TODO] - remove references to and delete (deprecated)
     void init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<v::Device> device,
                 ImageData info, bool handle_destruction = false);
@@ -132,7 +151,7 @@ public:
     void destroy();
     void destroy_image_view();
     vk::Image get_api_image();
-    vk::ImageView get_api_image_view();
+    vk::ImageView get_api_image_view(uint32_t index = 0);
 
     void transfer(vk::ImageLayout output_layout, vk::Queue queue,
                     std::optional<vk::CommandBuffer> command_buffer = std::nullopt,
@@ -156,6 +175,7 @@ private:
     void create_image_view();
 
     vk::Format get_vk_format(ImageFormat image_format, uint32_t &channels, uint32_t& size);
+    vk::ImageUsageFlags get_vk_usage(ImageFormat format, ImageUsage usage);
     bool is_3d_image(ImageFormat image_format);
 
     void init_buffer(uint32_t buffer_size, mem::CPUBuffer* buffer);
