@@ -29,7 +29,7 @@ layout(set=1, binding=2) uniform sampler2D roughnessMetallicTexture;
 
 // set 1 = draw, set = 2 material, set = 3 pass, set = 4 scene
 
-layout(set=2, binding=0) uniform sampler3D iblTexture;
+layout(set=2, binding=0) uniform samplerCube irradianceMap;
 
 float bias = 5e-3;
 
@@ -103,12 +103,12 @@ vec3 getHalfVector(vec3 v, vec3 l) {
     return normalize(l + v);
 }
 
-vec3 Schlick_F(vec3 h, vec3 v, vec3 baseReflect) {
-    return baseReflect + (1.0 - baseReflect)*pow(clamp(1.0 - dot(h, v), 0.0, 1.0), 5.0);
+vec3 Schlick_F(vec3 h, vec3 v, vec3 baseReflect, float roughness) {
+    return baseReflect + (max(vec3(1.0 - roughness), baseReflect) - baseReflect)*pow(clamp(1.0 - dot(h, v), 0.0, 1.0), 5.0);
 }
 
 float GGX_G(vec3 v, vec3 n, float alphaSquared) {
-    float NdotV = dot(n, v);
+    float NdotV = max(dot(n, v), 0.0);
     float numerator = 2.0*NdotV;
 
     float denomTerm = alphaSquared + (1.0 - alphaSquared)*pow(NdotV, 2.0);
@@ -122,7 +122,10 @@ float Smith_G(vec3 l, vec3 v, vec3 n, float alphaSquared) {
 }
 
 float GGX_D(vec3 n, vec3 h, float alphaSquared) {
-    float denominator = max(EPSILON, PI*pow(pow(dot(n, h), 2)*(alphaSquared - 1) + 1, 2));
+    float NdotH = max(dot(n, h), 0.0);
+    float NdotH2 = NdotH * NdotH;
+
+    float denominator = max(EPSILON, PI*pow(NdotH2*(alphaSquared - 1.0) + 1.0, 2.0));
     return alphaSquared / denominator;
 }
 
@@ -133,12 +136,7 @@ vec3 getSpecular(vec3 l, vec3 v, vec3 n, vec3 F, float roughness) {
     float D = GGX_D(n, h, alphaSquared);
     float G = Smith_G(l, v, n, alphaSquared);
 
-    return (D*G*F) / (4 * dot(l, n) * dot(v, n));
-}
-
-vec3 get_ibl(vec3 in_dir) {
-    vec3 ibl_color = texture(iblTexture, in_dir).rgb;
-    return ibl_color;
+    return (D*G*F) / ((4.0 * max(dot(l, n), 0.0) * max(dot(l, n), 0.0)) + 0.0001);
 }
 
 void main(){
@@ -157,14 +155,20 @@ void main(){
     vec3 lightDirection = normalize(light_position - vec3(vPos));
     vec3 viewDirection = normalize(camera_pos - vec3(vPos));
     vec3 h = getHalfVector(lightDirection, viewDirection);
-    vec3 F = Schlick_F(h, viewDirection, materialBaseReflectivity);
+    vec3 F = Schlick_F(h, viewDirection, materialBaseReflectivity, roughness);
 
     float reflectAmt = min(max(length(F), 0.0), 1.0);
     float refractAmt = 1 - reflectAmt;
     refractAmt *= 1.0 - metallic;
 
+    vec3 irradiance = texture(irradianceMap, surfaceNormal).rgb;
+
     // ---------- Diffuse ---------------
-    vec3 diffuseResult = albedo / PI;
+    vec3 kS = Schlick_F(surfaceNormal, viewDirection, materialBaseReflectivity, roughness);
+    vec3 kD = 1.0 - kS;
+    vec3 diffuse = irradiance * albedo;
+
+    vec3 ambient = kD * diffuse;
 
     // ---------- Specular --------------
     vec3 specularResult = getSpecular(lightDirection, viewDirection, surfaceNormal, F, roughness);
@@ -173,7 +177,10 @@ void main(){
 
     // reflectance equation : L_o = integral(f_r*L_o*cos(theta) dw_i)
 
-    vec3 result = lightColor * (refractAmt*diffuseResult + reflectAmt*specularResult)*dot(surfaceNormal, lightDirection);
+    float attenuation = 1.0f; // TODO : implement light falloff.
+    vec3 radiance = lightColor * attenuation;
+    float NdotL = max(dot(surfaceNormal, lightDirection), 1.0);
+    vec3 result = radiance * (refractAmt * diffuse / PI + specularResult) * NdotL + ambient;
     //result = get_ibl(surfaceNormal);
     //result = surfaceNormal;
     vec3 testColor = vec3(1, 0, 0);

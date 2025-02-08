@@ -13,14 +13,14 @@ using namespace tuco;
 
 #define SKYBOX_NAMES {"px.png", "nx.png", "py.png", "ny.png", "pz.png", "nz.png"}
 #define CUBEMAP_FACES 6
-#define SKYBOX_SIZE 1024
 
-void Cubemap::init(std::string& vert, std::string& frag, GameObject* model)
+void Cubemap::init(std::string& vert, std::string& frag, GameObject* model, uint32_t size)
 {
 	input_image = nullptr;
 
 	ubo_buffer_offsets.clear();
 	cubemap_model = model;
+	map_size = size;
 
 	device_ = Antuco::get_engine().get_backend()->p_device;
 	physical_device_ = Antuco::get_engine().get_backend()->p_physical_device;
@@ -126,8 +126,8 @@ void Cubemap::record_command_buffer(uint32_t face, VkCommandBuffer command_buffe
 	VkRect2D render_area{};
 	render_area.offset.x = 0;
 	render_area.offset.y = 0;
-	render_area.extent.height = SKYBOX_SIZE;
-	render_area.extent.width = SKYBOX_SIZE;
+	render_area.extent.height = map_size;
+	render_area.extent.width = map_size;
 
 	VkRenderPassBeginInfo skybox_info{};
 	skybox_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -144,8 +144,8 @@ void Cubemap::record_command_buffer(uint32_t face, VkCommandBuffer command_buffe
 	VkViewport newViewport{};
 	newViewport.x = 0;
 	newViewport.y = 0;
-	newViewport.width = SKYBOX_SIZE;
-	newViewport.height = SKYBOX_SIZE;
+	newViewport.width = map_size;
+	newViewport.height = map_size;
 	newViewport.minDepth = 0.0;
 	newViewport.maxDepth = 1.0;
 
@@ -154,8 +154,8 @@ void Cubemap::record_command_buffer(uint32_t face, VkCommandBuffer command_buffe
 	VkRect2D scissor{};
 	scissor.offset.x = 0;
 	scissor.offset.y = 0;
-	scissor.extent.height = SKYBOX_SIZE;
-	scissor.extent.width = SKYBOX_SIZE;
+	scissor.extent.height = map_size;
+	scissor.extent.width = map_size;
 
 	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 
@@ -217,7 +217,7 @@ void Cubemap::create_pipeline(std::string& vert, std::string& frag)
 	config.pass = pass.get_api_pass();
 	config.subpass_index = 0;
 	config.depth_test_enable = VK_FALSE;
-	config.screen_extent = vk::Extent2D(SKYBOX_SIZE, SKYBOX_SIZE); // TODO: hardcoding skybox size, we'll see if it matters.
+	config.screen_extent = vk::Extent2D(map_size, map_size); // TODO: hardcoding skybox size, we'll see if it matters.
 	//config.push_ranges = push_ranges;
 	config.blend_colours = true;
 	//config.attribute_descriptions = {};
@@ -237,7 +237,7 @@ void Cubemap::create_cubemap_faces()
 
 	cubemap.init("Skybox");
 
-	cubemap.load_blank(info, SKYBOX_SIZE, SKYBOX_SIZE, 6);
+	cubemap.load_blank(info, map_size, map_size, 6);
 	cubemap.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 	cubemap.create_view(6, 0, br::ImageType::Cube);
 
@@ -254,7 +254,7 @@ void Cubemap::create_framebuffers()
 	{
 		outputs[i].add_attachment(cubemap.get_api_image_view(i + 1), v::AttachmentType::COLOR);
 		outputs[i].set_render_pass(pass.get_api_pass());
-		outputs[i].set_size(SKYBOX_SIZE, SKYBOX_SIZE, 1);
+		outputs[i].set_size(map_size, map_size, 1);
 		outputs[i].build(device_);
 	}
 }

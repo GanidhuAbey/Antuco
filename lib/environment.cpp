@@ -23,10 +23,10 @@ void Environment::init(std::string file_path, GameObject* model)
 	input_image.load_float_image(file_path, br::ImageFormat::HDR_COLOR, br::ImageType::Image_2D);
 	input_image.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
-	skybox.init(SHADER("skybox/create_skybox.vert"), SHADER("skybox/create_skybox.frag"), model);
+	skybox.init(SHADER("skybox/create_skybox.vert"), SHADER("skybox/create_skybox.frag"), model, 1024);
 	skybox.set_input(&input_image);
 
-	irradiance_map.init(SHADER("skybox/create_irradiance.vert"), SHADER("skybox/create_irradiance.frag"), model);
+	irradiance_map.init(SHADER("skybox/create_irradiance.vert"), SHADER("skybox/create_irradiance.frag"), model, 32);
 	irradiance_map.set_input(&skybox.get_image());
 
 	command_pool_.init(p_device, p_device->get_graphics_family());

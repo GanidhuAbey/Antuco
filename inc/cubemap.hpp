@@ -20,6 +20,7 @@ private:
 	std::vector<vk::ImageView> faces;
 
 	br::Image cubemap;
+	uint32_t map_size;
 
 	br::Image* input_image;
 
@@ -35,7 +36,7 @@ public:
 	// images should be named such that:
 	//	"nx" - negative x image
 	//	"px" - positive x image
-	void init(std::string& vert, std::string& frag, GameObject * model);
+	void init(std::string& vert, std::string& frag, GameObject * model, uint32_t size);
 	void set_input(br::Image* image);
 	
 

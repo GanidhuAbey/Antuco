@@ -1117,8 +1117,8 @@ void GraphicsImpl::create_scene(SceneData* scene) {
 	uint32_t index = skybox_collection->addSets(1, *set_pool);
 	scene->set_index(skybox_collection, index);
 
-	//ResourceCollection* forward_collection = graphics_pipelines[0].get_resource_collection(3);
-	//scene->set_index(forward_collection, forward_collection->addSets(1, *set_pool));
+	ResourceCollection* forward_collection = graphics_pipelines[1].get_resource_collection(2);
+	scene->set_index(forward_collection, forward_collection->addSets(1, *set_pool));
 }
 
 void GraphicsImpl::write_scene(SceneData* scene)
@@ -1146,9 +1146,9 @@ void GraphicsImpl::write_scene(SceneData* scene)
 	// TODO: if scene does not have skybox, disable pass.
 	if (scene->has_skybox)
 	{
-		image_info.image = scene->get_skybox().get_irradiance().get_image().get_api_image();
-		image_info.image_view = scene->get_skybox().get_irradiance().get_image().get_api_image_view();
-		image_info.sampler = scene->get_skybox().get_irradiance().get_image().get_sampler();
+		image_info.image = scene->get_skybox().get_environment().get_image().get_api_image();
+		image_info.image_view = scene->get_skybox().get_environment().get_image().get_api_image_view();
+		image_info.sampler = scene->get_skybox().get_environment().get_image().get_sampler();
 	}
 	else
 	{
@@ -1159,21 +1159,21 @@ void GraphicsImpl::write_scene(SceneData* scene)
 	}
 	skybox_collection->addImage(image_info, scene->get_index(skybox_collection));
 
-	//ResourceCollection* forward_collection = graphics_pipelines[0].get_resource_collection(3);
-	//// IBL texture
-	//ImageDescription image_info{};
-	//image_info.binding = 0;
-	//image_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	//image_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	//if (scene->has_ibl)
-	//{
-	//	image_info.image = scene->get_ibl().get_api_image();
-	//	image_info.image_view = scene->get_ibl().get_api_image_view();
-	//	image_info.sampler = scene->get_ibl().get_sampler();
-	//}
-	//forward_collection->addImage(image_info, scene->get_index(forward_collection));
+	ResourceCollection* forward_collection = graphics_pipelines[1].get_resource_collection(2);
+	// Irradiance Map
+	ImageDescription irradiance_info{};
+	irradiance_info.binding = 0;
+	irradiance_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	irradiance_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	if (scene->has_skybox)
+	{
+		irradiance_info.image = scene->get_skybox().get_irradiance().get_image().get_api_image();
+		irradiance_info.image_view = scene->get_skybox().get_irradiance().get_image().get_api_image_view();
+		irradiance_info.sampler = scene->get_skybox().get_irradiance().get_image().get_sampler();
+	}
+	forward_collection->addImage(irradiance_info, scene->get_index(forward_collection));
 
-	//forward_collection->updateSet(scene->get_index(forward_collection));
+	forward_collection->updateSet(scene->get_index(forward_collection));
 	skybox_collection->updateSet(scene->get_index(skybox_collection));
 }
 
@@ -1455,6 +1455,9 @@ void GraphicsImpl::create_command_buffers(
 				VkDescriptorSet materialSet =
 					graphics_pipelines[1].get_resource_collection(1)->get_api_set(mat.gpuInfo.setIndex);
 
+				ResourceCollection* scene_collection = graphics_pipelines[1].get_resource_collection(2);
+				VkDescriptorSet sceneSet = scene_collection->get_api_set(scene->get_index(scene_collection));
+
 				for (size_t k = 0; k < model_primitive_count; k++)
 				{
 
@@ -1465,7 +1468,7 @@ void GraphicsImpl::create_command_buffers(
 					auto descriptors = std::vector<std::vector<VkDescriptorSet>>();
 
 					descriptor_1.resize(3);
-					descriptor_2.resize(2);
+					descriptor_2.resize(3);
 
 					//descriptor_1[0] = light_ubo[j].get_api_set(prim.transform_index);
 					descriptor_1[1] = uboSets[j][prim.transform_index];
@@ -1478,7 +1481,7 @@ void GraphicsImpl::create_command_buffers(
 
 					descriptor_2[0] = descriptor_1[1];
 					descriptor_2[1] = descriptor_1[2];
-					//descriptor_2[2] = scene_collection->get_api_set(Antuco::get_engine().get_scene()->get_index(scene_collection));
+					descriptor_2[2] = sceneSet;
 
 					auto layout = graphics_pipelines[index].get_api_layout();
 
