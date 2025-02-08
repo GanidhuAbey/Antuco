@@ -140,7 +140,7 @@ private:
 
     // if oit is enabled, then we must disable depth testing in main pipeline?
     std::vector<TucoPipeline> graphics_pipelines;
-    TucoPipeline skybox_pipeline;
+    TucoPipeline pipeline;
 
 private:
     void create_depth_pipeline();
@@ -150,7 +150,7 @@ private:
     // render passes
 private:
     TucoPass render_pass;
-    TucoPass skybox_pass;
+    TucoPass pass;
     TucoPass screen_pass;
     TucoPass shadowpass;
     TucoPass oit_pass;
@@ -294,7 +294,7 @@ public:
     void write_screen_set();
 
 private:
-    void create_skybox_pipeline();
+    void create_pipeline();
     void create_graphics_pipeline();
     void create_ubo_layout();
     void create_ubo_pool();
@@ -332,7 +332,7 @@ private:
     void create_texture_sampler();
 
     void create_render_pass();
-    void create_skybox_pass();
+    void create_pass();
     
     void create_output_images();
     VkShaderModule create_shader_module(std::vector<uint32_t> shaderCode);

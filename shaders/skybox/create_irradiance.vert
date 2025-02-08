@@ -19,7 +19,7 @@ layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
 
 layout(location = 1) out vec3 localPosition;
-layout(location = 2) out vec2 uv;
+//layout(location = 2) out vec2 uv;
 
 
 void main() {
@@ -27,7 +27,5 @@ void main() {
 	//gl_Position = vec4(uv * 2 - 1, 0.0f, 1.0f);
     
     localPosition = inPosition;
-    uv = inTexCoord;
-
     gl_Position = ubo.projection * ubo.worldToCamera * vec4(localPosition, 1.0);
 }

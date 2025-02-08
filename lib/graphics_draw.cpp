@@ -218,7 +218,7 @@ void GraphicsImpl::create_fences()
 //  shadow_pass_texture.init(p_physical_device, p_device, data);
 //}
 
-void GraphicsImpl::create_skybox_pipeline()
+void GraphicsImpl::create_pipeline()
 {
 	std::vector<VkDynamicState> dynamic_states = {
 		VK_DYNAMIC_STATE_VIEWPORT,
@@ -239,7 +239,7 @@ void GraphicsImpl::create_skybox_pipeline()
 	config.vert_shader_path = SHADER("skybox.vert");
 	config.frag_shader_path = SHADER("skybox.frag");
 	config.dynamic_states = dynamic_states;
-	config.pass = skybox_pass.get_api_pass();
+	config.pass = pass.get_api_pass();
 	config.subpass_index = 0;
 	config.screen_extent = swapchain.get_extent();
 	config.push_ranges = push_ranges;
@@ -247,7 +247,7 @@ void GraphicsImpl::create_skybox_pipeline()
 	config.cull_mode = VK_CULL_MODE_FRONT_BIT;
 	config.front_face = VK_FRONT_FACE_CLOCKWISE;
 
-	skybox_pipeline.init(p_device, set_pool, config);
+	pipeline.init(p_device, set_pool, config);
 
 }
 
@@ -411,13 +411,13 @@ void GraphicsImpl::create_render_pass()
 	render_pass.init(p_device, true, true, config);
 }
 
-void GraphicsImpl::create_skybox_pass()
+void GraphicsImpl::create_pass()
 {
 	ColourConfig config{};
 	config.format = vk::Format::eR32G32B32A32Sfloat;
 	config.final_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
 	config.load_op = vk::AttachmentLoadOp::eClear;
-	skybox_pass.init(p_device, true, true, config);
+	pass.init(p_device, true, true, config);
 }
 // ---- TucoPass ----
 
@@ -916,7 +916,7 @@ void GraphicsImpl::destroy_draw()
 	}
 
 	screen_pipeline.destroy();
-	skybox_pipeline.destroy();
+	pipeline.destroy();
 
 	for (const auto& output_buffer : output_buffers)
 	{
@@ -949,7 +949,7 @@ void GraphicsImpl::destroy_draw()
 	//shadow_pass_texture.destroy();
 
 	render_pass.destroy();
-	skybox_pass.destroy();
+	pass.destroy();
 	screen_pass.destroy();
 	//shadowpass.destroy();
 }
@@ -1113,7 +1113,7 @@ void GraphicsImpl::writeSceneCollection(SceneData& scene)
 }
 
 void GraphicsImpl::create_scene(SceneData* scene) {
-	ResourceCollection* skybox_collection = skybox_pipeline.get_resource_collection(0);
+	ResourceCollection* skybox_collection = pipeline.get_resource_collection(0);
 	uint32_t index = skybox_collection->addSets(1, *set_pool);
 	scene->set_index(skybox_collection, index);
 
@@ -1134,7 +1134,7 @@ void GraphicsImpl::write_scene(SceneData* scene)
 	info.bufferRange = sizeof(UniformBufferObject);
 	info.bufferOffset = scene->ubo_offset;
 
-	ResourceCollection* skybox_collection = skybox_pipeline.get_resource_collection(0);
+	ResourceCollection* skybox_collection = pipeline.get_resource_collection(0);
 	skybox_collection->addBuffer(info, scene->get_index(skybox_collection));
 
 	// Skybox texture
@@ -1146,9 +1146,9 @@ void GraphicsImpl::write_scene(SceneData* scene)
 	// TODO: if scene does not have skybox, disable pass.
 	if (scene->has_skybox)
 	{
-		image_info.image = scene->get_skybox().get_image().get_api_image();
-		image_info.image_view = scene->get_skybox().get_image().get_api_image_view();
-		image_info.sampler = scene->get_skybox().get_image().get_sampler();
+		image_info.image = scene->get_skybox().get_irradiance().get_image().get_api_image();
+		image_info.image_view = scene->get_skybox().get_irradiance().get_image().get_api_image_view();
+		image_info.sampler = scene->get_skybox().get_irradiance().get_image().get_sampler();
 	}
 	else
 	{
@@ -1343,7 +1343,7 @@ void GraphicsImpl::create_command_buffers(
 		skybox_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		skybox_info.framebuffer = output_buffers[i];
 		skybox_info.renderArea = render_area;
-		skybox_info.renderPass = skybox_pass.get_api_pass();
+		skybox_info.renderPass = pass.get_api_pass();
 		skybox_info.clearValueCount = clear_values.size();
 		skybox_info.pClearValues = clear_values.data();
 
@@ -1370,14 +1370,14 @@ void GraphicsImpl::create_command_buffers(
 		vkCmdBindIndexBuffer(command_buffers[i], index_buffer.buffer, 0,
 			VK_INDEX_TYPE_UINT32);
 
-		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, skybox_pipeline.get_api_pipeline());
+		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.get_api_pipeline());
 
 		GameObject& skybox = scene->get_skybox_model();
-		ResourceCollection* skybox_scene_collection = skybox_pipeline.get_resource_collection(0);
+		ResourceCollection* skybox_scene_collection = pipeline.get_resource_collection(0);
 		VkDescriptorSet skybox_scene_set = skybox_scene_collection->get_api_set(Antuco::get_engine().get_scene()->get_index(skybox_scene_collection));
 
 		vkCmdPushConstants(command_buffers[i],
-						   skybox_pipeline.get_api_layout(),
+						   pipeline.get_api_layout(),
 						   VK_SHADER_STAGE_VERTEX_BIT, 0,
 						   sizeof(glm::vec4), &camera_pos);
 
@@ -1386,7 +1386,7 @@ void GraphicsImpl::create_command_buffers(
 
 			Primitive prim = skybox.object_model.primitives[k];
 
-			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, skybox_pipeline.get_api_layout(), 0, 1, &skybox_scene_set, 0, nullptr);
+			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.get_api_layout(), 0, 1, &skybox_scene_set, 0, nullptr);
 
 			vkCmdDrawIndexed(
 				command_buffers[i], prim.index_count, 1,
@@ -1600,21 +1600,21 @@ void GraphicsImpl::create_screen_set()
 
 void GraphicsImpl::write_screen_set()
 {
-	SceneData* scene = Antuco::get_engine().get_scene();
-	for (int i = 0; i < swapchain.getSwapchainSize(); i++)
-	{
-		ImageDescription desc{};
-		desc.binding = 0;
-		desc.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		desc.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		desc.image = scene->get_skybox().get_image().get_api_image();
-		desc.image_view = scene->get_skybox().get_image().get_api_image_view(1);
-		desc.sampler = scene->get_skybox().get_image().get_sampler();
+	//SceneData* scene = Antuco::get_engine().get_scene();
+	//for (int i = 0; i < swapchain.getSwapchainSize(); i++)
+	//{
+	//	ImageDescription desc{};
+	//	desc.binding = 0;
+	//	desc.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	//	desc.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	//	desc.image = scene->get_skybox().get_environment().get_image().get_api_image();
+	//	desc.image_view = scene->get_skybox().get_environment().get_image().get_api_image_view(1);
+	//	desc.sampler = scene->get_skybox().get_environment().get_image().get_sampler();
 
-		screen_resource.addImage(desc, i);
-	}
+	//	screen_resource.addImage(desc, i);
+	//}
 
-	screen_resource.updateSets();
+	//screen_resource.updateSets();
 
 }
 
@@ -1862,7 +1862,6 @@ void GraphicsImpl::draw_frame()
 	auto signal_semaphores =
 		std::array<vk::Semaphore, 1>({ render_finished_semaphores[current_frame] });
 
-	//vk::CommandBuffer& command_buffer = vk::CommandBuffer(Antuco::get_engine().get_scene()->get_command_buffer(nextImage));
 	auto submit_info =
 		vk::SubmitInfo(1, wait_semaphores.data(), wait_stages.data(), 1,
 					   &command_buffers[nextImage], 1, signal_semaphores.data());

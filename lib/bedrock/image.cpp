@@ -60,6 +60,7 @@ vk::Image Image::get_api_image() { return image; }
 
 void Image::init(std::string name, bool handle_destruction)
 {
+	current_layout = vk::ImageLayout::eUndefined;
 	image_views.reserve(MAX_VIEWS);
 	view_index = 0;
 	sampler = VK_NULL_HANDLE;
@@ -252,11 +253,11 @@ void Image::load_cubemap(std::vector<std::string>& cube_images, ImageFormat imag
 	create_image();
 	create_image_view();
 
-	transfer(vk::ImageLayout::eTransferDstOptimal, device->get_transfer_queue());
+	change_layout(vk::ImageLayout::eTransferDstOptimal, device->get_transfer_queue());
 
 	copy_from_buffer(buffer.get(), vk::Offset3D(), CUBEMAP_IMAGE_COUNT, raw_image.image_size, vk::Extent3D(raw_image.width, raw_image.height, 1), device->get_transfer_queue());
 
-	transfer(vk::ImageLayout::eShaderReadOnlyOptimal, device->get_transfer_queue(), std::nullopt, vk::ImageLayout::eTransferDstOptimal);
+	change_layout(vk::ImageLayout::eShaderReadOnlyOptimal, device->get_transfer_queue());
 
 	current_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
 
@@ -331,11 +332,11 @@ void Image::load_to_gpu(vk::Format format, ImageType type)
 	create_image();
 	create_image_view();
 
-	transfer(vk::ImageLayout::eTransferDstOptimal, device->get_transfer_queue());
+	change_layout(vk::ImageLayout::eTransferDstOptimal, device->get_transfer_queue());
 
 	copy_from_buffer(buffer.get(), vk::Offset3D(), 1, raw_image.image_size, vk::Extent3D(raw_image.width, raw_image.height, 1), device->get_transfer_queue());
 
-	transfer(vk::ImageLayout::eShaderReadOnlyOptimal, device->get_transfer_queue(), std::nullopt, vk::ImageLayout::eTransferDstOptimal);
+	change_layout(vk::ImageLayout::eShaderReadOnlyOptimal, device->get_transfer_queue());
 
 	current_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
 
@@ -392,11 +393,11 @@ void Image::load_color_image(std::string file_path)
 	create_image();
 	create_image_view();
 
-	transfer(vk::ImageLayout::eTransferDstOptimal, device->get_transfer_queue());
+	change_layout(vk::ImageLayout::eTransferDstOptimal, device->get_transfer_queue());
 
 	copy_from_buffer(buffer.get(), vk::Offset3D(), 1, raw_image.image_size, vk::Extent3D(raw_image.width, raw_image.height, 1), device->get_transfer_queue());
 
-	transfer(vk::ImageLayout::eShaderReadOnlyOptimal, device->get_transfer_queue(), std::nullopt, vk::ImageLayout::eTransferDstOptimal);
+	change_layout(vk::ImageLayout::eShaderReadOnlyOptimal, device->get_transfer_queue());
 
 	current_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
 
@@ -452,6 +453,7 @@ vk::ImageView Image::get_api_image_view(uint32_t index) { return image_views[ind
 void Image::init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<v::Device> device,
 				 ImageData info, bool handle_destruction)
 {
+	current_layout = vk::ImageLayout::eUndefined;
 	image_views.reserve(MAX_VIEWS);
 	view_index = 0;
 	sampler = VK_NULL_HANDLE;

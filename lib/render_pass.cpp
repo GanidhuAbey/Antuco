@@ -11,7 +11,10 @@ using namespace tuco;
 
 void TucoPass::destroy()
 {
-	api_device->get().destroyRenderPass(render_pass);
+	if (render_pass)
+	{
+		api_device->get().destroyRenderPass(render_pass);
+	}
 }
 
 void TucoPass::build(v::Device& device, VkPipelineBindPoint bind_point)

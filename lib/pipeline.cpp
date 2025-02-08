@@ -55,8 +55,11 @@ void TucoPipeline::init(std::shared_ptr<v::Device> device, std::shared_ptr<mem::
 
 void TucoPipeline::destroy()
 {
-	api_device->get().destroyPipeline(pipeline_);
-	api_device->get().destroyPipelineLayout(layout_);
+	if (pipeline_)
+	{
+		api_device->get().destroyPipeline(pipeline_);
+		api_device->get().destroyPipelineLayout(layout_);
+	}
 }
 
 VkPipeline TucoPipeline::get_api_pipeline()

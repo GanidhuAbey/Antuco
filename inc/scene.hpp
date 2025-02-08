@@ -1,7 +1,7 @@
 #pragma once
 
 #include <bedrock/image.hpp>
-#include <cubemap.hpp>
+#include <environment.hpp>
 #include <world_objects.hpp>
 
 #include <string>
@@ -18,7 +18,7 @@ public:
 private:
 	br::Image ibl_image;
 
-	Cubemap skybox;
+	Environment skybox;
 	GameObject skybox_model;
 
 	std::unordered_map<ResourceCollection*, uint32_t> index_map = {};
@@ -35,10 +35,8 @@ public:
 		//	"nx" - negative x image
 		//	"px" - positive x image
 	void set_skybox(std::string file_path);
-	Cubemap& get_skybox() { return skybox; };
+	Environment& get_skybox() { return skybox; };
 	GameObject& get_skybox_model() { return skybox_model; }
-
-	VkCommandBuffer& get_command_buffer(uint32_t i) { return skybox.command_buffers[i]; }
 
 	void set_index(ResourceCollection* collection, uint32_t index);
 	uint32_t get_index(ResourceCollection* collection);
