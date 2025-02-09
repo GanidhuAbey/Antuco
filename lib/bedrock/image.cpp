@@ -79,7 +79,7 @@ void Image::init(std::string name, bool handle_destruction)
 	initialized = true;
 }
 
-void Image::load_blank(ImageDetails info, uint32_t width, uint32_t height, uint32_t layers)
+void Image::load_blank(ImageDetails info, uint32_t width, uint32_t height, uint32_t layers, uint32_t mip_count)
 {
 	uint32_t channels;
 	uint32_t size;
@@ -95,6 +95,7 @@ void Image::load_blank(ImageDetails info, uint32_t width, uint32_t height, uint3
 	image_info.size = width * height * channels * size;
 	image_info.image_type = vk::ImageType::e2D;
 	image_info.arrayLayers = layers;
+	image_info.mipLevels = mip_count;
 	if (info.type == ImageType::Cube) image_info.flags = vk::ImageCreateFlagBits::eCubeCompatible;
 
 	data.image_info = image_info;
@@ -102,7 +103,7 @@ void Image::load_blank(ImageDetails info, uint32_t width, uint32_t height, uint3
 	create_image();
 }
 
-void Image::create_view(uint32_t layer_count, uint32_t base_layer, ImageType type)
+void Image::create_view(uint32_t layer_count, uint32_t base_layer, uint32_t base_mip, ImageType type)
 {
 	ImageViewCreateInfo info{};
 	info.base_array_layer = base_layer;
@@ -117,6 +118,8 @@ void Image::create_view(uint32_t layer_count, uint32_t base_layer, ImageType typ
 	}
 
 	info.view_type = type == ImageType::Cube ? vk::ImageViewType::eCube : vk::ImageViewType::e2D;
+
+	info.base_mip_level = base_mip;
 
 	data.image_view_info = info;
 

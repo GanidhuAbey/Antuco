@@ -1173,6 +1173,18 @@ void GraphicsImpl::write_scene(SceneData* scene)
 	}
 	forward_collection->addImage(irradiance_info, scene->get_index(forward_collection));
 
+	ImageDescription specular_info{};
+	specular_info.binding = 1;
+	specular_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	specular_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	if (scene->has_skybox)
+	{
+		specular_info.image = scene->get_skybox().get_specular().get_image().get_api_image();
+		specular_info.image_view = scene->get_skybox().get_specular().get_image().get_api_image_view();
+		specular_info.sampler = scene->get_skybox().get_specular().get_image().get_sampler();
+	}
+	forward_collection->addImage(specular_info, scene->get_index(forward_collection));
+
 	forward_collection->updateSet(scene->get_index(forward_collection));
 	skybox_collection->updateSet(scene->get_index(skybox_collection));
 }

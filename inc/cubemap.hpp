@@ -10,10 +10,14 @@
 
 #include <world_objects.hpp>
 
+#define INDEX(face, mip, max_mip) (face * max_mip) + mip
+
 namespace tuco {
 
 class Cubemap {
-private:
+protected:
+	std::string name;
+
 	TucoPipeline pipeline;
 	TucoPass pass;
 	std::vector<v::Framebuffer> outputs;
@@ -21,6 +25,7 @@ private:
 
 	br::Image cubemap;
 	uint32_t map_size;
+	uint32_t mip_count;
 
 	br::Image* input_image;
 
@@ -36,7 +41,7 @@ public:
 	// images should be named such that:
 	//	"nx" - negative x image
 	//	"px" - positive x image
-	void init(std::string& vert, std::string& frag, GameObject * model, uint32_t size);
+	void init(std::string name, std::string& vert, std::string& frag, GameObject* model, uint32_t size, uint32_t mip_count = 1);
 	void set_input(br::Image* image);
 	
 
@@ -44,10 +49,12 @@ public:
 
 	~Cubemap();
 
-	void record_command_buffer(uint32_t face, VkCommandBuffer command_buffer);
+	virtual void record_command_buffer(uint32_t face, VkCommandBuffer command_buffer);
 
-private:
+protected:
 	void create_pipeline(std::string& vert, std::string& frag);
+	virtual void override_pipeline(PipelineConfig& config) {};
+
 	void create_pass();
 	void create_cubemap_faces();
 	void create_framebuffers();

@@ -30,6 +30,7 @@ layout(set=1, binding=2) uniform sampler2D roughnessMetallicTexture;
 // set 1 = draw, set = 2 material, set = 3 pass, set = 4 scene
 
 layout(set=2, binding=0) uniform samplerCube irradianceMap;
+layout(set=2, binding=1) uniform samplerCube specularIblMap;
 
 float bias = 5e-3;
 
@@ -171,7 +172,7 @@ void main(){
     vec3 ambient = kD * diffuse;
 
     // ---------- Specular --------------
-    vec3 specularResult = getSpecular(lightDirection, viewDirection, surfaceNormal, F, roughness);
+    vec3 specularResult = texture(specularIblMap, viewDirection).rgb * getSpecular(lightDirection, viewDirection, surfaceNormal, F, roughness);
 
     // cook torrence specular: (D(h) * F * G(v, h)) / (4 * dot(n*v) * dot(n*l))
 

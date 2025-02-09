@@ -5,6 +5,8 @@
 #include <antuco.hpp>
 #include <api_graphics.hpp>
 
+#include <environment/prefilter_map.hpp>
+
 #include <vulkan_wrapper/limits.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -23,11 +25,14 @@ void Environment::init(std::string file_path, GameObject* model)
 	input_image.load_float_image(file_path, br::ImageFormat::HDR_COLOR, br::ImageType::Image_2D);
 	input_image.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
-	skybox.init(SHADER("skybox/create_skybox.vert"), SHADER("skybox/create_skybox.frag"), model, 1024);
+	skybox.init("skybox", SHADER("skybox/create_skybox.vert"), SHADER("skybox/create_skybox.frag"), model, 1024);
 	skybox.set_input(&input_image);
 
-	irradiance_map.init(SHADER("skybox/create_irradiance.vert"), SHADER("skybox/create_irradiance.frag"), model, 32);
+	irradiance_map.init("irradiance map", SHADER("skybox/create_irradiance.vert"), SHADER("skybox/create_irradiance.frag"), model, 32);
 	irradiance_map.set_input(&skybox.get_image());
+
+	specular_map.init("prefilter map", SHADER("skybox/create_specular.vert"), SHADER("skybox/create_specular.frag"), model, 128, 5);
+	specular_map.set_input(&skybox.get_image());
 
 	command_pool_.init(p_device, p_device->get_graphics_family());
 	record_command_buffers();
@@ -103,6 +108,8 @@ void Environment::record_command_buffers()
 		
 		skybox.record_command_buffer(i, command_buffers[i]);
 		irradiance_map.record_command_buffer(i, command_buffers[i]);
+
+		specular_map.record_command_buffer(i, command_buffers[i]);
 
 		// end command buffer recording
 		ASSERT(vkEndCommandBuffer(command_buffers[i]) == VK_SUCCESS, "could not successfully record command buffer");

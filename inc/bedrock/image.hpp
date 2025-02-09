@@ -10,7 +10,7 @@
 
 #include <memory_allocator.hpp>
 
-#define MAX_VIEWS 10
+#define MAX_VIEWS 35
 
 namespace br
 {
@@ -139,8 +139,8 @@ public:
     void load_image(std::string &file_path, ImageFormat image_format, ImageType type);
     void load_float_image(std::string& file_path, ImageFormat image_format, ImageType type);
     void set_image_sampler(VkFilter filter, VkSamplerMipmapMode mipMapFilter, VkSamplerAddressMode addressMode);
-    void load_blank(ImageDetails info, uint32_t width, uint32_t height, uint32_t layers);
-    void create_view(uint32_t layer_count, uint32_t base_layer, ImageType type);
+    void load_blank(ImageDetails info, uint32_t width, uint32_t height, uint32_t layers, uint32_t mip_count);
+    void create_view(uint32_t layer_count, uint32_t base_layer, uint32_t base_mip, ImageType type);
     // [TODO] - remove references to and delete (deprecated)
     void init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<v::Device> device,
                 ImageData info, bool handle_destruction = false);

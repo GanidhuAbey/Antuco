@@ -29,11 +29,11 @@ project(Antuco VERSION 1.0.0)
 
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 
-file(GLOB SOURCES lib/*.cpp lib/vulkan_wrapper/*.cpp lib/bedrock/*.cpp)
+file(GLOB SOURCES lib/*.cpp lib/vulkan_wrapper/*.cpp lib/bedrock/*.cpp lib/environment/*.cpp)
 
-file(GLOB HEADERS inc/*.hpp inc/vulkan_wrapper/*.hpp inc/bedrock/*.hpp)
+file(GLOB HEADERS inc/*.hpp inc/vulkan_wrapper/*.hpp inc/bedrock/*.hpp inc/environment/*.hpp)
 
-file(GLOB SHADERS shaders/*.frag shaders/*.vert)
+file(GLOB SHADERS shaders/*.frag shaders/*.vert shaders/skybox/*)
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HEADERS} ${SOURCES} ${SHADERS})
 
@@ -66,6 +66,8 @@ add_library(
 )
 
 target_include_directories(AntucoEngine PUBLIC "inc/")
+target_include_directories(AntucoEngine PUBLIC "inc/environment")
+
 
 # move external targets into external directory
 set_target_properties(shaderc PROPERTIES FOLDER "External")

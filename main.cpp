@@ -10,7 +10,7 @@
 const int WIDTH = 1600;
 const int HEIGHT = 900;
 
-const float PLAYER_SPEED = 10.0f;
+const float PLAYER_SPEED = 2.0f;
 const double MOUSE_SENSITIVITY = 0.1f;
 
 #define TIME_IT std::chrono::high_resolution_clock::now();

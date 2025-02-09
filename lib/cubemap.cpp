@@ -11,16 +11,18 @@
 
 using namespace tuco;
 
-#define SKYBOX_NAMES {"px.png", "nx.png", "py.png", "ny.png", "pz.png", "nz.png"}
 #define CUBEMAP_FACES 6
 
-void Cubemap::init(std::string& vert, std::string& frag, GameObject* model, uint32_t size)
+void Cubemap::init(std::string name, std::string& vert, std::string& frag, GameObject* model, uint32_t size, uint32_t mip_count)
 {
+	Cubemap::name = name;
+
 	input_image = nullptr;
 
 	ubo_buffer_offsets.clear();
 	cubemap_model = model;
 	map_size = size;
+	Cubemap::mip_count = mip_count;
 
 	device_ = Antuco::get_engine().get_backend()->p_device;
 	physical_device_ = Antuco::get_engine().get_backend()->p_physical_device;
@@ -112,7 +114,7 @@ void Cubemap::record_command_buffer(uint32_t face, VkCommandBuffer command_buffe
 {
 	mem::StackBuffer& vertex_buffer = Antuco::get_engine().get_backend()->get_vertex_buffer();
 	mem::StackBuffer& index_buffer = Antuco::get_engine().get_backend()->get_index_buffer();
-		
+
 	std::vector<VkClearValue> clear_values;
 
 	VkClearValue color_clear{};
@@ -131,7 +133,7 @@ void Cubemap::record_command_buffer(uint32_t face, VkCommandBuffer command_buffe
 
 	VkRenderPassBeginInfo skybox_info{};
 	skybox_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	skybox_info.framebuffer = outputs[face].get_api_buffer();
+	skybox_info.framebuffer = outputs[INDEX(face, 0, mip_count)].get_api_buffer();
 	skybox_info.renderArea = render_area;
 	skybox_info.renderPass = pass.get_api_pass();
 	skybox_info.clearValueCount = clear_values.size();
@@ -225,6 +227,8 @@ void Cubemap::create_pipeline(std::string& vert, std::string& frag)
 	config.cull_mode = VK_CULL_MODE_FRONT_BIT;
 	config.front_face = VK_FRONT_FACE_CLOCKWISE;
 
+	override_pipeline(config);
+
 	pipeline.init(device_, set_pool_, config);
 }
 
@@ -235,27 +239,35 @@ void Cubemap::create_cubemap_faces()
 	info.type = br::ImageType::Cube;
 	info.usage = br::ImageUsage::RENDER_OUTPUT;
 
-	cubemap.init("Skybox");
+	cubemap.init(name);
 
-	cubemap.load_blank(info, map_size, map_size, 6);
+	cubemap.load_blank(info, map_size, map_size, 6, mip_count);
 	cubemap.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-	cubemap.create_view(6, 0, br::ImageType::Cube);
-
-	for (int i = 0; i < CUBEMAP_FACES; i++)
+	cubemap.create_view(6, 0, 0, br::ImageType::Cube);
+	
+	for (int face = 0; face < CUBEMAP_FACES; face++)
 	{
-		cubemap.create_view(1, i, br::ImageType::Image_2D);
+		for (int mip = 0; mip < mip_count; mip++)
+		{
+			cubemap.create_view(1, face, mip, br::ImageType::Image_2D);
+		}
 	}
+
 }
 
 void Cubemap::create_framebuffers()
 {
-	outputs.resize(CUBEMAP_FACES);
-	for (int i = 0; i < CUBEMAP_FACES; i++)
+	outputs.resize(CUBEMAP_FACES * mip_count);
+	for (int face = 0; face < CUBEMAP_FACES; face++)
 	{
-		outputs[i].add_attachment(cubemap.get_api_image_view(i + 1), v::AttachmentType::COLOR);
-		outputs[i].set_render_pass(pass.get_api_pass());
-		outputs[i].set_size(map_size, map_size, 1);
-		outputs[i].build(device_);
+		for (int mip = 0; mip < mip_count; mip++)
+		{
+			uint32_t mip_size = map_size * std::pow(0.5, mip);
+			outputs[INDEX(face, mip, mip_count)].add_attachment(cubemap.get_api_image_view(INDEX(face, mip, mip_count) + 1), v::AttachmentType::COLOR);
+			outputs[INDEX(face, mip, mip_count)].set_render_pass(pass.get_api_pass());
+			outputs[INDEX(face, mip, mip_count)].set_size(mip_size, mip_size, 1);
+			outputs[INDEX(face, mip, mip_count)].build(device_);
+		}
 	}
 }
 
