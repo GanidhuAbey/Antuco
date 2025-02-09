@@ -17,10 +17,10 @@ void main() {
     vec3 right = normalize(cross(up, out_direction));
     up = normalize(cross(out_direction, right));
 
-    float delta = 0.025;
+    float delta = 0.015;
     float samples = 0.0;
-    for (float theta = 0.0; theta < PI / 2; theta += delta) {
-        for (float phi = 0.0; phi < 2 * PI; phi += delta) {
+    for (float phi = 0.0; phi < 2 * PI; phi += delta) {
+        for (float theta = 0.0; theta < 0.5 * PI; theta += delta) {
             // spherical to cartesian (in tangent space)
             vec3 tangentSample = vec3(sin(theta) * cos(phi),  sin(theta) * sin(phi), cos(theta));
             // tangent space to world
@@ -31,7 +31,7 @@ void main() {
         }
     }
 
-    irradiance = PI * irradiance * (1.0 / samples);
+    irradiance = PI * irradiance * (1.0 / float(samples));
 
     out_color = vec4(irradiance, 1.0);
 }
