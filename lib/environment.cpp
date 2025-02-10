@@ -34,6 +34,8 @@ void Environment::init(std::string file_path, GameObject* model)
 	specular_map.init("prefilter map", SHADER("skybox/create_specular.vert"), SHADER("skybox/create_specular.frag"), model, 128, 5);
 	specular_map.set_input(&skybox.get_image());
 
+	brdf_map.init("BRDF", SHADER("brdf_lut.vert"), SHADER("brdf_lut.frag"), 512);
+
 	command_pool_.init(p_device, p_device->get_graphics_family());
 	record_command_buffers();
 
@@ -61,7 +63,7 @@ void Environment::render_to_image()
 
 	int32_t prev_image = -1;
 	int32_t curr_image = (prev_image + 1) % MAX_FRAMES_IN_FLIGHT;
-	for (int i = 0; i < CUBEMAP_FACES; i++)
+	for (int i = 0; i < CUBEMAP_FACES + 1; i++)
 	{
 
 		vkWaitForFences(p_device->get(), 1, &cpu_sync[curr_image], VK_TRUE, UINT64_MAX);
@@ -90,20 +92,25 @@ void Environment::render_to_image()
 
 void Environment::record_command_buffers()
 {
-	command_buffers.resize(CUBEMAP_FACES);
-	command_pool_.allocate_command_buffers(CUBEMAP_FACES, command_buffers.data());
+	command_buffers.resize(CUBEMAP_FACES + 1);
+	command_pool_.allocate_command_buffers(CUBEMAP_FACES + 1, command_buffers.data());
 
 	mem::StackBuffer& vertex_buffer = Antuco::get_engine().get_backend()->get_vertex_buffer();
 	mem::StackBuffer& index_buffer = Antuco::get_engine().get_backend()->get_index_buffer();
 
+	VkCommandBufferBeginInfo begin_info{};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags = 0;                  // Optional
+	begin_info.pInheritanceInfo = nullptr; // Optional
+
+	vkBeginCommandBuffer(command_buffers[6], &begin_info);
+
+	brdf_map.record_command_buffer(6, command_buffers[6]);
+
+	vkEndCommandBuffer(command_buffers[6]);
 
 	for (int i = 0; i < CUBEMAP_FACES; i++)
 	{
-		VkCommandBufferBeginInfo begin_info{};
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.flags = 0;                  // Optional
-		begin_info.pInheritanceInfo = nullptr; // Optional
-
 		vkBeginCommandBuffer(command_buffers[i], &begin_info);
 		
 		skybox.record_command_buffer(i, command_buffers[i]);

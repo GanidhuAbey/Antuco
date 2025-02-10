@@ -81,7 +81,8 @@ enum class ImageFormat
     HDR_COLOR,
     DEPTH,
     R_COLOR,
-    RG_COLOR
+    RG_COLOR,
+    RG_FLOAT
 };
 
 enum class ImageUsage
@@ -166,6 +167,8 @@ public:
 
     void set_write(bool write) { Image::write = write; }
 
+    static vk::Format get_vk_format(ImageFormat image_format, uint32_t* channels, uint32_t* size);
+
     vk::Sampler &get_sampler() { return sampler; }
 
 private:
@@ -174,7 +177,6 @@ private:
     void create_image();
     void create_image_view();
 
-    vk::Format get_vk_format(ImageFormat image_format, uint32_t &channels, uint32_t& size);
     vk::ImageUsageFlags get_vk_usage(ImageFormat format, ImageUsage usage);
     bool is_3d_image(ImageFormat image_format);
 

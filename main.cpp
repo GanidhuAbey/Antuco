@@ -135,7 +135,7 @@ int main() {
     scene->set_ibl(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_4k.hdr");
     
     //antuco.add_skybox(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_skybox");
-    scene->set_skybox(root_project + "\\objects\\antuco-files\\textures\\environment\\brown_photostudio_01_4k.hdr");
+    scene->set_skybox(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_4k.hdr");
 
 #endif
 

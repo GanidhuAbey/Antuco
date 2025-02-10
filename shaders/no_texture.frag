@@ -31,6 +31,7 @@ layout(set=1, binding=2) uniform sampler2D roughnessMetallicTexture;
 
 layout(set=2, binding=0) uniform samplerCube irradianceMap;
 layout(set=2, binding=1) uniform samplerCube specularIblMap;
+layout(set=2, binding=2) uniform sampler2D brdf_map;
 
 float bias = 5e-3;
 
@@ -39,6 +40,8 @@ float SPECULAR_STRENGTH = 0.5f;
 float FRESNEL_STRENGTH = 2.0f;
 float AMBIENCE_FACTOR = 0.001f;
 float DIFFUSE_STRENGTH = 0.5f;
+
+const float MAX_REFLECTION_LOD = 4.0;
 
 //ok clearly we're not doing this right...
 float SCATTER_STRENGTH = 200.0f;
@@ -169,10 +172,14 @@ void main(){
     vec3 kD = 1.0 - kS;
     vec3 diffuse = irradiance * albedo;
 
-    vec3 ambient = kD * diffuse;
-
     // ---------- Specular --------------
-    vec3 specularResult = texture(specularIblMap, viewDirection).rgb * getSpecular(lightDirection, viewDirection, surfaceNormal, F, roughness);
+    vec3 R = reflect(-viewDirection, surfaceNormal);
+    vec3 prefiliteredColor = textureLod(specularIblMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+    vec2 envBRDF = texture(brdf_map, vec2(max(dot(surfaceNormal, viewDirection), 0.0), roughness)).rg;
+
+    vec3 specularResult = prefiliteredColor * (F * envBRDF.x + envBRDF.y);
+
+    vec3 ambient = (kD * diffuse + specularResult);
 
     // cook torrence specular: (D(h) * F * G(v, h)) / (4 * dot(n*v) * dot(n*l))
 
@@ -181,7 +188,7 @@ void main(){
     float attenuation = 1.0f; // TODO : implement light falloff.
     vec3 radiance = lightColor * attenuation;
     float NdotL = max(dot(surfaceNormal, lightDirection), 1.0);
-    vec3 result = radiance * (refractAmt * diffuse / PI + specularResult) * NdotL + ambient;
+    vec3 result = ambient + radiance * (refractAmt * albedo / PI + specularResult) * NdotL;
     //result = get_ibl(surfaceNormal);
     //result = surfaceNormal;
     vec3 testColor = vec3(1, 0, 0);

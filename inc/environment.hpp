@@ -10,6 +10,7 @@
 
 #include <cubemap.hpp>
 #include <environment/prefilter_map.hpp>
+#include <lut.hpp>
 
 #include <world_objects.hpp>
 
@@ -22,6 +23,7 @@ private:
 	Cubemap skybox;
 	Cubemap irradiance_map;
 	PrefilterMap specular_map;
+	LUT brdf_map;
 
 	mem::CommandPool command_pool_;
 	std::vector<VkCommandBuffer> command_buffers;
@@ -37,6 +39,7 @@ public:
 	Cubemap& get_environment() { return skybox; }
 	Cubemap& get_irradiance() { return irradiance_map; }
 	Cubemap& get_specular() { return specular_map; }
+	LUT& get_brdf() { return brdf_map; }
 
 	~Environment();
 

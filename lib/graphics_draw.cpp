@@ -1185,6 +1185,19 @@ void GraphicsImpl::write_scene(SceneData* scene)
 	}
 	forward_collection->addImage(specular_info, scene->get_index(forward_collection));
 
+	ImageDescription brdf_info{};
+	brdf_info.binding = 2;
+	brdf_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	brdf_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	if (scene->has_skybox)
+	{
+		scene->get_skybox().get_brdf().get_image().change_layout(vk::ImageLayout::eShaderReadOnlyOptimal, p_device->get_graphics_queue());
+		brdf_info.image = scene->get_skybox().get_brdf().get_image().get_api_image();
+		brdf_info.image_view = scene->get_skybox().get_brdf().get_image().get_api_image_view();
+		brdf_info.sampler = scene->get_skybox().get_brdf().get_image().get_sampler();
+	}
+	forward_collection->addImage(brdf_info, scene->get_index(forward_collection));
+
 	forward_collection->updateSet(scene->get_index(forward_collection));
 	skybox_collection->updateSet(scene->get_index(skybox_collection));
 }

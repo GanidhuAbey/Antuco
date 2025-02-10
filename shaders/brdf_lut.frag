@@ -1,19 +1,11 @@
 #version 450
-#extension GL_KHR_vulkan_glsl: enable
 
-layout(set=0, binding=1) uniform samplerCube cubemap;
+#extension GL_KHR_vulkan_glsl : enable
 
-layout(location=1) in vec3 localPos;
-
-layout(location=0) out vec4 out_color;
+layout(location=1) in vec2 uv;
+layout(location=0) out vec2 out_color;
 
 const float PI = 3.14159265359;
-
-// TODO: need to pass this in via descriptor
-layout(push_constant) uniform PushConstant {
-    vec4 roughness;
-} pfc;
-
 
 // To ensure that our importance sampling generates samples that are more evenly distributed, we use a low-discrepancy sequence.
 
@@ -56,27 +48,57 @@ vec3 ImportanceSampling_GGX(vec2 Xi, vec3 N, float roughness) {
     return normalize(sample_vec);
 }
 
-void main() {
-    // we make approximation that view direction = surface normal to generate pre-filter.
-    vec3 N = normalize(localPos);
-    vec3 R = N;
-    vec3 V = N;
+float GGX_G(vec3 v, vec3 n, float roughness) {
+    float NdotV = max(dot(n, v), 0.0);
+    float k = (roughness * roughness) / 2.0;
+    
+    float num = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
 
-    const uint SAMPLE_COUNT = 1024;
-    float total_weight = 0.0;
-    vec3 prefiltered_vec = vec3(0.0);
-    for (uint i = 0; i < SAMPLE_COUNT; i++) {
+    return num / denom;
+}
+
+float Smith_G(vec3 l, vec3 v, vec3 n, float roughness) {
+    return GGX_G(l, n, roughness) * GGX_G(v, n, roughness);
+}
+
+vec2 IntegrateBRDF(float NdotV, float roughness) {
+    vec3 V;
+    V.x = sqrt(1.0 - NdotV*NdotV);
+    V.y = 0.0;
+    V.z = NdotV;
+
+    float A = 0.0;
+    float B = 0.0;
+
+    vec3 N = vec3(0.0, 0.0, 1.0);
+
+    const uint SAMPLE_COUNT = 1024u;
+    for(uint i = 0u; i < SAMPLE_COUNT; ++i)
+    {
         vec2 Xi = Hammersley(i, SAMPLE_COUNT);
-        vec3 H = ImportanceSampling_GGX(Xi, N, pfc.roughness.r); // randomly sample possible half vector for surface
-        vec3 L = normalize(2.0 * dot(V, H) * H - V); // calculate reflection from half vector and view direction to get light direction
+        vec3 H  = ImportanceSampling_GGX(Xi, N, roughness);
+        vec3 L  = normalize(2.0 * dot(V, H) * H - V);
 
-        float NdotL = max(dot(N, L), 0.0);
-        if (NdotL > 0.0) {
-            prefiltered_vec += texture(cubemap, L).rgb * NdotL;
-            total_weight += NdotL;
+        float NdotL = max(L.z, 0.0);
+        float NdotH = max(H.z, 0.0);
+        float VdotH = max(dot(V, H), 0.0);
+
+        if(NdotL > 0.0)
+        {
+            float G = Smith_G(L, V, N, roughness);
+            float G_Vis = (G * VdotH) / (NdotH * NdotV);
+            float Fc = pow(1.0 - VdotH, 5.0);
+
+            A += (1.0 - Fc) * G_Vis;
+            B += Fc * G_Vis;
         }
     }
+    A /= float(SAMPLE_COUNT);
+    B /= float(SAMPLE_COUNT);
+    return vec2(A, B);
+}
 
-    prefiltered_vec = prefiltered_vec / total_weight;
-    out_color = vec4(prefiltered_vec, 1.0);
+void main() {
+    out_color = IntegrateBRDF(uv.x, uv.y);
 }

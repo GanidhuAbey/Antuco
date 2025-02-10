@@ -83,7 +83,7 @@ void Image::load_blank(ImageDetails info, uint32_t width, uint32_t height, uint3
 {
 	uint32_t channels;
 	uint32_t size;
-	vk::Format v_format = get_vk_format(info.format, channels, size);
+	vk::Format v_format = get_vk_format(info.format, &channels, &size);
 
 	ImageCreateInfo image_info;
 	image_info.format = v_format;
@@ -172,30 +172,35 @@ vk::ImageUsageFlags Image::get_vk_usage(ImageFormat format, ImageUsage usage)
 	return vk::ImageUsageFlagBits::eSampled;
 }
 
-vk::Format Image::get_vk_format(ImageFormat image_format, uint32_t& channels, uint32_t& size)
+vk::Format Image::get_vk_format(ImageFormat image_format, uint32_t* channels, uint32_t* size)
 {
+
 	switch (image_format)
 	{
 	case ImageFormat::RGBA_COLOR:
-		channels = 4;
-		size = 1;
+		if (channels) *channels = 4;
+		if (size) *size = 1;
 		return vk::Format::eR8G8B8A8Srgb;
 	case ImageFormat::HDR_COLOR:
-		channels = 4;
-		size = 4;
+		if (channels) *channels = 4;
+		if (size) *size = 4;
 		return vk::Format::eR32G32B32A32Sfloat;
 	case ImageFormat::DEPTH:
-		channels = 1;
-		size = 4;
+		if (channels) *channels = 1;
+		if (size) *size = 4;
 		return vk::Format::eD16Unorm;
 	case ImageFormat::R_COLOR:
-		channels = 1;
-		size = 1;
+		if (channels) *channels = 1;
+		if (size) *size = 1;
 		return vk::Format::eR8Srgb;
 	case ImageFormat::RG_COLOR:
-		channels = 2;
-		size = 1;
+		if (channels) *channels = 2;
+		if (size) *size = 1;
 		return vk::Format::eR8G8Srgb;
+	case ImageFormat::RG_FLOAT:
+		if (channels) *channels = 2;
+		if (size) *size = 2;
+		return vk::Format::eR16G16Sfloat;
 	default:
 		break;
 	}
@@ -210,7 +215,7 @@ void Image::load_cubemap(std::vector<std::string>& cube_images, ImageFormat imag
 {
 	uint32_t channels;
 	uint32_t size;
-	vk::Format format = get_vk_format(image_format, channels, size);
+	vk::Format format = get_vk_format(image_format, &channels, &size);
 
 	// load images
 	raw_image.image_count = CUBEMAP_IMAGE_COUNT;
@@ -271,7 +276,7 @@ void Image::load_image(std::string& file_path, ImageFormat image_format, ImageTy
 {
 	uint32_t channels;
 	uint32_t size;
-	vk::Format format = get_vk_format(image_format, channels, size);
+	vk::Format format = get_vk_format(image_format, &channels, &size);
 
 	raw_image.image_count = 1;
 	raw_image.images.resize(raw_image.image_count);
@@ -288,7 +293,7 @@ void Image::load_float_image(std::string& file_path, ImageFormat image_format, I
 {
 	uint32_t channels;
 	uint32_t size;
-	vk::Format format = get_vk_format(image_format, channels, size);
+	vk::Format format = get_vk_format(image_format, &channels, &size);
 
 	raw_image.image_count = 1;
 	raw_image.images.resize(raw_image.image_count);
