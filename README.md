@@ -1,7 +1,12 @@
 # Antuco
+
 A game engine/renderer made from vulkan
 
-## Build Instructions 
+## Build Instructions
+
+To get all required dependencies for shaderc, run the following python script:
+
+`py %PROJECT_DIR%/external/include/shaderc/utils/git-sync-deps`
 
 Clone repo recursively to get all requried dependences.
 
@@ -45,5 +50,10 @@ credit to tyrant_monkey for the model
 
 ![Teapot](antuco_screenshots/microfacet_specular.JPG?raw=true "Teapot")
 
-
 ## Road Map
+
+Move PSO creation to be per-object.
+
+Add diffuse, metallic, roughness textures to material.
+
+Automate layout creation based on shader reflection.

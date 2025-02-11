@@ -10,6 +10,7 @@
 #include "mesh.hpp"
 
 #include "world_objects.hpp"
+#include <scene.hpp>
 
 #include <glm/glm.hpp>
 
@@ -19,6 +20,7 @@ namespace tuco {
 class GraphicsImpl;
 
 class Graphics {
+	friend class Antuco;
 private:
 	std::unique_ptr<GraphicsImpl> p_graphics;
 public:
@@ -32,6 +34,8 @@ public:
             std::vector<int> shadow_indices);
 
 	void update_draw(std::vector<std::unique_ptr<GameObject>>& game_objects);
+
+	void initialize_scene(SceneData* scene);
 
 };
 }

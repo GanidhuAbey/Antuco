@@ -1,8 +1,11 @@
 #include "antuco.hpp"
 
 #include "logger/interface.hpp"
+#include "api_graphics.hpp"
 
 #include <iostream>
+
+#include <bedrock/mesh_draw.hpp>
 
 using namespace tuco;
 
@@ -18,7 +21,8 @@ Antuco::~Antuco() {
 }
 
 /* Window Initialization */
-Window* Antuco::init_window(int w, int h, const char* title) {
+Window* Antuco::init_window(int w, int h, const char* title) 
+{
 	Window* window = new Window(w, h, title);
 
 	pWindow = window;
@@ -26,11 +30,17 @@ Window* Antuco::init_window(int w, int h, const char* title) {
 	return window;
 }
 
-void Antuco::init_graphics(RenderEngine api) {
+void Antuco::init_graphics(RenderEngine api) 
+{
 	//when/if other render api's implemented, add graphics interface, to which
 	//each render api object would obey.
 	Antuco::api = api;
 	p_graphics = new Graphics(pWindow); 
+}
+
+GraphicsImpl* Antuco::get_backend()
+{
+	return p_graphics->p_graphics.get();
 }
 
 /* World Object Initalization */
@@ -44,7 +54,7 @@ DirectionalLight& Antuco::create_spotlight(glm::vec3 light_pos, glm::vec3 light_
 	}
 	else if (shadow_casters.size() >= MAX_SHADOW_CASTERS) {
 		//log error here
-		ERR_V_MSG("too many shadow casters");
+		ERR("Too many shadow casters");
 	}
 	directional_lights.push_back(light);
 
@@ -70,11 +80,25 @@ Camera* Antuco::create_camera(glm::vec3 eye, glm::vec3 facing, glm::vec3 up, flo
 }
 
 GameObject* Antuco::create_object() {
-	objects.push_back(std::move(std::make_unique<GameObject>()));
+	objects.push_back(std::make_unique<GameObject>());
+	// create material
+	GameObject* object = objects[objects.size() - 1].get();
+	object->material_index = p_graphics->p_graphics->add_material();
+
+	br::MeshDrawData* draw_data = new br::MeshDrawData();
+	//object->draw_index = p_graphics->p_graphics->add_draw_data(reinterpret_cast<br::GPUResource*>(draw_data));
+
 	return objects[objects.size() - 1].get();
 }
 
+SceneData* Antuco::create_scene()
+{
+	scene = std::make_unique<SceneData>();
 
+	p_graphics->initialize_scene(scene.get());
+
+	return scene.get();
+}
 
 void Antuco::render() {	
 	//check and update the camera information

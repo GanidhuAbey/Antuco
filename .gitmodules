@@ -23,3 +23,9 @@
 [submodule "external/include/tinygltf"]
 	path = external/include/tinygltf
 	url = https://github.com/syoyo/tinygltf
+[submodule "external/include/fmt"]
+	path = external/include/fmt
+	url = https://github.com/fmtlib/fmt
+[submodule "external/include/SPIRV-Reflect"]
+	path = external/include/SPIRV-Reflect
+	url = https://github.com/KhronosGroup/SPIRV-Reflect

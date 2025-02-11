@@ -1,21 +1,23 @@
 #include "vulkan_wrapper/physical_device.hpp"
+#include "vulkan_wrapper/limits.hpp"
 
 using namespace v;
 
-PhysicalDevice::PhysicalDevice(Instance& instance) {
-    pick_physical_device(instance);
+PhysicalDevice::PhysicalDevice(std::shared_ptr<v::Instance> instance) {
+	m_instance = instance;
+    pick_physical_device(instance.get());
 }
 
 PhysicalDevice::~PhysicalDevice() {}
 
-void PhysicalDevice::pick_physical_device(Instance& instance) {
+void PhysicalDevice::pick_physical_device(Instance* instance) {
 #ifdef NDEBUG 
 const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;
 #endif
 	//query all physical devices we have
-    std::vector<vk::PhysicalDevice> phys_devices = instance.get().enumeratePhysicalDevices();
+    std::vector<vk::PhysicalDevice> phys_devices = instance->get().enumeratePhysicalDevices();
 
 	//score each device
 	std::multimap<uint32_t, vk::PhysicalDevice> device_score;
@@ -54,6 +56,15 @@ const bool enableValidationLayers = true;
 
 	//make the best physical device the one we'll use for the program
 	physical_device = current_best_device;
+
+	set_device_limits();
+}
+
+void PhysicalDevice::set_device_limits() {
+	VkPhysicalDeviceProperties device_properties;
+	vkGetPhysicalDeviceProperties(physical_device, &device_properties);
+
+	Limits::get().uniformBufferOffsetAlignment = device_properties.limits.minUniformBufferOffsetAlignment;
 }
 
 uint32_t PhysicalDevice::score_physical_device(vk::PhysicalDevice physical_device) {

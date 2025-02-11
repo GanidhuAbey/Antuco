@@ -5,21 +5,17 @@
 
 using namespace v;
 
-Swapchain::Swapchain(
-PhysicalDevice& physical_device, 
-Device& device, 
-Surface& surface) {
-  Swapchain::device = &device;
-
-  init(physical_device, surface);
+Swapchain::Swapchain(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<Device> device, Surface *p_surface) {
+    init(p_physical_device, device, p_surface);
 }
 
-void Swapchain::init(v::PhysicalDevice& physical_device, v::Surface& surface) { 
-  create_swapchain(physical_device, device, surface);
+void Swapchain::init(std::shared_ptr<v::PhysicalDevice> p_physical_device, std::shared_ptr<Device> device, v::Surface* surface) {
+    Swapchain::device = device;
+    create_swapchain(p_physical_device, device, surface);
 }
 
 Swapchain::~Swapchain() {
-  destroy();
+    destroy();
 }
 
 void Swapchain::destroy() {
@@ -43,36 +39,31 @@ vk::SurfaceFormatKHR Swapchain::choose_best_surface_format(
 }
 
 void Swapchain::create_swapchain(
-    PhysicalDevice& physical_device, 
-    Device* device, 
-    Surface& surface) {
+    std::shared_ptr<v::PhysicalDevice> p_physical_device,
+    std::shared_ptr<Device> device, 
+    Surface *p_surface) {
     //query the surface capabilities
-    auto capabilities = physical_device.get().getSurfaceCapabilitiesKHR(
-        surface.get()
+    auto capabilities = p_physical_device->get().getSurfaceCapabilitiesKHR(
+        p_surface->get()
     );
 
     auto format_count = uint32_t(0);
-    auto result = physical_device.get().getSurfaceFormatsKHR(
-        surface.get(), 
+    auto result = p_physical_device->get().getSurfaceFormatsKHR(
+        p_surface->get(), 
         &format_count, 
         nullptr
     );
 
-    if (result != vk::Result::eSuccess) {
-      msg::print_line("[ERROR] - create_swapchain : could not get format count");
-      throw std::runtime_error("");
-    }
+    ASSERT(result == vk::Result::eSuccess, "could not get swapchain format count");
 
     auto formats = std::vector<vk::SurfaceFormatKHR>(format_count);
-    result = physical_device.get().getSurfaceFormatsKHR(
-        surface.get(), 
+    result = p_physical_device->get().getSurfaceFormatsKHR(
+        p_surface->get(), 
         &format_count, 
         formats.data()
     );
-    if (result != vk::Result::eSuccess) {
-      msg::print_line("[ERROR] - create_swapchain : could not get formats");
-      throw std::runtime_error("");
-    }
+
+    ASSERT(result == vk::Result::eSuccess, "could not retrieve swapchain");
 
     auto surface_format = choose_best_surface_format(formats);
     auto image_num = capabilities.minImageCount;
@@ -86,7 +77,7 @@ void Swapchain::create_swapchain(
     extent = capabilities.currentExtent;
     auto swap_info = vk::SwapchainCreateInfoKHR(
         {}, 
-        surface.get(), 
+        p_surface->get(), 
         image_num, 
         format, 
         surface_format.colorSpace, 
@@ -106,7 +97,7 @@ void Swapchain::create_swapchain(
     swapchain = device->get().createSwapchainKHR(swap_info);
 
     //grab swapchain images
-    mem::ImageViewCreateInfo image_info{};
+    br::ImageViewCreateInfo image_info{};
     image_info.aspect_mask = vk::ImageAspectFlagBits::eColor;
     image_info.format = format;
  
@@ -122,17 +113,18 @@ void Swapchain::create_swapchain(
     images = device->get().getSwapchainImagesKHR(swapchain);
     swapchain_images.resize(images.size());
 
-    mem::ImageData data;
+    br::ImageData data;
     data.name = "swapchain";
     data.image_view_info = image_info;
 
     //transfer swapchain to present layout
     for (size_t i = 0; i < swapchain_images.size(); i++) {
         swapchain_images[i].init(
-            physical_device, 
-            *device, 
+            p_physical_device,
+            device, 
             images[i], 
-            data);
+            data,
+            true);
 
         swapchain_images[i].transfer(
             vk::ImageLayout::ePresentSrcKHR, 

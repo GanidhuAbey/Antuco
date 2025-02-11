@@ -9,6 +9,7 @@
 #include "world_objects.hpp"
 #include "graphics.hpp"
 #include "config.hpp"
+#include "scene.hpp"
 
 #include <vector>
 
@@ -19,6 +20,7 @@ class Antuco {
 public:
 	Window* init_window(int w, int h, const char* title);
 	void init_graphics(RenderEngine api);
+	GraphicsImpl* get_backend();
 private:
 	Window* pWindow;
 	Graphics* p_graphics;
@@ -31,11 +33,14 @@ public:
 	Camera* create_camera(glm::vec3 eye, glm::vec3 target, glm::vec3 up, float yfov, float near, float far);
 	GameObject* create_object();
 
+	// Creates a scene for the game, we currently assume that the game will only create a single scene.
+	SceneData* create_scene();
+	SceneData* get_scene() { return scene.get(); }
+
+
 /* Rendering */
 public:
 	void render();
-private:
-	bool update_draw = true;
 
 private:
 	//shared_ptr because main.cpp needs to access and modify game objects
@@ -46,6 +51,8 @@ private:
 	std::vector<DirectionalLight> directional_lights;
     std::vector<PointLight> point_lights;
 	std::vector<int> shadow_casters;
+
+	std::unique_ptr<SceneData> scene;
 	/* Antuco Initalization */
 public:
 	//delete copy trait

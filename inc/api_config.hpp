@@ -5,6 +5,16 @@
 #include "vulkan_wrapper/device.hpp"
 
 namespace tuco {
+
+// TODO: this isn't a great method considering if we move around our files
+//       the whole thing will break...
+const std::string SHADER_PATH = get_project_root(__FILE__) + "/shaders/";
+
+#define SHADER(file) SHADER_PATH + file
+
+const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
+
+
 inline vk::CommandBuffer begin_command_buffer(
 v::Device& device, 
 vk::CommandPool& command_pool) {

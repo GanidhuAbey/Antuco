@@ -83,3 +83,12 @@ std::string get_extension_from_file_path(const std::string& filepath) {
     return extension;
 }
 
+std::string get_file_name(const std::string& path) {
+    std::string filename_with_extension = get_current_dir_name(path);
+
+    size_t index = filename_with_extension.rfind(".");
+    std::string name = filename_with_extension.substr(0, index);
+
+    return name;
+}
+

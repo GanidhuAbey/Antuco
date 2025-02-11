@@ -57,7 +57,7 @@ private:
         }
 
         if (!found) {
-            LOG("required queues not found");
+            ERR("required queues not found");
         }
     }
     void find_queue_families(v::PhysicalDevice& device, v::Surface& surface) {
