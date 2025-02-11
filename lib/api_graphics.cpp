@@ -166,7 +166,7 @@ void GraphicsImpl::update_draw(
 			}
 
 			// load textures.
-			Material& mat = game_objects[i]->get_material();
+			Material* mat = game_objects[i]->get_material();
 
 			// writeMaterial(game_objects[i]->material);
 			writeMaterial(mat);

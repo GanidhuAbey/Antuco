@@ -44,10 +44,10 @@ void GameObject::set_position(glm::vec3 t) {
 	};
 }
 
-Material& GameObject::get_material()
+Material* GameObject::get_material()
 {
 	GraphicsImpl* backend = Antuco::get_engine().get_backend();
-	return backend->materials[material_index];
+	return backend->materials[material_index].get();
 }
 
 void GameObject::scale(glm::vec3 scale_vector) {

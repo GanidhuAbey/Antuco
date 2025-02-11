@@ -1202,30 +1202,28 @@ void GraphicsImpl::write_scene(SceneData* scene)
 	skybox_collection->updateSet(scene->get_index(skybox_collection));
 }
 
-void GraphicsImpl::writeMaterial(Material& material)
+void GraphicsImpl::writeMaterial(Material* material)
 {
 	// material.offsets.descriptorOffset = globalMaterialOffsets.descriptorOffset;
-	material.gpuInfo.bufferOffset =
-		uniform_buffer.allocate(sizeof(MaterialBufferObject), v::Limits::get().uniformBufferOffsetAlignment);
 	// update_materials(material.offsets.bufferOffset, material);
-	MaterialBufferObject matObj = material.convert();
-	updateUniformBuffer(material.gpuInfo.bufferOffset,
+	MaterialBufferObject matObj = material->convert();
+	updateUniformBuffer(material->gpuInfo.bufferOffset,
 						sizeof(MaterialBufferObject), &matObj);
 
 
 	// [TODO 08/2024] - by having addSets here, we basically create a new descriptor set every frame per every object... this is memory leak.
 	//material.gpuInfo.setIndex = materialCollection.addSets(1, *matPool);
 	ResourceCollection* collection = graphics_pipelines[1].get_resource_collection(1);
-	material.gpuInfo.setIndex = collection->addSets(1, *matPool);
+	material->gpuInfo.setIndex = collection->addSets(1, *matPool);
 
 	BufferDescription info{};
 	info.binding = 0;
 	info.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	info.buffer = uniform_buffer.buffer;
 	info.bufferRange = sizeof(MaterialBufferObject);
-	info.bufferOffset = material.gpuInfo.bufferOffset;
+	info.bufferOffset = material->gpuInfo.bufferOffset;
 
-	collection->addBuffer(info, material.gpuInfo.setIndex);
+	collection->addBuffer(info, material->gpuInfo.setIndex);
 
 	// TODO : will cause pipeline warning (errors?) if we do not bind an image even for materials that do not access it.
 	//        use specialization constants to prevent compilation of shaders with unbound textures?
@@ -1233,11 +1231,11 @@ void GraphicsImpl::writeMaterial(Material& material)
 	image_info.binding = 1;
 	image_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	image_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	if (material.hasBaseTexture)
+	if (material->hasBaseTexture)
 	{
-		image_info.image = material.getBaseColorImage().get_api_image();
-		image_info.image_view = material.getBaseColorImage().get_api_image_view();
-		image_info.sampler = material.getBaseColorImage().get_sampler();
+		image_info.image = material->getBaseColorImage().get_api_image();
+		image_info.image_view = material->getBaseColorImage().get_api_image_view();
+		image_info.sampler = material->getBaseColorImage().get_sampler();
 	}
 	else
 	{
@@ -1246,17 +1244,17 @@ void GraphicsImpl::writeMaterial(Material& material)
 		image_info.image_view = uninitalized_image.get_api_image_view();
 		image_info.sampler = uninitalized_image.get_sampler();
 	}
-	collection->addImage(image_info, material.gpuInfo.setIndex);
+	collection->addImage(image_info, material->gpuInfo.setIndex);
 
 	image_info.binding = 2;
 	image_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	image_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-	if (material.hasRoughnessTexture || material.hasMetallicTexture)
+	if (material->hasRoughnessTexture || material->hasMetallicTexture)
 	{
-		image_info.image = material.getRoughnessMetallicImage().get_api_image();
-		image_info.image_view = material.getRoughnessMetallicImage().get_api_image_view();
-		image_info.sampler = material.getRoughnessMetallicImage().get_sampler();
+		image_info.image = material->getRoughnessMetallicImage().get_api_image();
+		image_info.image_view = material->getRoughnessMetallicImage().get_api_image_view();
+		image_info.sampler = material->getRoughnessMetallicImage().get_sampler();
 	}
 	else
 	{
@@ -1265,15 +1263,34 @@ void GraphicsImpl::writeMaterial(Material& material)
 		image_info.image_view = uninitalized_image.get_api_image_view();
 		image_info.sampler = uninitalized_image.get_sampler();
 	}
-	collection->addImage(image_info, material.gpuInfo.setIndex);
+	collection->addImage(image_info, material->gpuInfo.setIndex);
 
-	collection->updateSet(material.gpuInfo.setIndex);
+	image_info.binding = 3;
+	image_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	image_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	if (material->hasSeparateMetallic)
+	{
+		image_info.image = material->getMetallicTexture().get_api_image();
+		image_info.image_view = material->getMetallicTexture().get_api_image_view();
+		image_info.sampler = material->getMetallicTexture().get_sampler();
+	}
+	else
+	{
+		uninitalized_image.change_layout(vk::ImageLayout::eShaderReadOnlyOptimal, p_device->get_transfer_queue());
+		image_info.image = uninitalized_image.get_api_image();
+		image_info.image_view = uninitalized_image.get_api_image_view();
+		image_info.sampler = uninitalized_image.get_sampler();
+	}
+	collection->addImage(image_info, material->gpuInfo.setIndex);
+
+	collection->updateSet(material->gpuInfo.setIndex);
 
 }
 
 uint32_t GraphicsImpl::add_material()
 {
-	materials.push_back(Material{});
+	materials.push_back(std::make_unique<Material>());
 	return materials.size() - 1;
 }
 
@@ -1476,9 +1493,9 @@ void GraphicsImpl::create_command_buffers(
 				vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
 								  graphics_pipelines[index].get_api_pipeline());
 
-				Material& mat = game_objects[j]->get_material();
+				Material* mat = game_objects[j]->get_material();
 				VkDescriptorSet materialSet =
-					graphics_pipelines[1].get_resource_collection(1)->get_api_set(mat.gpuInfo.setIndex);
+					graphics_pipelines[1].get_resource_collection(1)->get_api_set(mat->gpuInfo.setIndex);
 
 				ResourceCollection* scene_collection = graphics_pipelines[1].get_resource_collection(2);
 				VkDescriptorSet sceneSet = scene_collection->get_api_set(scene->get_index(scene_collection));

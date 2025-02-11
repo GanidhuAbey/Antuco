@@ -109,7 +109,7 @@ public:
   void translate(glm::vec3 t);
   void set_position(glm::vec3 t);
 
-  Material& get_material();
+  Material* get_material();
 
   uint32_t buffer_index_offset = 0;
   uint32_t buffer_vertex_offset = 0;

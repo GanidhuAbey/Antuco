@@ -9,28 +9,33 @@
 #include <bedrock/image.hpp>
 #include <bedrock/gpu_resource.hpp>
 
-namespace tuco {
+namespace tuco
+{
 
-struct MaterialGpuInfo {
-  VkDeviceSize bufferOffset;
-  uint32_t setIndex;
+struct MaterialGpuInfo
+{
+	VkDeviceSize bufferOffset;
+	uint32_t setIndex;
 };
 
-struct MaterialBufferObject {
-  // baseReflectivity, roughness, metallic
-  glm::vec4 pbrParameters = glm::vec4(0.0);
-  glm::vec4 hasTexture = glm::vec4(0.0); // hasBaseTexture, hasMetallic, hasRoughness
-  glm::vec4 albedo = glm::vec4(0.0);
+struct MaterialBufferObject
+{
+// baseReflectivity, roughness, metallic
+	glm::vec4 pbrParameters = glm::vec4(0.0);
+	glm::vec4 hasTexture = glm::vec4(0.0); // hasBaseTexture, hasMetallic, hasRoughness
+	glm::vec4 albedo = glm::vec4(0.0);
 
-  glm::vec4 padding[2] = {glm::vec4(0), glm::vec4(0)};
+	glm::vec4 padding[2] = { glm::vec4(0), glm::vec4(0) };
 
-  std::vector<float> linearize();
+	std::vector<float> linearize();
 };
 
-class Material : public br::GPUResource {
+class Material : public br::GPUResource
+{
 private:
 	br::Image baseColorImage;
 	br::Image roughnessMetallicTexture;
+	br::Image metallicTexture;
 public:
 	// uint32_t image_index;
 	// std::optional<std::string> texturePath;
@@ -43,19 +48,24 @@ public:
 	bool hasBaseTexture = false;
 	bool hasRoughnessTexture = false;
 	bool hasMetallicTexture = false;
+	bool hasSeparateMetallic = false;
 
 	glm::vec3 albedo = glm::vec3(1.0);
 
 	MaterialGpuInfo gpuInfo;
 
-	public:
-	Material() {}
-	~Material() {}
+public:
+	Material() = default;
+	~Material() = default;
+	
+	void init();
+	
 	MaterialBufferObject convert();
+
 
 	void setBaseColorTexture(std::string filePath);
 	br::Image& getBaseColorImage() { return baseColorImage; }
-	
+
 	// [TODO] - If roughness and metallic textures are provided separately, then they will need to be
 	// combined into a single texture before passing to shader.
 	//void setRoughnessTexture(std::string filePath);
@@ -66,6 +76,9 @@ public:
 
 	void setRoughnessMetallicTexture(std::string filePath);
 	br::Image& getRoughnessMetallicImage() { return roughnessMetallicTexture; }
+
+	void setMetallicTexture(std::string& filePath);
+	br::Image& getMetallicTexture() { return metallicTexture; }
 
 protected:
 	void UpdateGPU() override;

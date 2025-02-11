@@ -74,7 +74,7 @@ int main() {
 
     tuco::Camera *main_camera =
         antuco.create_camera(camera_pos, camera_face, camera_orientation,
-                            glm::radians(45.0f), 0.1f, 150.0f);
+                            glm::radians(45.0f), 0.01f, 150.0f);
 
     // create some light for the scene
     glm::vec3 light_position = glm::vec3(-3.58448f, 7.69584f, 11.7122f);
@@ -121,21 +121,23 @@ int main() {
     //floor->get_material().metallic = 0.1;
     //floor->get_material().roughness = 0.8;
 
-    auto damagedHelmet = antuco.create_object();
-    damagedHelmet->add_mesh(root_project + "\\objects\\antuco-files\\windows\\helmet\\DamagedHelmet.gltf");
-    damagedHelmet->scale(glm::vec3(0.1));
-    damagedHelmet->translate(glm::vec3(0, 1, 0));
+    auto gun = antuco.create_object();
+    gun->add_mesh(root_project + "\\objects\\antuco-files\\windows\\Gun\\gun.glb");
+    gun->scale(glm::vec3(0.1));
+    gun->translate(glm::vec3(0, 1, 0));
 
-    damagedHelmet->get_material().albedo = glm::vec3(1.0, 1.0, 1.0);
-    damagedHelmet->get_material().metallic = 0.7;
-    damagedHelmet->get_material().roughness = 0.3;
-    damagedHelmet->get_material().setBaseColorTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_albedo.jpg");
-    damagedHelmet->get_material().setRoughnessMetallicTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_metalRoughness.jpg");
+    gun->get_material()->albedo = glm::vec3(1.0, 1.0, 1.0);
+    gun->get_material()->metallic = 0.7;
+    gun->get_material()->roughness = 0.3;
 
-    scene->set_ibl(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_4k.hdr");
+    gun->get_material()->setBaseColorTexture(root_project + "\\objects\\antuco-files\\windows\\Gun\\Textures\\Cerberus_A.tga");
+    gun->get_material()->setRoughnessMetallicTexture(root_project + "\\objects\\antuco-files\\windows\\Gun\\Textures\\Cerberus_R.tga");
+    gun->get_material()->setMetallicTexture(root_project + "\\objects\\antuco-files\\windows\\Gun\\Textures\\Cerberus_M.tga");
+
+    //scene->set_ibl(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_4k.hdr");
     
     //antuco.add_skybox(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_skybox");
-    scene->set_skybox(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_4k.hdr");
+    scene->set_skybox(root_project + "\\objects\\antuco-files\\textures\\environment\\brown_photostudio_01_4k.hdr");
 
 #endif
 

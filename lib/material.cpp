@@ -3,8 +3,20 @@
 #include <bedrock/image.hpp>
 
 #include <logger/interface.hpp>
+#include <antuco.hpp>
+#include <api_graphics.hpp>
+#include <vulkan_wrapper/limits.hpp>
+
+#define MATERIAL_SET_INDEX 2
 
 using namespace tuco;
+
+void Material::init()
+{
+	ResourceCollection* forward_collection = Antuco::get_engine().get_backend()->get_forward_pipeline().get_resource_collection(MATERIAL_SET_INDEX);
+	gpuInfo.setIndex = forward_collection->addSets(1, *Antuco::get_engine().get_backend()->get_set_pool());
+	gpuInfo.bufferOffset = Antuco::get_engine().get_backend()->get_model_buffer().allocate(sizeof(MaterialBufferObject), v::Limits::get().uniformBufferOffsetAlignment);
+}
 
 void Material::setBaseColorTexture(std::string filePath) {
     baseColorTexturePath = filePath;
@@ -27,11 +39,19 @@ void Material::setBaseColorTexture(std::string filePath) {
 void Material::setRoughnessMetallicTexture(std::string filePath)
 {
 	hasRoughnessTexture = true;
-	hasMetallicTexture = true;
 
 	roughnessMetallicTexture.init("roughnessMetallicTexture");
 	roughnessMetallicTexture.load_image(filePath, br::ImageFormat::RGBA_COLOR, br::ImageType::Image_2D);
 	roughnessMetallicTexture.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+}
+
+void Material::setMetallicTexture(std::string& filePath)
+{
+	hasSeparateMetallic = true;
+
+	metallicTexture.init("metallicTexture");
+	metallicTexture.load_image(filePath, br::ImageFormat::RGBA_COLOR, br::ImageType::Image_2D);
+	metallicTexture.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 }
 
 void Material::UpdateGPU()

@@ -77,6 +77,7 @@ public:
     mem::StackBuffer& get_vertex_buffer() { return vertex_buffer; }
     mem::StackBuffer& get_index_buffer() { return index_buffer; }
     mem::SearchBuffer& get_model_buffer() { return uniform_buffer; }
+    TucoPipeline& get_forward_pipeline() { return graphics_pipelines[1]; }
 
 
 private:
@@ -162,7 +163,7 @@ private:
     // draw
 public:
     std::vector<br::DrawItem> draw_items;
-    std::vector<Material> materials;
+    std::vector<std::unique_ptr<Material>> materials;
 
     // what we really want is a unique pointer that safe for vectors
     std::vector<std::unique_ptr<br::GPUResource>> draw_data;
@@ -346,7 +347,7 @@ private:
     void updateMaterialResources(Material &material);
     void write_scene(SceneData* scene);
     void create_scene(SceneData* scene);
-    void writeMaterial(Material &material);
+    void writeMaterial(Material *material);
     void writeSceneCollection(SceneData &scene);
 
     void update_uniform_buffer(VkDeviceSize memory_offset,
