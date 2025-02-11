@@ -23,37 +23,25 @@ Afterwards, the program can be installed as a standard CMake project.
 
 ## Screenshots
 
-These are various screenshots I took through different stages of development in the engine:
+Multi-PBR materials:
 
-#### Implementation of 3D Perspective:
+<img src="https://ganidhuabey.github.io/assets/images/Antuco/pbr_materials.png">
 
-![First Month Of Development](antuco_screenshots/august_11_progress_shot.PNG?raw=true "3D Perspective Rendering")
 
-#### Rendering Multiple Objects (With Depth Testing)
+Damaged Helmet ([model](https://github.com/KhronosGroup/glTF-Sample-Models/tree/main))
 
-![Depth Testing](antuco_screenshots/august_12_progress_shot.PNG?raw=true "Multiple Objects")
+<img src="https://ganidhuabey.github.io/assets/images/Antuco/damagedHelmet_v3.png">
 
-#### Basic Diffuse Lighting
+Gun ([model](https://artisaverb.info/PBT.html) by Andrew Maximov)
 
-![Lighting](antuco_screenshots/lighting.PNG?raw=true "Diffuse Lighting")
-
-#### Shadows
-
-![Shadows](antuco_screenshots/shadow_mapping_1_light.png?raw=true "Shadows")
-
-#### Model Rendering
-
-![BMW](antuco_screenshots/bmw_current.png?raw=true "BMW")
-credit to tyrant_monkey for the model
-
-#### Microfacet Material Reflections
-
-![Teapot](antuco_screenshots/microfacet_specular.JPG?raw=true "Teapot")
+<img src="https://ganidhuabey.github.io/assets/images/Antuco/Gun.png">
 
 ## Road Map
 
-Move PSO creation to be per-object.
+Finish implementation for normal mapping and emission texturing
 
-Add diffuse, metallic, roughness textures to material.
+Restructure Pass System for easy addition of new passes
 
-Automate layout creation based on shader reflection.
+Add support for compute passes
+
+Utilize asset caching to improve load times
