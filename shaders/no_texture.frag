@@ -116,7 +116,7 @@ float GGX_G(vec3 v, vec3 n, float roughness) {
     float r = (roughness + 1.0);
     float k = (r*r) / 8.0;
 
-    float NdotV = max(dot(n, v), 0.0);
+    float NdotV = max(dot(n, v), 0.0001);
 
     float num = NdotV;
     float denom = NdotV * (1.0 - k) * k;
