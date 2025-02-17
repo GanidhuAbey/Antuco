@@ -20,6 +20,7 @@ class Environment {
 private:
 	br::Image input_image;
 
+	bool env_loaded;
 	Cubemap skybox;
 	Cubemap irradiance_map;
 	PrefilterMap specular_map;

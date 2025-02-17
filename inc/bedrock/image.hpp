@@ -105,8 +105,19 @@ struct ImageDetails
     ImageType type;
 };
 
+struct ImageHeader
+{
+    uint32_t data_size;
+    uint32_t width;
+    uint32_t height;
+    uint32_t layer_count;
+    ImageFormat format;
+    uint32_t mip_count;
+};
+
 class Image
 {
+
 private:
     std::shared_ptr<v::Device> device;
     std::shared_ptr<v::PhysicalDevice> p_physical_device;
@@ -125,6 +136,7 @@ private:
     bool write = false;
 
     RawImageData raw_image;
+    ImageHeader header;
 
     bool handle_destruction = false;
     bool initialized = false;
@@ -165,13 +177,20 @@ public:
         std::optional<vk::Extent3D> map_size, vk::Queue queue,
         std::optional<vk::CommandBuffer> command_buffer = std::nullopt);
 
+    void save_to_file(std::string file_path);
+    void open_cached_file(std::string file_path);
+
     void set_write(bool write) { Image::write = write; }
 
     static vk::Format get_vk_format(ImageFormat image_format, uint32_t* channels, uint32_t* size);
 
     vk::Sampler &get_sampler() { return sampler; }
 
+    uint32_t get_mip_count() { return header.mip_count; }
+
 private:
+    VkImageAspectFlags get_aspect(ImageFormat format);
+
     bool is_3d_image(ImageType type);
     vk::ImageViewType find_image_view_type(ImageType type);
     void create_image();

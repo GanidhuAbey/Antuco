@@ -1,9 +1,10 @@
-#include <environment.hpp>
+	#include <environment.hpp>
 #include <api_config.hpp>
 
 #include <vector>
 #include <antuco.hpp>
 #include <api_graphics.hpp>
+#include <config.hpp>
 
 #include <environment/prefilter_map.hpp>
 
@@ -19,6 +20,24 @@ using namespace tuco;
 
 void Environment::init(std::string file_path, GameObject* model)
 {
+	std::string brdf_path = CACHE_PATH + "/brdf_map.img";
+	if (file_exists(brdf_path))
+	{
+		brdf_map.load_cache(brdf_path);
+	}
+
+	std::string file_name = get_file_name(file_path);
+	std::string env_path = CACHE_PATH + "/env/" + file_name;
+	env_loaded = false;
+	if (file_exists(env_path))
+	{
+		skybox.load_cache(env_path + "/skybox.img");
+		irradiance_map.load_cache(env_path + "/irradiance.img");
+		specular_map.load_cache(env_path + "/specular.img");
+		env_loaded = true;
+		return;
+	}
+
 	p_device = Antuco::get_engine().get_backend()->p_device;
 
 	input_image.init("environment map");
@@ -42,6 +61,15 @@ void Environment::init(std::string file_path, GameObject* model)
 	gpu_sync.resize(MAX_FRAMES_IN_FLIGHT);
 	cpu_sync.resize(MAX_FRAMES_IN_FLIGHT);
 	render_to_image();
+
+	// save files to cache
+	if (!env_loaded)
+	{
+		skybox.get_image().save_to_file(env_path + "/skybox.png");
+		irradiance_map.get_image().save_to_file(env_path + "/irradiance.png");
+		specular_map.get_image().save_to_file(env_path + "/specular.png");
+		brdf_map.get_image().save_to_file(CACHE_PATH + "/brdf_map.png");
+	}
 }
 
 void Environment::render_to_image()

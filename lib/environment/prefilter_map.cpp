@@ -100,5 +100,7 @@ void PrefilterMap::record_command_buffer(uint32_t face, VkCommandBuffer command_
 
 		// end render pass
 		vkCmdEndRenderPass(command_buffer);
+
+		cubemap.change_layout(vk::ImageLayout::eShaderReadOnlyOptimal, device_->get_graphics_queue(), command_buffer);
 	}
 }

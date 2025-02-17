@@ -1751,7 +1751,7 @@ int32_t GraphicsImpl::update_index_buffer(std::vector<uint32_t> indices_data)
 	{
 		return -1;
 	}
-	uint32_t mem_location = index_buffer.map(
+	uint32_t mem_location = index_buffer.copy(
 		indices_data.size() * sizeof(uint32_t), indices_data.data());
 
 	return mem_location;
@@ -1778,7 +1778,7 @@ int32_t GraphicsImpl::update_vertex_buffer(std::vector<Vertex> vertex_data)
 	if (check_data(vertex_data.size() * sizeof(Vertex)))
 		return -1;
 
-	uint32_t mem_location = vertex_buffer.map(vertex_data.size() * sizeof(Vertex),
+	uint32_t mem_location = vertex_buffer.copy(vertex_data.size() * sizeof(Vertex),
 											  vertex_data.data());
 	return mem_location;
 }
@@ -1787,7 +1787,7 @@ void GraphicsImpl::copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer,
 							   VkDeviceSize dst_offset,
 							   VkDeviceSize data_size)
 {
-	auto transfer_buffer = begin_command_buffer(*p_device, command_pool);
+	auto transfer_buffer = cpp_begin_command_buffer(*p_device, command_pool);
 
 	// transfer between buffers
 	VkBufferCopy copyData{};
@@ -1799,7 +1799,7 @@ void GraphicsImpl::copy_buffer(mem::Memory src_buffer, mem::Memory dst_buffer,
 					&copyData);
 
 	// destroy transfer buffer, shouldnt need it after copying the data.
-	end_command_buffer(*p_device, p_device->get_graphics_queue(), command_pool,
+	cpp_end_command_buffer(*p_device, p_device->get_graphics_queue(), command_pool,
 					   transfer_buffer);
 }
 
@@ -2081,7 +2081,7 @@ void GraphicsImpl::create_texture_image(std::string texturePath, size_t object,
 	// TODO: make buffer at runtime specifically for transfer commands
 	auto buffer = mem::CPUBuffer();
 	buffer.init(*p_physical_device, *p_device, texture_buffer_info);
-	buffer.map(dataSize, 0, pixels);
+	buffer.copy(dataSize, 0, pixels);
 
 	// use size of loaded image to create VkImage
 	texture_images.resize(texture_images.size() + 1);

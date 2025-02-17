@@ -13,6 +13,14 @@ using namespace tuco;
 
 #define CUBEMAP_FACES 6
 
+void LUT::load_cache(std::string path)
+{
+	lut.open_cached_file(path);
+
+	lut.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+	lut.create_view(1, 0, 0, br::ImageType::Image_2D);
+}
+
 void LUT::init(std::string name, std::string& vert, std::string& frag, uint32_t size, uint32_t mip_count, br::ImageFormat format)
 {
 	LUT::name = name;

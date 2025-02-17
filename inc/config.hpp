@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <filesystem>
 
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
@@ -48,3 +49,14 @@ extern std::vector<char> read_file(const std::string& filename);
 //REQUIRES: filename should be a string representing a path to a file
 //EFFECTS: returns the extension of the file given
 extern std::string get_extension_from_file_path(const std::string& filename);
+
+
+/// <summary>
+///  checks if the file at the end of the given path exists. returns true if it does.
+/// </summary>
+/// <param name="path"> path to the file being checked. </param>
+/// <returns> bool - true if file exists, false otherwise. </returns>
+inline bool file_exists(const std::string& path)
+{
+    return std::filesystem::exists(path);
+}

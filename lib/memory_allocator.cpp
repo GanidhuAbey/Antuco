@@ -146,10 +146,19 @@ void CPUBuffer::init(v::PhysicalDevice &physical_device, v::Device &device,
     device.get().bindBufferMemory(buffer, memory, 0);
 }
 
-void CPUBuffer::map(vk::DeviceSize size, vk::DeviceSize offset, const void *data) 
+void CPUBuffer::copy(vk::DeviceSize size, vk::DeviceSize offset, const void *data) 
 {
     auto p_data = device->get().mapMemory(memory, offset, size);
     memcpy(p_data, data, size);
+    device->get().unmapMemory(memory);
+}
+
+void* CPUBuffer::map(vk::DeviceSize size, vk::DeviceSize offset)
+{
+    return device->get().mapMemory(memory, offset, size);
+}
+void CPUBuffer::unmap()
+{
     device->get().unmapMemory(memory);
 }
 
@@ -254,7 +263,7 @@ void StackBuffer::sort() {
   // second vkCmdCopyBuffer() call that will push our data back into the main
   // buffer at a new offset
 
-  auto transfer_buffer = tuco::begin_command_buffer(*device, command_pool);
+  auto transfer_buffer = tuco::cpp_begin_command_buffer(*device, command_pool);
 
   // copy to buffer
 
@@ -332,7 +341,7 @@ VkDeviceSize StackBuffer::allocate(VkDeviceSize allocation_size) {
 
 // EFFECTS: maps a given chunk of data to this buffer and returns the memory
 // location of where it was mapped
-VkDeviceSize StackBuffer::map(VkDeviceSize data_size, void *data) {
+VkDeviceSize StackBuffer::copy(VkDeviceSize data_size, void *data) {
   VkDeviceSize memory_loc = allocate(data_size);
 
   vk::Buffer temp_buffer;
@@ -357,7 +366,7 @@ VkDeviceSize StackBuffer::map(VkDeviceSize data_size, void *data) {
 void StackBuffer::copyBuffer(VkBuffer src_buffer, VkBuffer dst_buffer,
                              VkDeviceSize dst_offset, VkDeviceSize data_size) {
 
-  auto transfer_buffer = tuco::begin_command_buffer(*device, command_pool);
+  auto transfer_buffer = tuco::cpp_begin_command_buffer(*device, command_pool);
 
   // transfer between buffers
   VkBufferCopy copyData{};
@@ -367,7 +376,7 @@ void StackBuffer::copyBuffer(VkBuffer src_buffer, VkBuffer dst_buffer,
 
   vkCmdCopyBuffer(transfer_buffer, src_buffer, dst_buffer, 1, &copyData);
 
-  tuco::end_command_buffer(*device, transfer_queue, command_pool,
+  tuco::cpp_end_command_buffer(*device, transfer_queue, command_pool,
                            transfer_buffer);
 }
 

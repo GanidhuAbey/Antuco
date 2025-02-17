@@ -47,6 +47,7 @@ public:
 	void init(std::string name, std::string& vert, std::string& frag, uint32_t size, uint32_t mip_count = 1, br::ImageFormat format = br::ImageFormat::RG_FLOAT);
 	//void set_input(br::Image* image);
 
+	void load_cache(std::string path);
 
 	br::Image& get_image() { return lut; }
 
