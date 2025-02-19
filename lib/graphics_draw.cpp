@@ -1384,7 +1384,7 @@ void GraphicsImpl::create_command_buffers(
 		VkRenderPassBeginInfo skybox_info{};
 		skybox_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		skybox_info.framebuffer = output_buffers[i];
-		skybox_info.renderArea = render_area;
+		skybox_info.renderArea = static_cast<VkRect2D>(render_area);
 		skybox_info.renderPass = pass.get_api_pass();
 		skybox_info.clearValueCount = clear_values.size();
 		skybox_info.pClearValues = clear_values.data();
@@ -1443,7 +1443,7 @@ void GraphicsImpl::create_command_buffers(
 		VkRenderPassBeginInfo forward_info{};
 		forward_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		forward_info.framebuffer = output_buffers[i];
-		forward_info.renderArea = render_area;
+		forward_info.renderArea = static_cast<VkRect2D>(render_area);
 		forward_info.renderPass = render_pass.get_api_pass();
 		forward_info.clearValueCount = clear_values.size();
 		forward_info.pClearValues = clear_values.data();

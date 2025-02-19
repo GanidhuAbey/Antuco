@@ -18,16 +18,16 @@ void Image::destroy()
 {
 	INFO("image name {}", data.name.c_str());
 	destroy_image_view();
-	if (image != VK_NULL_HANDLE)
+	if (image)
 	{
 		device->get().destroyImage(image, nullptr);
 	}
-	if (memory != VK_NULL_HANDLE)
+	if (memory)
 	{
 		device->get().freeMemory(memory, nullptr);
 	}
 
-	if (sampler != VK_NULL_HANDLE)
+	if (sampler)
 	{
 		device->get().destroySampler(sampler, nullptr);
 	}
@@ -41,13 +41,13 @@ void Image::destroy_image_view()
 {
 	for (auto& image_view : image_views)
 	{
-		if (image_view != VK_NULL_HANDLE)
+		if (image_view)
 		{
 			device->get().destroyImageView(image_view, nullptr);
 		}
 		image_view = VK_NULL_HANDLE;
 	}
-	if (command_pool != VK_NULL_HANDLE)
+	if (command_pool)
 	{
 		device->get().destroyCommandPool(command_pool);
 	}
