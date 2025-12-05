@@ -20,9 +20,9 @@ struct MaterialGpuInfo
 
 struct MaterialBufferObject
 {
-// baseReflectivity, roughness, metallic
+	// baseReflectivity, roughness, metallic
 	glm::vec4 pbrParameters = glm::vec4(0.0);
-	glm::vec4 hasTexture = glm::vec4(0.0); // hasBaseTexture, hasMetallic, hasRoughness
+	glm::vec4 hasTexture = glm::vec4(0.0); // hasBaseTexture, hasMetallic, hasRoughness, hasNormal
 	glm::vec4 albedo = glm::vec4(0.0);
 
 	glm::vec4 padding[2] = { glm::vec4(0), glm::vec4(0) };
@@ -36,6 +36,8 @@ private:
 	br::Image baseColorImage;
 	br::Image roughnessMetallicTexture;
 	br::Image metallicTexture;
+	br::Image normalTexture;
+
 public:
 	// uint32_t image_index;
 	// std::optional<std::string> texturePath;
@@ -45,10 +47,13 @@ public:
 	float roughness = 1.0f;
 	float metallic = 1.0f;
 
+	// [Dec2025 TODO] : Is this the best way to set flags for available textures
+	//	- Better method could be to possibly add shader variants so that when textures are missing, the shader will generate a variant which never uses that texture.
 	bool hasBaseTexture = false;
 	bool hasRoughnessTexture = false;
 	bool hasMetallicTexture = false;
 	bool hasSeparateMetallic = false;
+	bool hasNormalTexture = false; 
 
 	glm::vec3 albedo = glm::vec3(1.0);
 
@@ -79,6 +84,9 @@ public:
 
 	void setMetallicTexture(std::string& filePath);
 	br::Image& getMetallicTexture() { return metallicTexture; }
+
+	void setNormalTexture(std::string& filePath);
+	br::Image& getNormalTexture() { return normalTexture; }
 
 protected:
 	void UpdateGPU() override;

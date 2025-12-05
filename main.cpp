@@ -121,19 +121,17 @@ int main() {
     //floor->get_material().metallic = 0.1;
     //floor->get_material().roughness = 0.8;
 
-    auto gun = antuco.create_object();
-    gun->add_mesh(root_project + "\\objects\\antuco-files\\windows\\Gun\\gun.glb");
-    gun->scale(glm::vec3(0.1));
-    gun->translate(glm::vec3(0, 1, 0));
+    auto helmet = antuco.create_object();
+    helmet->add_mesh(root_project + "\\objects\\antuco-files\\windows\\helmet\\DamagedHelmet.gltf");
+    helmet->scale(glm::vec3(0.1));
+    helmet->translate(glm::vec3(0, 1, 0));
 
-    gun->get_material()->albedo = glm::vec3(1.0, 1.0, 1.0);
-    gun->get_material()->metallic = 0.7;
-    gun->get_material()->roughness = 0.3;
+    helmet->get_material()->albedo = glm::vec3(1.0, 1.0, 1.0);
+    helmet->get_material()->metallic = 0.7;
+    helmet->get_material()->roughness = 0.3;
 
-    gun->get_material()->setBaseColorTexture(root_project + "\\objects\\antuco-files\\windows\\Gun\\Textures\\Cerberus_A.tga");
-    gun->get_material()->setRoughnessMetallicTexture(root_project + "\\objects\\antuco-files\\windows\\Gun\\Textures\\Cerberus_R.tga");
-    gun->get_material()->setMetallicTexture(root_project + "\\objects\\antuco-files\\windows\\Gun\\Textures\\Cerberus_M.tga");
-
+    helmet->get_material()->setBaseColorTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_albedo.jpg");
+    helmet->get_material()->setRoughnessMetallicTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_metalRoughness.jpg");
     //scene->set_ibl(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_4k.hdr");
     
     //antuco.add_skybox(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_skybox");

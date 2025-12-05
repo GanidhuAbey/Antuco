@@ -50,8 +50,18 @@ void Material::setMetallicTexture(std::string& filePath)
 	hasSeparateMetallic = true;
 
 	metallicTexture.init("metallicTexture");
+	// Is it inefficient have image type set to RGBA even when the texture is 1D?
 	metallicTexture.load_image(filePath, br::ImageFormat::RGBA_COLOR, br::ImageType::Image_2D);
 	metallicTexture.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+}
+
+void Material::setNormalTexture(std::string& filePath)
+{
+	hasNormalTexture = true;
+
+	normalTexture.init("normalTexture");
+	normalTexture.load_image(filePath, br::ImageFormat::RGBA_COLOR, br::ImageType::Image_2D);
+	normalTexture.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 }
 
 void Material::UpdateGPU()
@@ -70,6 +80,7 @@ MaterialBufferObject Material::convert() {
   obj.hasTexture.x = static_cast<float>(hasBaseTexture);
   obj.hasTexture.y = static_cast<float>(hasMetallicTexture);
   obj.hasTexture.z = static_cast<float>(hasRoughnessTexture);
+  obj.hasTexture.w = static_cast<float>(hasNormalTexture);
 
   obj.albedo.x = albedo.x;
   obj.albedo.y = albedo.y;

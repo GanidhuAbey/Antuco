@@ -27,6 +27,7 @@ layout(set=1, binding=0) uniform Material {
 layout(set=1, binding=1) uniform sampler2D diffuseTexture;
 layout(set=1, binding=2) uniform sampler2D roughnessMetallicTexture;
 layout(set=1, binding=3) uniform sampler2D metallicTexture; // used if roughness and metallic are separate.
+layout(set=1, binding=4) uniform sampler2D normalTexture;
 
 // set 1 = draw, set = 2 material, set = 3 pass, set = 4 scene
 
