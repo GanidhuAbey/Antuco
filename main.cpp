@@ -132,6 +132,7 @@ int main() {
 
     helmet->get_material()->setBaseColorTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_albedo.jpg");
     helmet->get_material()->setRoughnessMetallicTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_metalRoughness.jpg");
+    helmet->get_material()->setNormalTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_normal.jpg");
     //scene->set_ibl(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_4k.hdr");
     
     //antuco.add_skybox(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_skybox");

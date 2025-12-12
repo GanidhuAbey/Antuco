@@ -29,20 +29,22 @@ layout(push_constant) uniform PushFragConstant {
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
+layout(location = 3) in vec3 tangent;
+layout(location = 4) in vec3 bitangent;
 
 //TODO: actually bring these in, probably through a push constant if we can
 
 
-layout(location = 3) out vec3 surfaceNormal;
-layout(location = 4) out vec4 vPos;
-layout(location = 5) out vec2 texCoord;
+layout(location = 5) out mat3 TBN;
+layout(location = 8) out vec4 vPos;
+layout(location = 9) out vec2 texCoord;
 //layout(location = 6) out vec4 light_perspective;
 
 //light data into fragment shader
-layout(location = 7) out vec3 light_position;
-layout(location = 8) out vec3 light_color;
+layout(location = 10) out vec3 light_position;
+layout(location = 11) out vec3 light_color;
 
-layout(location = 9) out vec3 camera_pos;
+layout(location = 12) out vec3 camera_pos;
 
 //now i know the size length
 float mapping_value = (1/sqrt(pfc.light_count.x))*0.5;
@@ -60,8 +62,14 @@ void main() {
 
     gl_Position = ubo.projection * ubo.worldToCamera * ubo.modelToWorld * vec4(inPosition, 1.0); //opengl automatically divids the components of the vector by 'w'
 
-    // TODO: likely faster to computer inverse CPU side.
-    surfaceNormal = normalize(vec3(transpose(inverse(ubo.modelToWorld)) * vec4(inNormal, 0.0)));
+    // TODO [PERF]: likely faster to computer inverse CPU side.
+    mat4 normalMatrix = transpose(inverse(ubo.modelToWorld));
+
+    vec3 N = normalize(vec3(normalMatrix * vec4(inNormal, 0.0)));
+    vec3 T = normalize(vec3(normalMatrix * vec4(tangent, 0.0)));
+    vec3 B = normalize(vec3(normalMatrix * vec4(bitangent, 0.0)));
+    
+    TBN = mat3(T, B, N);
 
     vPos = ubo.modelToWorld * vec4(inPosition, 1.0);
     //light_perspective = (/*biasMat */ lbo.projection * lbo.world_to_light * lbo.model_to_world) * vec4(inPosition, 1.0);

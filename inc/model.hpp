@@ -69,6 +69,9 @@ private:
   void process_gltf_textures(tinygltf::Model model,
                              std::vector<ImageBuffer> &images);
 
+  // REQUIRES: run after the model has loaded all vertices and indices data
+  void process_tangents();
+
 
 private:
   std::string model_name;

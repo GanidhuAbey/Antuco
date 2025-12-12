@@ -23,6 +23,8 @@ public:
   glm::vec4 position;
   glm::vec4 normal;
   glm::vec2 tex_coord;
+  glm::vec4 tangent;
+  glm::vec4 bitangent;
 
 public:
   Vertex(glm::vec4 pos, glm::vec4 norm, glm::vec2 tex);

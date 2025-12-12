@@ -5,14 +5,14 @@
 #define EPSILON 0.001
 
 layout(location=0) out vec4 outColor;
-layout(location=3) in vec3 surfaceNormal;
-layout(location=4) in vec4 vPos;
-layout(location=5) in vec2 texCoord;
+layout(location=5) in mat3 TBN;
+layout(location=8) in vec4 vPos;
+layout(location=9) in vec2 texCoord;
 //layout(location=6) in vec4 light_perspective;
 
-layout(location=7) in vec3 light_position;
-layout(location=8) in vec3 light_color;
-layout(location=9) in vec3 camera_pos;
+layout(location=10) in vec3 light_position;
+layout(location=11) in vec3 light_color;
+layout(location=12) in vec3 camera_pos;
 
 //layout(set=2, binding=1) uniform sampler2D shadowmap;
 
@@ -174,6 +174,8 @@ void main(){
     vec3 lightDirection = normalize(light_position - vec3(vPos));
     vec3 viewDirection = normalize(camera_pos - vec3(vPos));
     vec3 h = getHalfVector(lightDirection, viewDirection);
+
+    vec3 surfaceNormal = TBN * texture(normalTexture, texCoord).xyz;
 
     vec3 irradiance = texture(irradianceMap, surfaceNormal).rgb;
 

@@ -2,14 +2,14 @@
 #extension GL_EXT_debug_printf : enable
 
 layout(location=0) out vec4 outColor;
-layout(location=3) in vec3 surfaceNormal;
-layout(location=4) in vec4 vPos;
-layout(location=5) in vec2 texCoord;
+layout(location=5) in mat3 surfaceNormal;
+layout(location=8) in vec4 vPos;
+layout(location=9) in vec2 texCoord;
 //layout(location=6) in vec4 light_perspective;
 
-layout(location=7) in vec3 light_position;
-layout(location=8) in vec3 light_color;
-layout(location=9) in vec3 camera_pos;
+layout(location=10) in vec3 light_position;
+layout(location=11) in vec3 light_color;
+layout(location=12) in vec3 camera_pos;
 
 layout(set=1, binding=0) uniform sampler2D texture1;
 //layout(set=3, binding=1) uniform sampler2D shadowmap;
@@ -75,39 +75,5 @@ float SCATTER_STRENGTH = 200.0f;
 //}
 
 void main() {
-    float dist = length(light_position - vec3(vPos));
-
-    //get vector of light
-    vec3 texture_component = vec3(texture(texture1, texCoord));
-
-    //this code treats a directional light as a point light...
-    vec3 lightToObject = (light_position - vec3(vPos));
-    //when the dot product should be at its highest, it seems to be at its lowest, and vice versa.
-    float diffuse_light = max(0.00f, dot(normalize(lightToObject), normalize(surfaceNormal))) / 3.14;
-    vec3 diffuse_final = diffuse_light * normalize(mat.diffuse);
-
-    vec3 reflected_light = reflect(lightToObject, surfaceNormal);
-    //need to pass data on the location of the camera
-    vec3 object_to_camera = normalize(camera_pos - vec3(vPos));
-    float specular_value = pow(max(0.f, dot(reflected_light, object_to_camera)), 32);
-    vec3 specular_light = specular_value * mat.specular * SPECULAR_STRENGTH;
-
-    //analyze depth at the given coordinate of the object
-    float light_dist = length(light_position - vec3(vPos));
-
-    //vec4 sample_value = light_perspective;
-
-    float shadow_factor = 0.f; //pcf_shadow(sample_value);
-
-    //vec3 scattering = get_scattering(sample_value);
-
-    //TODO: get rid of this if statement once everything works
-    vec3 result;
-    if (mat.has_texture.r == 0) {
-        texture_component = vec3(1);
-    }
-
-    result = (diffuse_final) * texture_component;
-
-    outColor = vec4(result, mat.has_texture.g);
+    outColor = vec4(1.0, 0.0, 0.0, 1.f);
 }

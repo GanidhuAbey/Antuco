@@ -19,6 +19,8 @@ layout(push_constant) uniform PushFragConstant {
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
+layout(location = 3) in vec3 tangent;
+layout(location = 4) in vec3 bitangent;
 
 //TODO: actually bring these in, probably through a push constant if we can
 

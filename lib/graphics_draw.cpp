@@ -1286,6 +1286,9 @@ void GraphicsImpl::writeMaterial(Material* material)
 
 	// [Dec2025 TODO] - Abstract the adding of these textures to a helper function to simplify
 	//	- have key associated to set of values needed (e.g. NORMAL -> material->hasNormalTexture, material->getMetallicTexture)
+	image_info.binding = 4;
+	image_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	image_info.image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	if (material->hasNormalTexture)
 	{
 		image_info.image = material->getNormalTexture().get_api_image();
@@ -1299,6 +1302,7 @@ void GraphicsImpl::writeMaterial(Material* material)
 		image_info.image_view = uninitalized_image.get_api_image_view();
 		image_info.sampler = uninitalized_image.get_sampler();
 	}
+	collection->addImage(image_info, material->gpuInfo.setIndex);
 
 	collection->updateSet(material->gpuInfo.setIndex);
 

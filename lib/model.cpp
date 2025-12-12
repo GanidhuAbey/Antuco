@@ -153,6 +153,59 @@ void Model::process_gltf_nodes(tinygltf::Node &node, tinygltf::Model &model,
   } else {
     nodes.push_back(std::move(unique_node));
   }
+
+
+  // Now with all the data filled, we calcalate the models tangent and bitangent values.
+  process_tangents();
+}
+
+void Model::process_tangents()
+{
+    // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
+    for (uint32_t i = 0; i < model_indices.size() - 3; i += 3)
+    {
+        uint32_t t0_idx = i;
+        uint32_t t1_idx = i + 1;
+        uint32_t t2_idx = i + 2;
+        
+        t0_idx = model_indices[t0_idx];
+        t1_idx = model_indices[t1_idx];
+        t2_idx = model_indices[t2_idx];
+
+        glm::vec3 p0 = model_vertices[t0_idx].position;
+        glm::vec3 p1 = model_vertices[t1_idx].position;
+        glm::vec3 p2 = model_vertices[t2_idx].position;
+
+        glm::vec2 uv0 = model_vertices[t0_idx].tex_coord;
+        glm::vec2 uv1 = model_vertices[t1_idx].tex_coord;
+        glm::vec2 uv2 = model_vertices[t2_idx].tex_coord;
+
+        glm::vec3 e1 = p1 - p0;
+        glm::vec3 e2 = p2 - p0;
+
+        glm::vec2 d_uv1 = uv1 - uv0;
+        glm::vec2 d_uv2 = uv2 - uv0;
+
+        float f = 1.f / (d_uv1.x * d_uv2.y - d_uv1.y * d_uv2.x);
+
+        glm::vec4 tangent = { 0.f, 0.f, 0.f, 0.f };
+        glm::vec4 bitangent = { 0.f, 0.f, 0.f, 0.f };
+
+        tangent.x = f * (d_uv2.y * e1.x - d_uv1.y * e2.x);
+        tangent.y = f * (d_uv2.y * e1.y - d_uv1.y * e2.y);
+        tangent.z = f * (d_uv2.y * e1.z - d_uv1.y * e2.z);
+
+        bitangent.x = f * (-d_uv2.x * e1.x + d_uv1.x * e2.x);
+        bitangent.y = f * (-d_uv2.x * e1.y + d_uv1.x * e2.y);
+        bitangent.z = f * (-d_uv2.x * e1.z + d_uv1.x * e2.z);
+
+        model_vertices[t0_idx].tangent = tangent;
+        model_vertices[t0_idx].bitangent = bitangent;
+        model_vertices[t1_idx].tangent = tangent;
+        model_vertices[t1_idx].bitangent = bitangent;
+        model_vertices[t2_idx].tangent = tangent;
+        model_vertices[t2_idx].bitangent = bitangent;
+    }
 }
 
 // NOTE: assumes model.images.size() == model.textures.size();
