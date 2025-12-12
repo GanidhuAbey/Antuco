@@ -90,13 +90,13 @@ struct PipelineConfig
 			vk::VertexInputAttributeDescription({
 					3,
 					0,
-					VK_FORMAT_R32G32_SFLOAT,
-					offsetof(Vertex, tex_coord)}), //tangent
+					VK_FORMAT_R32G32B32_SFLOAT,
+					offsetof(Vertex, tangent)}), //tangent
 			vk::VertexInputAttributeDescription({
 					4,
 					0,
-					VK_FORMAT_R32G32_SFLOAT,
-					offsetof(Vertex, tex_coord)}) //bitangent
+					VK_FORMAT_R32G32B32_SFLOAT,
+					offsetof(Vertex, bitangent)}) //bitangent
 	};
 
 	VkCullModeFlags cull_mode = VK_CULL_MODE_BACK_BIT;

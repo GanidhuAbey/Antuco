@@ -133,7 +133,13 @@ int main() {
     helmet->get_material()->setBaseColorTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_albedo.jpg");
     helmet->get_material()->setRoughnessMetallicTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_metalRoughness.jpg");
     helmet->get_material()->setNormalTexture(root_project + "\\objects\\antuco-files\\textures\\helmet\\Default_normal.jpg");
-    //scene->set_ibl(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_4k.hdr");
+    scene->set_ibl(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_4k.hdr");
+
+    //auto cube = antuco.create_object();
+    //cube->add_mesh(root_project + "\\objects\\antuco-files\\windows\\cube.glb");
+    //cube->get_material()->albedo = glm::vec3(1.0, 0.0, 0.0);
+    //cube->get_material()->roughness = 0.7;
+    //cube->get_material()->metallic = 0.3;
     
     //antuco.add_skybox(root_project + "\\objects\\antuco-files\\textures\\environment\\royal_esplanade_skybox");
     scene->set_skybox(root_project + "\\objects\\antuco-files\\textures\\environment\\brown_photostudio_01_4k.hdr");

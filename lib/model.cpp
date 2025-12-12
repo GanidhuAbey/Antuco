@@ -199,6 +199,9 @@ void Model::process_tangents()
         bitangent.y = f * (-d_uv2.x * e1.y + d_uv1.x * e2.y);
         bitangent.z = f * (-d_uv2.x * e1.z + d_uv1.x * e2.z);
 
+        tangent = glm::normalize(tangent);
+        bitangent = glm::normalize(bitangent);
+
         model_vertices[t0_idx].tangent = tangent;
         model_vertices[t0_idx].bitangent = bitangent;
         model_vertices[t1_idx].tangent = tangent;

@@ -18,7 +18,7 @@ layout(location=12) in vec3 camera_pos;
 
 layout(set=1, binding=0) uniform Material {
     vec3 pbrParameters; // baseReflectivity, roughness, metallic
-    vec3 hasTexture; // hasDiffuse, hasMetallic, hasRoughness
+    vec4 hasTexture; // hasDiffuse, hasMetallic, hasRoughness, hasNormal
     vec3 albedo;
 
     vec4 padding[2];
@@ -175,7 +175,10 @@ void main(){
     vec3 viewDirection = normalize(camera_pos - vec3(vPos));
     vec3 h = getHalfVector(lightDirection, viewDirection);
 
-    vec3 surfaceNormal = TBN * texture(normalTexture, texCoord).xyz;
+    vec3 surfaceNormal = mat.hasTexture.w == 1.f ? texture(normalTexture, texCoord).xyz : vec3(0.0, 0.0, 1.0);;
+    // convert from [0, 1] to [-1, 1]
+    //surfaceNormal = surfaceNormal * 2.0 - 1.0;
+    surfaceNormal = TBN * surfaceNormal;
 
     vec3 irradiance = texture(irradianceMap, surfaceNormal).rgb;
 
@@ -197,7 +200,7 @@ void main(){
 
     vec3 specular = (D * G * F) / ((4.0 * NdotV) * (4.0 * NdotL) + 0.0001);
 
-    vec3 R = reflect(-viewDirection, surfaceNormal);
+    vec3 R = reflect(viewDirection, surfaceNormal);
     vec3 prefiliteredColor = textureLod(specularIblMap, R, roughness * MAX_REFLECTION_LOD).rgb;
     vec2 envBRDF = texture(brdf_map, vec2(max(dot(surfaceNormal, viewDirection), 0.0), roughness)).rg;
 
