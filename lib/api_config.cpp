@@ -1,7 +1,7 @@
 #include "api_config.hpp"
 
 
-void tuco::end_command_buffer(
+void tuco::cpp_end_command_buffer(
 v::Device& device, 
 vk::Queue& queue, 
 vk::CommandPool& command_pool, 

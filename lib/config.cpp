@@ -9,29 +9,16 @@
 #include <vector>
 
 std::string goto_previous_directory(std::string file_path) {
-#ifdef _WIN32
-    size_t index = file_path.rfind("\\");
-#else
-    size_t index = file_path.rfind("/");
-#endif
+    std::filesystem::path path = file_path;
+    std::filesystem::path parent = path.parent_path();
 
-    std::string prev_dir = file_path.substr(0, index);
-
-    return prev_dir;
+    return parent.string();
 }
 
 
 std::string get_current_dir_name(std::string file_path) {
-#ifdef _WIN32
-    size_t index = file_path.rfind("\\");
-#else
-    size_t index = file_path.rfind("/");
-#endif
-
-    std::string current_dir = file_path.substr(index + 1, file_path.size());
-
-
-    return current_dir;
+    std::filesystem::path path = file_path;
+    return path.filename().string();
 }
 
 std::string get_project_root(std::string file_path) {
@@ -91,4 +78,3 @@ std::string get_file_name(const std::string& path) {
 
     return name;
 }
-

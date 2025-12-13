@@ -43,6 +43,8 @@ public:
 	//	"px" - positive x image
 	void init(std::string name, std::string& vert, std::string& frag, GameObject* model, uint32_t size, uint32_t mip_count = 1);
 	void set_input(br::Image* image);
+
+	void load_cache(std::string file_path);
 	
 
 	br::Image& get_image() { return cubemap; }
@@ -56,7 +58,7 @@ protected:
 	virtual void override_pipeline(PipelineConfig& config) {};
 
 	void create_pass();
-	void create_cubemap_faces();
+	void create_cubemap_faces(bool cache_load = false);
 	void create_framebuffers();
 	void write_descriptors();
 };

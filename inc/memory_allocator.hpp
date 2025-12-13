@@ -83,7 +83,9 @@ private:
 public:
   void init(v::PhysicalDevice &physical_device, v::Device &device,
             BufferCreateInfo &buffer_info);
-  void map(vk::DeviceSize size, vk::DeviceSize offset, const void *data);
+  void copy(vk::DeviceSize size, vk::DeviceSize offset, const void *data);
+  void* map(vk::DeviceSize size, vk::DeviceSize offset);
+  void unmap();
   void destroy();
 
   vk::Buffer &get() { return buffer; }
@@ -143,7 +145,7 @@ public:
   void init(v::PhysicalDevice &physical_device, v::Device &device,
             BufferCreateInfo &p_buffer_info);
 
-  VkDeviceSize map(VkDeviceSize data_size, void *data);
+  VkDeviceSize copy(VkDeviceSize data_size, void *data);
   void destroy();
   void free(VkDeviceSize delete_offset);
   void sort();

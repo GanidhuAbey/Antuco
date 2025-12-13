@@ -9,6 +9,10 @@
 
 #include <stb_image.h>
 
+#include <fstream>
+#include <iostream>
+#include <filesystem>
+
 using namespace br;
 
 #define CUBEMAP_IMAGE_COUNT 6
@@ -99,6 +103,7 @@ void Image::load_blank(ImageDetails info, uint32_t width, uint32_t height, uint3
 	if (info.type == ImageType::Cube) image_info.flags = vk::ImageCreateFlagBits::eCubeCompatible;
 
 	data.image_info = image_info;
+	header.format = info.format;
 
 	create_image();
 }
@@ -157,19 +162,19 @@ vk::ImageUsageFlags Image::get_vk_usage(ImageFormat format, ImageUsage usage)
 {
 	if (format == ImageFormat::DEPTH && usage == ImageUsage::RENDER_OUTPUT)
 	{
-		return vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
+		return vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc;
 	}
 	else if (usage == ImageUsage::RENDER_OUTPUT)
 	{
-		return vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+		return vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc;
 	}
 	else if (usage == ImageUsage::SHADER_INPUT)
 	{
-		return vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
+		return vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc;
 	}
 
 	ASSERT(false, "could not find VkUsage for described image");
-	return vk::ImageUsageFlagBits::eSampled;
+	return vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc;
 }
 
 vk::Format Image::get_vk_format(ImageFormat image_format, uint32_t* channels, uint32_t* size)
@@ -213,6 +218,8 @@ vk::Format Image::get_vk_format(ImageFormat image_format, uint32_t* channels, ui
 // REQUIRES: every image in cube_images should be the same size.
 void Image::load_cubemap(std::vector<std::string>& cube_images, ImageFormat image_format)
 {
+	header.format = image_format;
+
 	uint32_t channels;
 	uint32_t size;
 	vk::Format format = get_vk_format(image_format, &channels, &size);
@@ -286,6 +293,8 @@ void Image::load_image(std::string& file_path, ImageFormat image_format, ImageTy
 	raw_image.buffer_size = raw_image.width * raw_image.height * raw_image.channels * raw_image.size;
 	raw_image.image_size = raw_image.width * raw_image.height * raw_image.channels * raw_image.size;
 
+	header.format = image_format;
+
 	load_to_gpu(format, type);
 }
 
@@ -302,6 +311,8 @@ void Image::load_float_image(std::string& file_path, ImageFormat image_format, I
 	raw_image.size = size;
 	raw_image.buffer_size = raw_image.width * raw_image.height * raw_image.channels * raw_image.size;
 	raw_image.image_size = raw_image.width * raw_image.height * raw_image.channels * raw_image.size;
+
+	header.format = image_format;
 
 	load_to_gpu(format, type);
 }
@@ -428,7 +439,7 @@ void Image::init_buffer(uint32_t buffer_size, mem::CPUBuffer* buffer)
 
 uint32_t Image::add_to_buffer(RawImageData& data, uint32_t image_index, uint32_t offset, mem::CPUBuffer* buffer)
 {
-	buffer->map(data.image_size, offset, data.images[image_index]);
+	buffer->copy(data.image_size, offset, data.images[image_index]);
 	return offset + data.image_size;
 }
 
@@ -529,6 +540,197 @@ void Image::create_image()
 	memory = device->get().allocateMemory(alloc);
 
 	device->get().bindImageMemory(image, memory, 0);
+
+	header.width = info.extent.width;
+	header.height = info.extent.height;
+	header.mip_count = info.mipLevels;
+	header.layer_count = info.arrayLayers;
+}
+
+VkImageAspectFlags Image::get_aspect(ImageFormat format)
+{
+	if (format == ImageFormat::DEPTH)
+	{
+		return VK_IMAGE_ASPECT_DEPTH_BIT;
+	}
+
+	return VK_IMAGE_ASPECT_COLOR_BIT;
+}
+
+void Image::open_cached_file(std::string file_path)
+{
+	std::ifstream file;
+	file.open(file_path, std::ios::in | std::ios::binary);
+
+	ImageHeader image_header;
+	file.read(reinterpret_cast<char*>(&image_header), sizeof(image_header));
+	header = image_header;
+
+	std::vector<char> image_data(header.data_size);
+	file.read(image_data.data(), header.data_size);
+
+	uint32_t channels;
+	uint32_t size;
+	vk::Format format = get_vk_format(header.format, &channels, &size);
+
+	// create image
+	ImageCreateInfo image_info;
+	image_info.format = format;
+	image_info.extent = vk::Extent3D(header.width, header.height, 1);
+	image_info.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
+	//image_info.initial_layout = vk::ImageLayout::eTransferDstOptimal;
+	image_info.queueFamilyIndexCount = 1;
+	image_info.pQueueFamilyIndices = &device->get_graphics_family();
+	image_info.size = header.data_size;
+	image_info.image_type = vk::ImageType::e2D;
+	image_info.arrayLayers = header.layer_count;
+	image_info.mipLevels = header.mip_count;
+
+	data.image_info = image_info;
+	data.image_view_info.aspect_mask = vk::ImageAspectFlagBits::eColor;
+
+	create_image();
+
+	mem::CPUBuffer buffer;
+	init_buffer(header.data_size, &buffer);
+
+	buffer.copy(header.data_size, 0, image_data.data());
+
+	std::vector<VkBufferImageCopy> copies(header.mip_count);
+
+	uint32_t buffer_offset = 0;
+	for (int i = 0; i < header.mip_count; i++)
+	{
+		uint32_t mip_height = header.height * std::pow(0.5, i);
+		uint32_t mip_width = header.width * std::pow(0.5, i);
+
+
+		VkBufferImageCopy copy{};
+		copy.bufferOffset = buffer_offset;
+		copy.bufferRowLength = 0;
+		copy.bufferImageHeight = 0;
+		VkImageSubresourceLayers sub{};
+		sub.mipLevel = i;
+		sub.baseArrayLayer = 0;
+		sub.aspectMask = get_aspect(header.format);
+		sub.layerCount = header.layer_count;
+		copy.imageSubresource = sub;
+		copy.imageExtent.width = mip_width;
+		copy.imageExtent.height = mip_height;
+		copy.imageExtent.depth = 1.f;
+		copy.imageOffset.x = 0;
+		copy.imageOffset.y = 0;
+		copy.imageOffset.z = 0;
+
+		copies[i] = copy;
+
+		buffer_offset += mip_width * mip_height * channels * size;
+	}
+
+	vk::CommandBuffer cmd = tuco::begin_cmd(device.get(), command_pool);
+
+	current_layout = vk::ImageLayout::eUndefined;
+	change_layout(vk::ImageLayout::eTransferDstOptimal, device->get_graphics_queue(), cmd);
+
+	vkCmdCopyBufferToImage(cmd, buffer.get(), image, static_cast<VkImageLayout>(current_layout), header.mip_count, copies.data());
+
+	change_layout(vk::ImageLayout::eShaderReadOnlyOptimal, device->get_graphics_queue(), cmd);
+
+	tuco::end_cmd(device.get(), device->get_graphics_queue(), command_pool, cmd);
+
+	buffer.destroy();
+
+	file.close();
+
+	initialized = true;
+}
+
+/// <summary>
+///  Saves the image object to a file.
+/// </summary>
+/// <param name="file_path"></param>
+void Image::save_to_file(std::string file_path)
+{
+	uint32_t channels;
+	uint32_t size;
+	get_vk_format(header.format, &channels, &size);
+
+	uint32_t buffer_size = 0;
+	uint32_t mip_width = header.width;
+	uint32_t mip_height = header.height;
+	for (int i = 0; i < header.mip_count; i++)
+	{
+		mip_width = header.width * std::pow(0.5, i);
+		mip_height = header.height * std::pow(0.5, i);
+
+		buffer_size += mip_width * mip_height * channels * size * header.layer_count;
+	}
+
+	// create cpu buffer
+	mem::CPUBuffer buffer;
+	mem::BufferCreateInfo texture_buffer_info{};
+	texture_buffer_info.size = buffer_size;
+	texture_buffer_info.usage = vk::BufferUsageFlagBits::eTransferDst;
+	texture_buffer_info.queue_family_index_count = 1;
+	texture_buffer_info.p_queue_family_indices = &device->get_transfer_family();
+
+	buffer.init(*p_physical_device, *device, texture_buffer_info);
+
+	// copy to buffer
+	vk::CommandBuffer cmd = tuco::begin_cmd(device.get(), command_pool);
+
+	std::vector<VkBufferImageCopy> copies;
+	uint32_t buffer_offset = 0;
+	for (int i = 0; i < header.layer_count; i++)
+	{
+		for (int j = 0; j < header.mip_count; j++)
+		{
+			uint32_t mip_width = header.width * std::pow(0.5, j);
+			uint32_t mip_height = header.height * std::pow(0.5, j);
+
+			VkBufferImageCopy copy{};
+			copy.bufferOffset = buffer_offset;
+			copy.bufferRowLength = 0;
+			copy.bufferImageHeight = 0;
+			VkImageSubresourceLayers sub{};
+			sub.baseArrayLayer = 0;
+			sub.layerCount = 1;
+			sub.aspectMask = get_aspect(header.format);
+			sub.mipLevel = j;
+			copy.imageSubresource = sub;
+			copy.imageOffset.x = 0;
+			copy.imageOffset.y = 0;
+			copy.imageOffset.z = 0;
+			copy.imageExtent.width = mip_width;
+			copy.imageExtent.height = mip_height;
+			copy.imageExtent.depth = 1;
+
+			buffer_offset += mip_width * mip_height * channels * size;
+
+			copies.push_back(copy);
+		}
+	}
+
+	vk::ImageLayout orig_layout = current_layout;
+	change_layout(vk::ImageLayout::eTransferSrcOptimal, device->get_graphics_queue(), cmd);
+
+	vkCmdCopyImageToBuffer(cmd, image, static_cast<VkImageLayout>(current_layout), static_cast<VkBuffer>(buffer.get()), header.mip_count, copies.data());
+
+	change_layout(orig_layout, device->get_graphics_queue(), cmd);
+
+	tuco::end_cmd(device.get(), device->get_graphics_queue(), command_pool, cmd);
+
+	header.data_size = buffer_size;
+
+	// save to file
+	std::string file_name = get_current_dir_name(file_path);
+	for (int i = 0; i < header.layer_count; i++)
+	{
+		std::string name = goto_previous_directory(file_path) + "/" + file_name + "_" + std::to_string(i) + ".png";
+
+	}
+
+	buffer.destroy();
 }
 
 ///
@@ -552,7 +754,7 @@ void Image::copy_from_buffer(vk::Buffer buffer, vk::Offset3D image_offset, uint3
 	bool delete_buffer = false;
 	if (!command_buffer.has_value())
 	{
-		command_buffer = tuco::begin_command_buffer(*device, command_pool);
+		command_buffer = tuco::cpp_begin_command_buffer(*device, command_pool);
 		delete_buffer = true;
 	}
 
@@ -577,8 +779,8 @@ void Image::copy_from_buffer(vk::Buffer buffer, vk::Offset3D image_offset, uint3
 
 	if (delete_buffer)
 	{
-		tuco::end_command_buffer(*device, queue, command_pool,
-								 command_buffer.value());
+		tuco::cpp_end_command_buffer(*device, queue, command_pool,
+									 command_buffer.value());
 	}
 }
 
@@ -603,7 +805,7 @@ void Image::transfer(vk::ImageLayout output_layout, vk::Queue queue,
 	bool delete_buffer = false;
 	if (!command_buffer.has_value())
 	{
-		command_buffer = tuco::begin_command_buffer(*device, command_pool);
+		command_buffer = tuco::cpp_begin_command_buffer(*device, command_pool);
 		delete_buffer = true;
 	}
 
@@ -792,6 +994,24 @@ void Image::transfer(vk::ImageLayout output_layout, vk::Queue queue,
 		src_stage = vk::PipelineStageFlagBits::eTransfer;
 		dst_stage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
 	}
+	else if (output_layout == vk::ImageLayout::eShaderReadOnlyOptimal &&
+			 initial_layout == vk::ImageLayout::eTransferSrcOptimal)
+	{
+		src_access = vk::AccessFlagBits::eTransferRead;
+		dst_access = vk::AccessFlagBits::eShaderRead;
+
+		src_stage = vk::PipelineStageFlagBits::eTransfer;
+		dst_stage = vk::PipelineStageFlagBits::eFragmentShader;
+	}
+	else if (output_layout == vk::ImageLayout::eTransferSrcOptimal &&
+			 initial_layout == vk::ImageLayout::eShaderReadOnlyOptimal)
+	{
+		src_access = vk::AccessFlagBits::eShaderRead;
+		dst_access = vk::AccessFlagBits::eTransferRead;
+
+		src_stage = vk::PipelineStageFlagBits::eFragmentShader;
+		dst_stage = vk::PipelineStageFlagBits::eTransfer;
+	}
 
 	auto subresource =
 		vk::ImageSubresourceRange(data.image_view_info.aspect_mask, 0, data.image_info.mipLevels, 0, data.image_info.arrayLayers);
@@ -806,13 +1026,13 @@ void Image::transfer(vk::ImageLayout output_layout, vk::Queue queue,
 	// end command buffer
 	if (delete_buffer)
 	{
-		tuco::end_command_buffer(*device, queue, command_pool,
-								 command_buffer.value());
+		tuco::cpp_end_command_buffer(*device, queue, command_pool,
+									 command_buffer.value());
 	}
 }
 
 void Image::create_image_view()
-{	
+{
 	auto info = data.image_view_info;
 	auto format = data.image_info.format;
 	if (info.format.has_value())
@@ -827,7 +1047,7 @@ void Image::create_image_view()
 	auto create_info = vk::ImageViewCreateInfo({}, image, info.view_type, format,
 											   components, resource_range);
 
-	
+
 	ASSERT(image_views.size() < MAX_VIEWS, "Attempting to allocate image index: {} which is more than the allowed images. Please increase the MAX_VIEWS value.", image_views.size());
 	image_views.push_back(device->get().createImageView(create_info));
 	view_index++;

@@ -13,6 +13,18 @@ using namespace tuco;
 
 #define CUBEMAP_FACES 6
 
+void Cubemap::load_cache(std::string file_path)
+{
+	ASSERT(file_exists(file_path), "File [{}] does not exist.", file_path);
+
+	std::string name = get_file_name(file_path);
+	cubemap.init(name);
+	cubemap.open_cached_file(file_path);
+
+	mip_count = cubemap.get_mip_count();
+	create_cubemap_faces();
+}
+
 void Cubemap::init(std::string name, std::string& vert, std::string& frag, GameObject* model, uint32_t size, uint32_t mip_count)
 {
 	Cubemap::name = name;
@@ -184,6 +196,8 @@ void Cubemap::record_command_buffer(uint32_t face, VkCommandBuffer command_buffe
 
 	// end render pass
 	vkCmdEndRenderPass(command_buffer);
+
+	cubemap.change_layout(vk::ImageLayout::eShaderReadOnlyOptimal, device_->get_graphics_queue(), command_buffer);
 }
 
 void Cubemap::create_pass()
@@ -232,16 +246,19 @@ void Cubemap::create_pipeline(std::string& vert, std::string& frag)
 	pipeline.init(device_, set_pool_, config);
 }
 
-void Cubemap::create_cubemap_faces()
+void Cubemap::create_cubemap_faces(bool cache_load)
 {	
 	br::ImageDetails info{};
 	info.format = br::ImageFormat::HDR_COLOR;
 	info.type = br::ImageType::Cube;
 	info.usage = br::ImageUsage::RENDER_OUTPUT;
 
-	cubemap.init(name);
+	if (!cache_load)
+	{
+		cubemap.init(name);
+		cubemap.load_blank(info, map_size, map_size, 6, mip_count);
+	}
 
-	cubemap.load_blank(info, map_size, map_size, 6, mip_count);
 	cubemap.set_image_sampler(VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 	cubemap.create_view(6, 0, 0, br::ImageType::Cube);
 	
